@@ -1,0 +1,7 @@
+{
+  "active": true,
+  "started_at": "2026-03-14T22:52:16.605Z",
+  "original_prompt": "On the MVP scope, I agree with it. The only thing I would ideally like to keep is the budget/bracket-aware recommendations. The other stuff I'm fine with.\n\nI think maybe bring-your-own-keys could be a pro feature or something we can get people to pay for. For now, let's just assume that we have the keys. I'm not 100% sure if this will be a full-term project, to be honest, but I understand the friction.\n\nI'd still want to use the SDK because I'd want to be able to switch between them easily and set defaults for certain things. I don't necessarily want to be tied to one. It might be that a new model comes along and we want to test it. There probably needs to be a super admin area where I can set those defaults. But yeah, we should still be using the Vercel SDK. That's okay. ",
+  "reinforcement_count": 0,
+  "last_checked_at": "2026-03-14T22:52:16.605Z"
+}

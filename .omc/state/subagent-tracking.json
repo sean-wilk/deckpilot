@@ -1,0 +1,85 @@
+{
+  "agents": [
+    {
+      "agent_id": "a24f20326194a9964",
+      "agent_type": "oh-my-claudecode:researcher",
+      "started_at": "2026-03-14T22:31:07.365Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-03-14T22:35:08.398Z",
+      "duration_ms": 241033
+    },
+    {
+      "agent_id": "a4f3c3001b0b8747f",
+      "agent_type": "oh-my-claudecode:researcher",
+      "started_at": "2026-03-14T22:39:12.018Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-03-14T22:41:36.570Z",
+      "duration_ms": 144552
+    },
+    {
+      "agent_id": "aa1c59955092995d3",
+      "agent_type": "oh-my-claudecode:critic",
+      "started_at": "2026-03-14T22:46:33.460Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-03-14T22:48:35.545Z",
+      "duration_ms": 122085
+    },
+    {
+      "agent_id": "a1d15f6db9d1bb942",
+      "agent_type": "oh-my-claudecode:critic",
+      "started_at": "2026-03-14T22:58:18.366Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-03-14T23:00:28.438Z",
+      "duration_ms": 130072
+    },
+    {
+      "agent_id": "ab04daa40e093383a",
+      "agent_type": "oh-my-claudecode:critic",
+      "started_at": "2026-03-14T23:03:22.640Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-03-14T23:05:47.945Z",
+      "duration_ms": 145305
+    },
+    {
+      "agent_id": "a5f1f3d746992f052",
+      "agent_type": "oh-my-claudecode:critic",
+      "started_at": "2026-03-14T23:11:15.840Z",
+      "parent_mode": "none",
+      "status": "failed",
+      "completed_at": "2026-03-14T23:12:55.385Z",
+      "duration_ms": 99545
+    },
+    {
+      "agent_id": "a43981f389cc14715",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-03-14T23:25:34.096Z",
+      "parent_mode": "ultrawork",
+      "status": "failed",
+      "completed_at": "2026-03-14T23:25:51.096Z",
+      "duration_ms": 17000
+    },
+    {
+      "agent_id": "acdd854f9c7287559",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-03-14T23:25:50.243Z",
+      "parent_mode": "ultrawork",
+      "status": "running"
+    },
+    {
+      "agent_id": "a240f51d4a869490e",
+      "agent_type": "oh-my-claudecode:executor",
+      "started_at": "2026-03-14T23:26:02.060Z",
+      "parent_mode": "ultrawork",
+      "status": "running"
+    }
+  ],
+  "total_spawned": 9,
+  "total_completed": 0,
+  "total_failed": 7,
+  "last_updated": "2026-03-14T23:26:02.060Z"
+}
