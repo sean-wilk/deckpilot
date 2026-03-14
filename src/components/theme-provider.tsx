@@ -9,12 +9,10 @@ const ThemeContext = createContext<{
 }>({ theme: 'system', setTheme: () => {} })
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('system')
-
-  useEffect(() => {
-    const stored = localStorage.getItem('theme') as Theme | null
-    if (stored) setTheme(stored)
-  }, [])
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'system'
+    return (localStorage.getItem('theme') as Theme | null) ?? 'system'
+  })
 
   useEffect(() => {
     const root = document.documentElement

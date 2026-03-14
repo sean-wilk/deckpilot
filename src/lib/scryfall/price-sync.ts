@@ -36,7 +36,7 @@ export const syncScryfallPrices = inngest.createFunction(
       const { streamArray } = await import('stream-json/streamers/StreamArray')
       const { Readable } = await import('stream')
 
-      const readableStream = Readable.fromWeb(response.body as any)
+      const readableStream = Readable.fromWeb(response.body as unknown as Parameters<typeof Readable.fromWeb>[0])
       const jsonStream = readableStream.pipe(parser()).pipe(streamArray())
 
       // Collect cheapest price per oracle_id
@@ -44,7 +44,7 @@ export const syncScryfallPrices = inngest.createFunction(
       let processed = 0
 
       return new Promise<{ processed: number; updated: number }>((resolve, reject) => {
-        jsonStream.on('data', ({ value }: { value: any }) => {
+        jsonStream.on('data', ({ value }: { value: { oracle_id?: string; prices?: Record<string, string | null> } }) => {
           processed++
           const oracleId = value.oracle_id
           if (!oracleId || !value.prices) return

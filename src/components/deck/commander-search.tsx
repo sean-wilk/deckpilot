@@ -333,7 +333,7 @@ export function CommanderSearch({
 
           {isOpen && !isLoading && results.length === 0 && query.length >= 2 && (
             <div className="absolute z-50 w-full mt-1 rounded-lg border border-border bg-popover shadow-xl px-4 py-3">
-              <p className="text-sm text-muted-foreground">No commanders found for "{query}"</p>
+              <p className="text-sm text-muted-foreground">No commanders found for &quot;{query}&quot;</p>
             </div>
           )}
         </div>

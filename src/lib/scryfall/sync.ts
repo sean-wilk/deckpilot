@@ -33,15 +33,15 @@ export const syncScryfallCards = inngest.createFunction(
       const { streamArray } = await import('stream-json/streamers/StreamArray')
       const { Readable } = await import('stream')
 
-      const readableStream = Readable.fromWeb(response.body as any)
+      const readableStream = Readable.fromWeb(response.body as unknown as Parameters<typeof Readable.fromWeb>[0])
       const jsonStream = readableStream.pipe(parser()).pipe(streamArray())
 
       let processed = 0
       let upserted = 0
-      let batch: any[] = []
+      let batch: ScryfallCard[] = []
       const BATCH_SIZE = 500
 
-      const processBatch = async (batchItems: any[]) => {
+      const processBatch = async (batchItems: ScryfallCard[]) => {
         if (batchItems.length === 0) return
 
         const values = batchItems.map((card: ScryfallCard) => ({
