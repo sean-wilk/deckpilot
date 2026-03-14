@@ -126,7 +126,7 @@ function ColorPip({
 
 // ─── StatsBar ─────────────────────────────────────────────────────────────────
 
-export function StatsBar({ cards, deckName: _deckName, targetBracket, className }: StatsBarProps) {
+export function StatsBar({ cards, targetBracket, className }: StatsBarProps) {
   const cardCount = cards.length
   const avgCmc = computeAvgCmc(cards)
   const colorCounts = computeColorCounts(cards)

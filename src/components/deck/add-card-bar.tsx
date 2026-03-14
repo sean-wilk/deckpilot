@@ -183,7 +183,6 @@ export function AddCardBar({ deckId, className }: AddCardBarProps) {
           )}
           aria-label="Search cards"
           aria-autocomplete="list"
-          aria-expanded={open}
         />
         {query && (
           <button

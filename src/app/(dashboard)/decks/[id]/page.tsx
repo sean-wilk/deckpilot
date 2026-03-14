@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { decks, deckCards, cards } from '@/lib/db/schema'
 import { eq, asc } from 'drizzle-orm'
+import Image from 'next/image'
 import { StatsBar } from '@/components/deck/stats-bar'
 import { DeckCardGrid } from '@/components/deck/deck-card-grid'
 import { AddCardBar } from '@/components/deck/add-card-bar'
@@ -139,7 +140,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
                     <div key={c.deckCardId} className="flex flex-col items-center gap-1">
                       <div className="relative">
                         {/* CardImage rendered directly — commanders not removable */}
-                        <img
+                        <Image
                           src={
                             (c.imageUris as CardImageUris | null)?.small ??
                             (c.cardFaces as CardFace[] | null)?.[0]?.image_uris?.small ??
@@ -149,7 +150,6 @@ export default async function DeckPage({ params }: DeckPageProps) {
                           width={88}
                           height={123}
                           className="rounded-[4.75%/3.4%] shadow-md"
-                          loading="lazy"
                         />
                         <div className="absolute -top-1.5 -left-1.5 px-1 py-0.5 rounded-sm bg-amber-500 text-white text-[8px] font-bold uppercase tracking-wide shadow">
                           CMD

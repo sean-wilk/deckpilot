@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { swapRecommendations, deckCards, cards, decks } from '@/lib/db/schema'
+import { deckCards, cards, decks } from '@/lib/db/schema'
 import { eq, and, max } from 'drizzle-orm'
 import { deriveCardType } from '@/lib/utils/card-type'
 import { revalidatePath } from 'next/cache'

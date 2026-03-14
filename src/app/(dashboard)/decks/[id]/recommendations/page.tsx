@@ -195,7 +195,7 @@ export default function RecommendationsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<RecommendationsResult | null>(null)
-  const [analysisId, setAnalysisId] = useState<string>('')
+  const analysisId = ''
   const [acceptedCount, setAcceptedCount] = useState(0)
 
   async function fetchRecommendations() {
