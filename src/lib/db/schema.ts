@@ -206,6 +206,7 @@ export const deckCards = pgTable(
     isCompanion: boolean("is_companion").default(false).notNull(),
     isSideboard: boolean("is_sideboard").default(false).notNull(),
     userNote: text("user_note"),
+    preferredImageUris: jsonb("preferred_image_uris"),
     addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
     sortOrder: integer("sort_order").notNull(),
   },

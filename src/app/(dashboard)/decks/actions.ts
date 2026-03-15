@@ -114,6 +114,14 @@ export async function removeCardFromDeck(deckId: string, deckCardId: string) {
   revalidatePath(`/decks/${deckId}`)
 }
 
+export async function updatePreferredPrinting(deckCardId: string, imageUris: Record<string, string>) {
+  await requireUser()
+  await db.update(deckCards)
+    .set({ preferredImageUris: imageUris })
+    .where(eq(deckCards.id, deckCardId))
+  // No revalidation needed — client updates optimistically
+}
+
 export async function createDeckSnapshot(deckId: string, changeSummary: string) {
   const user = await requireUser()
 

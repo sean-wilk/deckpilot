@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { CardImage } from '@/components/cards/card-image'
+import { CardDetailModal } from '@/components/cards/card-detail-modal'
 import { cn } from '@/lib/utils'
 import type { CardImageUris, CardFace } from '@/types/card'
 import { removeCardFromDeck } from '@/app/(dashboard)/decks/actions'
@@ -18,6 +19,14 @@ export interface DeckCardEntry {
   cardFaces: CardFace[] | null
   manaCost: string | null
   cmc: number
+  // Additional fields for detail modal
+  typeLine?: string | null
+  oracleText?: string | null
+  power?: string | null
+  toughness?: string | null
+  rarity?: string | null
+  setCode?: string | null
+  prices?: Record<string, string | null> | null
 }
 
 export interface DeckCardGridProps {
@@ -58,9 +67,10 @@ interface CardThumbProps {
   card: DeckCardEntry
   deckId: string
   isOwner: boolean
+  onCardClick: (card: DeckCardEntry) => void
 }
 
-function CardThumb({ card, deckId, isOwner }: CardThumbProps) {
+function CardThumb({ card, deckId, isOwner, onCardClick }: CardThumbProps) {
   const [hovered, setHovered] = useState(false)
   const [removing, startRemove] = useTransition()
 
@@ -78,6 +88,12 @@ function CardThumb({ card, deckId, isOwner }: CardThumbProps) {
     >
       {/* Card image */}
       <div className="relative">
+        <button
+          type="button"
+          onClick={() => onCardClick(card)}
+          className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[4.75%]"
+          aria-label={`View details for ${card.name}`}
+        >
         <CardImage
           name={card.name}
           imageUris={card.imageUris}
@@ -89,6 +105,7 @@ function CardThumb({ card, deckId, isOwner }: CardThumbProps) {
             removing && 'opacity-50',
           )}
         />
+        </button>
 
         {/* Hover overlay: remove button */}
         {isOwner && hovered && !card.isCommander && (
@@ -136,9 +153,10 @@ interface TypeGroupProps {
   cards: DeckCardEntry[]
   deckId: string
   isOwner: boolean
+  onCardClick: (card: DeckCardEntry) => void
 }
 
-function TypeGroup({ type, cards, deckId, isOwner }: TypeGroupProps) {
+function TypeGroup({ type, cards, deckId, isOwner, onCardClick }: TypeGroupProps) {
   const label = TYPE_LABELS[type] ?? type.charAt(0).toUpperCase() + type.slice(1)
 
   return (
@@ -160,6 +178,7 @@ function TypeGroup({ type, cards, deckId, isOwner }: TypeGroupProps) {
             card={card}
             deckId={deckId}
             isOwner={isOwner}
+            onCardClick={onCardClick}
           />
         ))}
       </div>
@@ -170,6 +189,14 @@ function TypeGroup({ type, cards, deckId, isOwner }: TypeGroupProps) {
 // ─── DeckCardGrid ─────────────────────────────────────────────────────────────
 
 export function DeckCardGrid({ deckId, cards, isOwner }: DeckCardGridProps) {
+  const [selectedCard, setSelectedCard] = useState<DeckCardEntry | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+
+  function handleCardClick(card: DeckCardEntry) {
+    setSelectedCard(card)
+    setModalOpen(true)
+  }
+
   // Group by cardType
   const grouped = new Map<string, DeckCardEntry[]>()
   for (const card of cards) {
@@ -193,16 +220,40 @@ export function DeckCardGrid({ deckId, cards, isOwner }: DeckCardGridProps) {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      {[...sortedTypes, ...extraTypes].map((type) => (
-        <TypeGroup
-          key={type}
-          type={type}
-          cards={grouped.get(type)!}
-          deckId={deckId}
-          isOwner={isOwner}
+    <>
+      <div className="flex flex-col gap-8">
+        {[...sortedTypes, ...extraTypes].map((type) => (
+          <TypeGroup
+            key={type}
+            type={type}
+            cards={grouped.get(type)!}
+            deckId={deckId}
+            isOwner={isOwner}
+            onCardClick={handleCardClick}
+          />
+        ))}
+      </div>
+
+      {selectedCard && (
+        <CardDetailModal
+          card={{
+            id: selectedCard.cardId,
+            name: selectedCard.name,
+            manaCost: selectedCard.manaCost,
+            typeLine: selectedCard.typeLine ?? '',
+            oracleText: selectedCard.oracleText ?? null,
+            power: selectedCard.power ?? null,
+            toughness: selectedCard.toughness ?? null,
+            rarity: selectedCard.rarity ?? 'common',
+            setCode: selectedCard.setCode ?? '',
+            imageUris: selectedCard.imageUris,
+            cardFaces: selectedCard.cardFaces,
+            prices: selectedCard.prices ?? null,
+          }}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
         />
-      ))}
-    </div>
+      )}
+    </>
   )
 }
