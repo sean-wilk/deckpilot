@@ -1,70 +1,29 @@
 import { z } from 'zod'
 
-const categoryRating = z.enum([
-  'deficient',
-  'low',
-  'adequate',
-  'strong',
-  'excessive',
-])
-
-const categorySchema = z.object({
-  count: z.number(),
-  target: z.number(),
-  rating: categoryRating,
-  cards: z.array(z.string()),
-  notes: z.string(),
-})
-
+// Simplified schema for Anthropic compatibility (avoids grammar size limits)
 export const DeckAnalysisSchema = z.object({
   overall_assessment: z.string(),
-  power_level_estimate: z.object({
-    bracket: z.number().min(1).max(4),
-    confidence: z.number().min(0).max(1),
-    reasoning: z.string(),
-  }),
-  categories: z.object({
-    ramp: categorySchema,
-    card_draw: categorySchema,
-    removal: categorySchema,
-    board_wipes: categorySchema,
-    win_conditions: categorySchema,
-    protection: categorySchema,
-    lands: categorySchema,
-  }),
-  mana_base: z.object({
-    land_count: z.number(),
-    recommended_land_count: z.number(),
-    color_balance: z.record(z.string(), z.number()),
-    color_pip_requirements: z.record(z.string(), z.number()),
-    fixing_quality: z.enum(['poor', 'fair', 'good', 'excellent']),
+  bracket: z.number(),
+  bracket_confidence: z.number(),
+  bracket_reasoning: z.string(),
+  categories: z.array(z.object({
+    name: z.string(),
+    count: z.number(),
+    target: z.number(),
+    rating: z.string(),
     notes: z.string(),
-  }),
-  synergy: z.object({
-    score: z.number().min(0).max(10),
-    key_synergies: z.array(
-      z.object({ cards: z.array(z.string()), description: z.string() })
-    ),
-    dead_cards: z.array(
-      z.object({ card: z.string(), reasoning: z.string() })
-    ),
-    detected_combos: z.array(
-      z.object({
-        cards: z.array(z.string()),
-        description: z.string(),
-        is_infinite: z.boolean(),
-      })
-    ),
-  }),
+  })),
+  land_count: z.number(),
+  recommended_land_count: z.number(),
+  mana_base_notes: z.string(),
+  fixing_quality: z.string(),
+  synergy_score: z.number(),
+  key_synergies: z.array(z.string()),
+  dead_cards: z.array(z.string()),
   strengths: z.array(z.string()),
   weaknesses: z.array(z.string()),
-  salt_assessment: z.object({
-    total_salt: z.number(),
-    high_salt_cards: z.array(
-      z.object({ card: z.string(), salt_score: z.number() })
-    ),
-    notes: z.string(),
-  }),
+  salt_total: z.number(),
+  salt_notes: z.string(),
 })
 
 export const SwapRecommendationSchema = z.object({
@@ -93,7 +52,7 @@ export const SwapRecommendationSchema = z.object({
     })
   ),
   summary: z.string(),
-  estimated_bracket_after: z.number().min(1).max(4),
+  estimated_bracket_after: z.number(),
   estimated_price_delta_cents: z.number(),
 })
 
@@ -124,7 +83,7 @@ export const GeneratedDeckSchema = z.object({
     reasoning: z.string(),
   })),
   strategy_summary: z.string(),
-  estimated_bracket: z.number().min(1).max(4),
+  estimated_bracket: z.number(),
 })
 
 export type DeckAnalysis = z.infer<typeof DeckAnalysisSchema>

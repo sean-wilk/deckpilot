@@ -46,11 +46,17 @@ export async function POST(request: Request) {
       })
       .returning()
 
+    console.log('[Analyze API] Starting streamObject with model:', model)
+    console.log('[Analyze API] Prompt length:', prompt.length)
+
     const result = streamObject({
       model,
       schema: DeckAnalysisSchema,
       prompt,
-      onFinish: async ({ object, usage }) => {
+      onFinish: async ({ object, usage, error: finishError }) => {
+        if (finishError) {
+          console.error('[Analyze API] streamObject onFinish error:', finishError)
+        }
         if (object) {
           await db
             .update(deckAnalyses)

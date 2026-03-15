@@ -53,14 +53,19 @@ function useObject<T extends z.ZodTypeAny>(
           signal: controller.signal,
         })
 
+        console.log('[AI Stream] Response status:', res.status, res.statusText)
         if (!res.ok) {
-          const err = new Error(`HTTP ${res.status}`)
+          const text = await res.text()
+          console.error('[AI Stream] Error body:', text)
+          const err = new Error(`HTTP ${res.status}: ${text}`)
           ;(err as Error & { status: number }).status = res.status as number
           throw err
         }
 
+        console.log('[AI Stream] Response body exists:', !!res.body)
         const reader = res.body?.getReader()
         if (!reader) throw new Error('No response body')
+        console.log('[AI Stream] Reader obtained, starting to read...')
 
         const decoder = new TextDecoder()
         let accumulated = ''
@@ -68,7 +73,9 @@ function useObject<T extends z.ZodTypeAny>(
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
-          accumulated += decoder.decode(value, { stream: true })
+          const chunk = decoder.decode(value, { stream: true })
+          accumulated += chunk
+          console.log('[AI Stream] chunk:', chunk.substring(0, 200))
 
           // Attempt to parse whatever valid JSON we have so far by
           // progressively trying the accumulated string as a JSON object.
@@ -110,6 +117,7 @@ function useObject<T extends z.ZodTypeAny>(
           }
         }
       } catch (err) {
+        console.error('[AI Stream] Error:', err)
         if (err instanceof Error && err.name === 'AbortError') return
         setError(err instanceof Error ? err : new Error(String(err)))
       } finally {
@@ -123,16 +131,6 @@ function useObject<T extends z.ZodTypeAny>(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const CATEGORY_LABELS: Record<keyof DeckAnalysis['categories'], string> = {
-  ramp: 'Ramp',
-  card_draw: 'Card Draw',
-  removal: 'Removal',
-  board_wipes: 'Board Wipes',
-  win_conditions: 'Win Conditions',
-  protection: 'Protection',
-  lands: 'Lands',
-}
 
 const RATING_COLORS: Record<string, string> = {
   deficient: 'text-red-500',
@@ -226,17 +224,14 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 // ─── Section Renderers ────────────────────────────────────────────────────────
 
 function CategoryRow({
-  label,
   cat,
 }: {
-  label: string
-  cat: DeckAnalysis['categories'][keyof DeckAnalysis['categories']] | undefined
+  cat: DeckAnalysis['categories'][number]
 }) {
-  if (!cat) return null
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">{label}</span>
+        <span className="text-[11px] text-muted-foreground">{cat.name}</span>
         <div className="flex items-center gap-1.5">
           <span className="text-[11px] text-foreground font-medium tabular-nums">
             {cat.count}/{cat.target}
@@ -271,6 +266,7 @@ export function AnalysisPanel({ deckId, cardCount }: AnalysisPanelProps) {
   const hasResult = !!object
 
   function handleAnalyze() {
+    console.log('[AnalysisPanel] handleAnalyze called, deckId:', deckId)
     submit({ deckId })
   }
 
@@ -369,24 +365,24 @@ export function AnalysisPanel({ deckId, cardCount }: AnalysisPanelProps) {
           )}
 
           {/* Power Level */}
-          {object.power_level_estimate && (
+          {(object.bracket !== undefined) && (
             <CollapsibleSection title="Power Level" defaultOpen>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <BracketBadge bracket={object.power_level_estimate.bracket} />
+                  <BracketBadge bracket={object.bracket} />
                   <div className="flex-1">
                     <ProgressBar
-                      value={Math.round(object.power_level_estimate.confidence * 100)}
+                      value={Math.round((object.bracket_confidence ?? 0) * 100)}
                       max={100}
                     />
                   </div>
                   <span className="text-[10px] text-muted-foreground tabular-nums">
-                    {Math.round(object.power_level_estimate.confidence * 100)}% conf.
+                    {Math.round((object.bracket_confidence ?? 0) * 100)}% conf.
                   </span>
                 </div>
-                {object.power_level_estimate.reasoning && (
+                {object.bracket_reasoning && (
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    {object.power_level_estimate.reasoning}
+                    {object.bracket_reasoning}
                   </p>
                 )}
               </div>
@@ -394,56 +390,51 @@ export function AnalysisPanel({ deckId, cardCount }: AnalysisPanelProps) {
           )}
 
           {/* Categories */}
-          {object.categories && (
+          {object.categories && object.categories.length > 0 && (
             <CollapsibleSection title="Categories" defaultOpen>
               <div className="space-y-3">
-                {(
-                  Object.entries(CATEGORY_LABELS) as [
-                    keyof DeckAnalysis['categories'],
-                    string,
-                  ][]
-                ).map(([key, label]) => (
-                  <CategoryRow
-                    key={key}
-                    label={label}
-                    cat={object.categories?.[key]}
-                  />
+                {object.categories.map((cat, i) => (
+                  <CategoryRow key={i} cat={cat} />
                 ))}
               </div>
             </CollapsibleSection>
           )}
 
           {/* Mana Base */}
-          {object.mana_base && (
+          {(object.land_count !== undefined || object.mana_base_notes || object.fixing_quality) && (
             <CollapsibleSection title="Mana Base">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">Land Count</span>
-                  <span className="text-[11px] font-medium tabular-nums">
-                    {object.mana_base.land_count}
-                    {object.mana_base.recommended_land_count
-                      ? ` / ${object.mana_base.recommended_land_count} rec.`
-                      : ''}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">Fixing Quality</span>
-                  <span
-                    className={`text-[10px] px-1 py-0.5 rounded font-medium ${
-                      {
-                        poor: 'text-red-500 bg-red-500/10',
-                        fair: 'text-orange-500 bg-orange-500/10',
-                        good: 'text-yellow-500 bg-yellow-500/10',
-                        excellent: 'text-green-500 bg-green-500/10',
-                      }[object.mana_base.fixing_quality] ?? ''
-                    }`}
-                  >
-                    {object.mana_base.fixing_quality}
-                  </span>
-                </div>
-                {object.mana_base.notes && (
+                {object.land_count !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">Land Count</span>
+                    <span className="text-[11px] font-medium tabular-nums">
+                      {object.land_count}
+                      {object.recommended_land_count
+                        ? ` / ${object.recommended_land_count} rec.`
+                        : ''}
+                    </span>
+                  </div>
+                )}
+                {object.fixing_quality && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">Fixing Quality</span>
+                    <span
+                      className={`text-[10px] px-1 py-0.5 rounded font-medium ${
+                        {
+                          poor: 'text-red-500 bg-red-500/10',
+                          fair: 'text-orange-500 bg-orange-500/10',
+                          good: 'text-yellow-500 bg-yellow-500/10',
+                          excellent: 'text-green-500 bg-green-500/10',
+                        }[object.fixing_quality] ?? ''
+                      }`}
+                    >
+                      {object.fixing_quality}
+                    </span>
+                  </div>
+                )}
+                {object.mana_base_notes && (
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    {object.mana_base.notes}
+                    {object.mana_base_notes}
                   </p>
                 )}
               </div>
@@ -451,67 +442,42 @@ export function AnalysisPanel({ deckId, cardCount }: AnalysisPanelProps) {
           )}
 
           {/* Synergy */}
-          {object.synergy && (
+          {(object.synergy_score !== undefined || object.key_synergies || object.dead_cards) && (
             <CollapsibleSection title="Synergy">
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground">Score</span>
-                  <div className="flex-1">
-                    <ProgressBar value={object.synergy.score} max={10} />
+                {object.synergy_score !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">Score</span>
+                    <div className="flex-1">
+                      <ProgressBar value={object.synergy_score} max={10} />
+                    </div>
+                    <span className="text-[11px] font-medium tabular-nums">
+                      {object.synergy_score}/10
+                    </span>
                   </div>
-                  <span className="text-[11px] font-medium tabular-nums">
-                    {object.synergy.score}/10
-                  </span>
-                </div>
+                )}
 
-                {object.synergy.key_synergies && object.synergy.key_synergies.length > 0 && (
+                {object.key_synergies && object.key_synergies.length > 0 && (
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                       Key Synergies
                     </span>
-                    {object.synergy.key_synergies.map((s, i) => (
+                    {object.key_synergies.map((s, i) => (
                       <div key={i} className="text-[10px] text-muted-foreground leading-relaxed">
-                        <span className="text-foreground font-medium">
-                          {s.cards?.join(' + ')}
-                        </span>
-                        {s.description && ` — ${s.description}`}
+                        {s}
                       </div>
                     ))}
                   </div>
                 )}
 
-                {object.synergy.detected_combos && object.synergy.detected_combos.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                      Combos
-                    </span>
-                    {object.synergy.detected_combos.map((c, i) => (
-                      <div key={i} className="text-[10px] leading-relaxed">
-                        <span className="text-foreground font-medium">
-                          {c.cards?.join(' + ')}
-                        </span>
-                        {c.is_infinite && (
-                          <span className="ml-1 text-[9px] px-1 py-0.5 rounded bg-red-500/10 text-red-500 font-medium">
-                            Infinite
-                          </span>
-                        )}
-                        {c.description && (
-                          <p className="text-muted-foreground mt-0.5">{c.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {object.synergy.dead_cards && object.synergy.dead_cards.length > 0 && (
+                {object.dead_cards && object.dead_cards.length > 0 && (
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
                       Dead Cards
                     </span>
-                    {object.synergy.dead_cards.map((d, i) => (
+                    {object.dead_cards.map((d, i) => (
                       <div key={i} className="text-[10px] text-muted-foreground leading-relaxed">
-                        <span className="text-foreground font-medium">{d.card}</span>
-                        {d.reasoning && ` — ${d.reasoning}`}
+                        {d}
                       </div>
                     ))}
                   </div>
@@ -559,41 +525,22 @@ export function AnalysisPanel({ deckId, cardCount }: AnalysisPanelProps) {
           )}
 
           {/* Salt Assessment */}
-          {object.salt_assessment && (
+          {(object.salt_total !== undefined || object.salt_notes) && (
             <CollapsibleSection title="Salt Assessment">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">Total Salt</span>
-                  <span className="text-[11px] font-medium tabular-nums">
-                    {typeof object.salt_assessment.total_salt === 'number'
-                      ? object.salt_assessment.total_salt.toFixed(1)
-                      : object.salt_assessment.total_salt}
-                  </span>
-                </div>
-                {object.salt_assessment.high_salt_cards &&
-                  object.salt_assessment.high_salt_cards.length > 0 && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                        High Salt Cards
-                      </span>
-                      {object.salt_assessment.high_salt_cards.map((c, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between text-[10px]"
-                        >
-                          <span className="text-foreground">{c.card}</span>
-                          <span className="text-orange-500 tabular-nums font-medium">
-                            {typeof c.salt_score === 'number'
-                              ? c.salt_score.toFixed(2)
-                              : c.salt_score}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                {object.salt_assessment.notes && (
+                {object.salt_total !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">Total Salt</span>
+                    <span className="text-[11px] font-medium tabular-nums">
+                      {typeof object.salt_total === 'number'
+                        ? object.salt_total.toFixed(1)
+                        : object.salt_total}
+                    </span>
+                  </div>
+                )}
+                {object.salt_notes && (
                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    {object.salt_assessment.notes}
+                    {object.salt_notes}
                   </p>
                 )}
               </div>
