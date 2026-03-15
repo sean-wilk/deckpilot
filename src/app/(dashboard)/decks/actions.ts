@@ -81,6 +81,20 @@ export async function addCardToDeck(deckId: string, cardId: string) {
   const card = await db.select().from(cards).where(eq(cards.id, cardId)).limit(1)
   if (!card[0]) throw new Error('Card not found')
 
+  // Color identity validation
+  const isLand = card[0].typeLine.toLowerCase().startsWith('land') || card[0].typeLine.toLowerCase().startsWith('basic land')
+  const isColorless = card[0].colorIdentity.length === 0
+  if (!isLand && !isColorless && deck[0].commanderId) {
+    const commanderCard = await db.select().from(cards).where(eq(cards.id, deck[0].commanderId)).limit(1)
+    if (commanderCard[0]) {
+      const commanderColorIdentity = commanderCard[0].colorIdentity
+      const isValid = card[0].colorIdentity.every(c => commanderColorIdentity.includes(c))
+      if (!isValid) {
+        return { error: "Card's color identity does not match commander's color identity" }
+      }
+    }
+  }
+
   // Get next sort order
   const maxOrder = await db.select({ max: max(deckCards.sortOrder) })
     .from(deckCards)

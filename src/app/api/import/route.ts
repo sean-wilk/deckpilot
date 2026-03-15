@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { parseTextList } from '@/lib/import/text-parser'
 import { db } from '@/lib/db'
 import { cards } from '@/lib/db/schema'
-import { ilike, eq } from 'drizzle-orm'
+import { ilike, eq, sql } from 'drizzle-orm'
+import { distance } from 'fastest-levenshtein'
+
+const FUZZY_DISTANCE_THRESHOLD = 3
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +14,7 @@ export async function POST(request: NextRequest) {
 
     const matched = []
     const unmatched = []
+    const suggestions = []
 
     for (const parsed of parsedCards) {
       // Try exact match first
@@ -35,11 +39,27 @@ export async function POST(request: NextRequest) {
           card: result[0],
         })
       } else {
+        // Fuzzy match: query cards with the same first letter to limit scope
+        const firstLetter = parsed.name.charAt(0)
+        const candidates = await db
+          .selectDistinct({ name: cards.name })
+          .from(cards)
+          .where(sql`lower(left(${cards.name}, 1)) = lower(${firstLetter})`)
+
+        const closeMatches = candidates
+          .map(({ name }) => ({ name, distance: distance(parsed.name, name) }))
+          .filter(({ distance: d }) => d <= FUZZY_DISTANCE_THRESHOLD)
+          .sort((a, b) => a.distance - b.distance)
+
+        if (closeMatches.length > 0) {
+          suggestions.push({ original: parsed.name, candidates: closeMatches })
+        }
+
         unmatched.push(parsed)
       }
     }
 
-    return NextResponse.json({ matched, unmatched, parseErrors: errors })
+    return NextResponse.json({ matched, unmatched, suggestions, parseErrors: errors })
   } catch (error) {
     console.error('Import error:', error)
     return NextResponse.json({ error: 'Import failed' }, { status: 500 })

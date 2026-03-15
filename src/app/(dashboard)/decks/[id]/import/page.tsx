@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { addCardToDeck } from '@/app/(dashboard)/decks/actions'
+import { addCardToDeck, createDeckSnapshot } from '@/app/(dashboard)/decks/actions'
 
 interface CardRecord {
   id: string
@@ -79,6 +79,7 @@ export default function ImportPage() {
       for (const match of result.matched) {
         await addCardToDeck(deckId, match.card.id)
       }
+      await createDeckSnapshot(deckId, `Imported ${result.matched.length} cards from text list`)
       setImportDone(true)
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import failed')
