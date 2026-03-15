@@ -171,13 +171,16 @@ function DualFaceImage({ faces, name, size, className }: DualFaceProps) {
         </div>
       </div>
 
-      {/* Flip button — sits in bottom-right corner */}
-      <button
-        type="button"
-        onClick={() => setFlipped((f) => !f)}
+      {/* Flip control — uses div to avoid nested button hydration error */}
+      <div
+        role="switch"
+        tabIndex={0}
+        aria-checked={flipped}
         aria-label={flipped ? `Show front face of ${name}` : `Show back face of ${name}`}
+        onClick={(e) => { e.stopPropagation(); setFlipped((f) => !f) }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setFlipped((f) => !f) } }}
         className={cn(
-          'absolute bottom-2 right-2 z-10',
+          'absolute bottom-2 right-2 z-10 cursor-pointer',
           'flex items-center justify-center',
           'size-7 rounded-full',
           'bg-black/60 text-white backdrop-blur-sm',
@@ -190,7 +193,7 @@ function DualFaceImage({ faces, name, size, className }: DualFaceProps) {
         )}
       >
         <FlipIcon />
-      </button>
+      </div>
     </div>
   )
 }
