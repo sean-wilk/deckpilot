@@ -135,5 +135,8 @@ export async function buildDeckContext(deckId: string) {
     cardList,
     edhrecData: edhrecData ? edhrecData.slice(0, 3000) : null,
     matchSummary,
+    // philosophy and archetype: user-defined deck identity fields
+    philosophy: deck[0].philosophy ?? null,
+    archetype: deck[0].archetype ?? null,
   }
 }

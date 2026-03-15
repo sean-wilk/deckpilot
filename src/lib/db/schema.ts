@@ -178,6 +178,8 @@ export const decks = pgTable(
     isPublic: boolean("is_public").default(true).notNull(),
     importSource: text("import_source"),
     importUrl: text("import_url"),
+    philosophy: text("philosophy"),
+    archetype: text("archetype"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

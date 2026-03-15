@@ -7,8 +7,31 @@ export function getRecommendationPrompt(context: {
   cardCount: number
   cardList: string
   edhrecData: string | null
+  philosophy?: string | null
+  archetype?: string | null
+  wildcardMode?: boolean
 }) {
-  return `You are an expert Magic: The Gathering Commander deck builder.
+  const philosophySection = context.philosophy
+    ? `## Deck Philosophy (HIGHEST PRIORITY)\nThe deck owner has specified: ${context.philosophy}\nALL recommendations MUST respect these constraints.\n\n`
+    : ''
+
+  const archetypeSection = context.archetype
+    ? `Declared Archetype: ${context.archetype}. Recommendations should support this archetype.\n\n`
+    : ''
+
+  const discoverySection = context.wildcardMode
+    ? `\n## Discovery Mode (ACTIVE)
+You are in Discovery/Wildcard mode. Instead of recommending the most popular meta staples:
+- Prioritize lesser-known cards that most players haven't seen or considered
+- Suggest budget-friendly alternatives to expensive staples
+- Favor fun, interesting, or thematic cards over pure optimization
+- Include at least 2 "hidden gems" that synergize well
+- Avoid cards that appear in more than 50% of decks with this commander
+- Prioritize cards that create memorable game moments over consistent efficiency
+- The goal is deck VARIETY and DISCOVERY, not homogenization`
+    : ''
+
+  return `${philosophySection}${archetypeSection}You are an expert Magic: The Gathering Commander deck builder.
 
 ## Task
 Provide specific swap recommendations for this Commander deck. For each recommendation:
@@ -37,5 +60,5 @@ ${context.cardList}
 
 ${context.edhrecData ? `### EDHREC Synergy Data\n${context.edhrecData}` : ''}
 
-Provide 8-15 recommendations, prioritized by impact.`
+Provide 8-15 recommendations, prioritized by impact.${discoverySection}`
 }

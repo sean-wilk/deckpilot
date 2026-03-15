@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
+import { DeckDetailsTab } from '@/components/deck/deck-details-tab'
 
 // ─── Dynamic imports ───────────────────────────────────────────────────────────
 // These components are created by parallel agents — dynamic imports ensure this
@@ -24,12 +25,15 @@ export interface DeckContentTabsProps {
   deckId: string
   targetBracket: number
   cardCount: number
+  philosophy?: string | null
+  archetype?: string | null
+  isOwner?: boolean
   activeTab?: string
   onTabChange?: (tab: string) => void
   children?: React.ReactNode // for DeckCardGrid and sideboard section
 }
 
-type TabId = 'deck' | 'analysis' | 'recommendations'
+type TabId = 'deck' | 'analysis' | 'recommendations' | 'details'
 
 interface Tab {
   id: TabId
@@ -41,6 +45,7 @@ const TABS: Tab[] = [
   { id: 'deck', label: 'Deck', notificationKey: '' },
   { id: 'analysis', label: 'Analysis', notificationKey: 'analysis' },
   { id: 'recommendations', label: 'Recommendations', notificationKey: 'recommendations' },
+  { id: 'details', label: 'Details', notificationKey: '' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,6 +117,9 @@ export function DeckContentTabs({
   deckId,
   targetBracket,
   cardCount,
+  philosophy = null,
+  archetype = null,
+  isOwner = false,
   activeTab,
   onTabChange,
   children,
@@ -208,6 +216,18 @@ export function DeckContentTabs({
               deckId={deckId}
               cardCount={cardCount}
               focus={recommendationsFocus}
+            />
+          </div>
+        )}
+
+        {/* Details tab */}
+        {activeTabId === 'details' && (
+          <div role="tabpanel" aria-label="Details">
+            <DeckDetailsTab
+              deckId={deckId}
+              philosophy={philosophy}
+              archetype={archetype}
+              isOwner={isOwner}
             />
           </div>
         )}

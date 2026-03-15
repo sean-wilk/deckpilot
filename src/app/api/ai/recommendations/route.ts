@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new Response('Unauthorized', { status: 401 })
 
-    const { deckId, focus } = await request.json()
+    const { deckId, focus, wildcardMode } = await request.json()
 
     const deck = await db.select().from(decks)
       .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     const model = await getAiModel('recommendations')
     const context = await buildDeckContext(deckId)
-    let prompt = getRecommendationPrompt(context)
+    let prompt = getRecommendationPrompt({ ...context, wildcardMode: wildcardMode === true })
 
     if (focus === 'synergy') {
       prompt += ' Focus specifically on improving card synergy and reducing dead cards.'

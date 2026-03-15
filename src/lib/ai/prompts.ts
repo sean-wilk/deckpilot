@@ -7,9 +7,18 @@ export function getAnalysisPrompt(context: {
   cardCount: number
   cardList: string
   edhrecData: string | null
+  philosophy?: string | null
+  archetype?: string | null
 }) {
   return `You are an expert Magic: The Gathering Commander deck builder and analyst.
-
+${context.philosophy ? `
+## Deck Philosophy (HIGHEST PRIORITY)
+The deck owner has specified the following philosophy/goals. ALWAYS respect these constraints above all other considerations:
+${context.philosophy}
+${context.archetype ? `Declared Archetype: ${context.archetype}` : ''}
+` : context.archetype ? `
+Declared Archetype: ${context.archetype}
+` : ''}
 ## Your Knowledge
 - Deep understanding of Commander format rules and strategy
 - Bracket system (1=Exhibition, 2=Core, 3=Upgraded, 4=Optimized, 5=cEDH)

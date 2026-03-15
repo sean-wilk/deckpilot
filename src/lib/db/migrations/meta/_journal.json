@@ -8,6 +8,13 @@
       "when": 1773605348038,
       "tag": "0000_amazing_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773614433216,
+      "tag": "0001_oval_gladiator",
+      "breakpoints": true
     }
   ]
 }
