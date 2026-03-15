@@ -1,6 +1,11 @@
 'use client'
 
 import { useTheme } from '@/components/theme-provider'
+import { useSyncExternalStore } from 'react'
+
+const emptySubscribe = () => () => {}
+const getSnapshot = () => true
+const getServerSnapshot = () => false
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -20,11 +25,30 @@ const THEME_LABELS: Record<Theme, string> = {
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme()
+  const mounted = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot)
 
   function cycleTheme() {
     const currentIndex = THEME_CYCLE.indexOf(theme)
     const nextIndex = (currentIndex + 1) % THEME_CYCLE.length
     setTheme(THEME_CYCLE[nextIndex])
+  }
+
+  // Render a placeholder on server to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <button
+        className={[
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5',
+          'text-xs font-medium text-muted-foreground',
+          'border border-border bg-background',
+          className ?? '',
+        ].join(' ')}
+        aria-label="Toggle theme"
+      >
+        <span aria-hidden="true" className="text-sm leading-none">⚙</span>
+        <span>Theme</span>
+      </button>
+    )
   }
 
   return (
