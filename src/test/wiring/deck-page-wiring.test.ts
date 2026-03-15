@@ -22,8 +22,11 @@ describe('Deck page wiring', () => {
   })
 
   it('deck page imports DeckPageSidebar', () => {
-    const source = readSource('src/app/(dashboard)/decks/[id]/page.tsx')
-    expect(source).toContain('DeckPageSidebar')
+    // After Phase 3, DeckPageSidebar is in the client wrapper, not page.tsx directly
+    const pageSource = readSource('src/app/(dashboard)/decks/[id]/page.tsx')
+    const clientSource = readSource('src/app/(dashboard)/decks/[id]/deck-page-client.tsx')
+    const hasSidebar = pageSource.includes('DeckPageSidebar') || clientSource.includes('DeckPageSidebar')
+    expect(hasSidebar).toBe(true)
   })
 
   it('deck page imports DeckPageHeader', () => {

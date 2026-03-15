@@ -186,3 +186,15 @@ export async function createDeckSnapshot(deckId: string, changeSummary: string) 
     changeSummary,
   })
 }
+
+export async function updateDeckBracket(deckId: string, bracket: number) {
+  const user = await requireUser()
+
+  if (bracket < 1 || bracket > 5) throw new Error('Bracket must be 1-5')
+
+  await db.update(decks)
+    .set({ targetBracket: bracket, updatedAt: new Date() })
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+
+  revalidatePath(`/decks/${deckId}`)
+}
