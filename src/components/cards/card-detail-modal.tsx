@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { CardImage } from '@/components/cards/card-image'
 import { PrintingSelector } from '@/components/cards/printing-selector'
@@ -27,6 +27,151 @@ export interface CardDetailModalProps {
   onOpenChange: (open: boolean) => void
   printingSelector?: React.ReactNode
   aiActions?: React.ReactNode
+  deckId?: string
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ReplacementCard {
+  name: string
+  reasoning: string
+}
+
+interface FindReplacementResult {
+  replacements?: ReplacementCard[]
+  error?: string
+}
+
+interface CardOpinionResult {
+  opinion?: string
+  error?: string
+}
+
+// ─── AI Quick Actions ─────────────────────────────────────────────────────────
+
+function AiQuickActions({ deckId, cardName }: { deckId: string; cardName: string }) {
+  const [replacementLoading, setReplacementLoading] = useState(false)
+  const [replacementResult, setReplacementResult] = useState<FindReplacementResult | null>(null)
+
+  const [opinionLoading, setOpinionLoading] = useState(false)
+  const [opinionResult, setOpinionResult] = useState<CardOpinionResult | null>(null)
+
+  const handleFindReplacement = useCallback(async () => {
+    setReplacementLoading(true)
+    setReplacementResult(null)
+    try {
+      const res = await fetch('/api/ai/find-replacement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deckId, cardName }),
+      })
+      const data = (await res.json()) as FindReplacementResult
+      setReplacementResult(data)
+    } catch {
+      setReplacementResult({ error: 'Failed to fetch replacements.' })
+    } finally {
+      setReplacementLoading(false)
+    }
+  }, [deckId, cardName])
+
+  const handleCardOpinion = useCallback(async () => {
+    setOpinionLoading(true)
+    setOpinionResult(null)
+    try {
+      const res = await fetch('/api/ai/card-opinion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deckId, cardName }),
+      })
+      const data = (await res.json()) as CardOpinionResult
+      setOpinionResult(data)
+    } catch {
+      setOpinionResult({ error: 'Failed to fetch opinion.' })
+    } finally {
+      setOpinionLoading(false)
+    }
+  }, [deckId, cardName])
+
+  return (
+    <div className="space-y-4">
+      {/* Find Replacement */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={handleFindReplacement}
+          disabled={replacementLoading}
+          className={cn(
+            'w-full px-3 py-2 rounded-lg text-sm font-medium',
+            'bg-violet-600/20 border border-violet-500/30 text-violet-300',
+            'hover:bg-violet-600/30 hover:text-violet-200',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            'transition-all duration-150',
+          )}
+        >
+          {replacementLoading ? 'Finding replacements…' : 'Find Replacement'}
+        </button>
+
+        {replacementResult && (
+          <div
+            className={cn(
+              'rounded-lg px-4 py-3',
+              'bg-white/5 border border-white/8',
+              'text-sm text-white/75',
+            )}
+          >
+            {replacementResult.error ? (
+              <p className="text-red-400">{replacementResult.error}</p>
+            ) : replacementResult.replacements && replacementResult.replacements.length > 0 ? (
+              <ul className="space-y-2">
+                {replacementResult.replacements.map((r, i) => (
+                  <li key={i} className="space-y-0.5">
+                    <p className="font-semibold text-white/90">{r.name}</p>
+                    <p className="text-white/55 text-xs leading-relaxed">{r.reasoning}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-white/50">No replacements found.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Ask AI about this card */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={handleCardOpinion}
+          disabled={opinionLoading}
+          className={cn(
+            'w-full px-3 py-2 rounded-lg text-sm font-medium',
+            'bg-sky-600/20 border border-sky-500/30 text-sky-300',
+            'hover:bg-sky-600/30 hover:text-sky-200',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            'transition-all duration-150',
+          )}
+        >
+          {opinionLoading ? 'Asking AI…' : 'Ask AI about this card'}
+        </button>
+
+        {opinionResult && (
+          <div
+            className={cn(
+              'rounded-lg px-4 py-3',
+              'bg-white/5 border border-white/8',
+              'text-sm text-white/75 leading-relaxed whitespace-pre-wrap',
+            )}
+          >
+            {opinionResult.error ? (
+              <p className="text-red-400">{opinionResult.error}</p>
+            ) : (
+              <p>{opinionResult.opinion}</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,6 +264,7 @@ export function CardDetailModal({
   onOpenChange,
   printingSelector,
   aiActions,
+  deckId,
 }: CardDetailModalProps) {
   const handleClose = useCallback(() => onOpenChange(false), [onOpenChange])
 
@@ -291,6 +437,13 @@ export function CardDetailModal({
                 </span>
               )}
             </div>
+
+            {/* AI quick actions */}
+            {deckId && (
+              <div className="border-t border-white/10 pt-4">
+                <AiQuickActions deckId={deckId} cardName={card.name} />
+              </div>
+            )}
 
             {/* Printing selector slot */}
             <div className="border-t border-white/10 pt-4">

@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { ManaCurveChart } from '@/components/deck/mana-curve-chart'
 import { ColorChart } from '@/components/deck/color-chart'
+import { AnalysisPanel } from '@/components/ai/analysis-panel'
+import { RecommendationsPanel } from '@/components/ai/recommendations-panel'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,34 +79,9 @@ function AiPanel({ cardCount, deckId }: { cardCount: number; deckId: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="size-6 rounded-md bg-blue-500/10 flex items-center justify-center">
-          <svg className="size-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-          </svg>
-        </div>
-        <span className="text-xs font-semibold">AI Analysis</span>
-      </div>
-
-      <div className="space-y-2">
-        <button
-          type="button"
-          className="w-full rounded-md bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-medium py-2 px-3 transition-colors"
-        >
-          Analyze Deck
-        </button>
-
-        <Link
-          href={`/decks/${deckId}/recommendations`}
-          className="flex items-center justify-center gap-1.5 w-full rounded-md border border-border hover:bg-muted/50 text-xs font-medium py-2 px-3 transition-colors"
-        >
-          Get Recommendations
-          <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-          </svg>
-        </Link>
-      </div>
+    <div className="space-y-4">
+      <AnalysisPanel deckId={deckId} cardCount={cardCount} />
+      <RecommendationsPanel deckId={deckId} cardCount={cardCount} />
     </div>
   )
 }

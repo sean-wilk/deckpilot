@@ -97,5 +97,16 @@ export const SwapRecommendationSchema = z.object({
   estimated_price_delta_cents: z.number(),
 })
 
+export const FindReplacementSchema = z.object({
+  replacements: z.array(z.object({
+    card_name: z.string(),
+    reasoning: z.string(),
+    synergy_notes: z.string(),
+    estimated_price_usd: z.string().nullable(),
+  })),
+  context: z.string(), // Brief explanation of why the original card might be replaced
+})
+
 export type DeckAnalysis = z.infer<typeof DeckAnalysisSchema>
 export type SwapRecommendation = z.infer<typeof SwapRecommendationSchema>
+export type FindReplacement = z.infer<typeof FindReplacementSchema>
