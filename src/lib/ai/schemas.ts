@@ -107,6 +107,28 @@ export const FindReplacementSchema = z.object({
   context: z.string(), // Brief explanation of why the original card might be replaced
 })
 
+export const CommanderSuggestionsSchema = z.object({
+  suggestions: z.array(z.object({
+    name: z.string(),
+    color_identity: z.array(z.string()),
+    play_style: z.string(),
+    synergy_notes: z.string(),
+    why_this_commander: z.string(),
+  })),
+})
+
+export const GeneratedDeckSchema = z.object({
+  cards: z.array(z.object({
+    name: z.string(),
+    category: z.string(),
+    reasoning: z.string(),
+  })),
+  strategy_summary: z.string(),
+  estimated_bracket: z.number().min(1).max(4),
+})
+
 export type DeckAnalysis = z.infer<typeof DeckAnalysisSchema>
 export type SwapRecommendation = z.infer<typeof SwapRecommendationSchema>
 export type FindReplacement = z.infer<typeof FindReplacementSchema>
+export type CommanderSuggestions = z.infer<typeof CommanderSuggestionsSchema>
+export type GeneratedDeck = z.infer<typeof GeneratedDeckSchema>
