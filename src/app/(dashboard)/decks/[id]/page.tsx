@@ -140,10 +140,13 @@ export default async function DeckPage({ params }: DeckPageProps) {
           <DeckPageClient
             deckId={id}
             deck={{
+              name: deck.name,
               format: deck.format,
               isPublic: deck.isPublic,
               budgetLimitCents: deck.budgetLimitCents,
               targetBracket: deck.targetBracket,
+              philosophy: deck.philosophy,
+              archetype: deck.archetype,
             }}
             mainboardCards={mainboardCards}
             sideboardCards={sideboardCards}

@@ -369,6 +369,7 @@ interface RecommendationsTabContentProps {
   deckId: string
   cardCount: number
   focus?: string
+  wildcardMode?: boolean
 }
 
 type ActiveTab = 'cuts' | 'adds'
@@ -377,6 +378,7 @@ export function RecommendationsTabContent({
   deckId,
   cardCount,
   focus,
+  wildcardMode: initialWildcardMode = false,
 }: RecommendationsTabContentProps) {
   const [persisted, setPersisted] = useState<PersistedResponse | null>(null)
   const [loadingPersisted, setLoadingPersisted] = useState(true)
@@ -390,6 +392,9 @@ export function RecommendationsTabContent({
 
   // Local status overrides (from PATCH calls this session)
   const [localStatuses, setLocalStatuses] = useState<LocalStatusMap>({})
+
+  // Wildcard / discovery mode
+  const [wildcardMode, setWildcardMode] = useState(initialWildcardMode)
 
   // Sub-tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('cuts')
@@ -438,7 +443,7 @@ export function RecommendationsTabContent({
     setStreamedResult(null)
 
     try {
-      const body: Record<string, unknown> = { deckId }
+      const body: Record<string, unknown> = { deckId, wildcardMode }
       if (focus) body.focus = focus
 
       const res = await fetch('/api/ai/recommendations', {
@@ -551,6 +556,22 @@ export function RecommendationsTabContent({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Mode badge + toggle */}
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+            wildcardMode
+              ? 'bg-purple-100 text-purple-700 border-purple-200'
+              : 'bg-blue-100 text-blue-700 border-blue-200'
+          }`}>
+            Mode: {wildcardMode ? 'Discovery' : 'Optimized'}
+          </span>
+          <button
+            onClick={() => setWildcardMode((prev) => !prev)}
+            disabled={isStreaming}
+            className="text-[10px] px-2 py-0.5 rounded-full border bg-background hover:bg-muted transition-colors disabled:opacity-50 text-muted-foreground"
+            title={wildcardMode ? 'Switch to Optimized mode' : 'Switch to Discovery mode'}
+          >
+            {wildcardMode ? 'Optimized' : 'Discovery'}
+          </button>
           {isStreaming && (
             <button
               onClick={handleStop}

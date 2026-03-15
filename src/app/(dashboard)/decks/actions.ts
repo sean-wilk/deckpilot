@@ -198,3 +198,38 @@ export async function updateDeckBracket(deckId: string, bracket: number) {
 
   revalidatePath(`/decks/${deckId}`)
 }
+
+export async function updateDeckPhilosophy(deckId: string, philosophy: string | null) {
+  const user = await requireUser()
+
+  // Verify deck ownership
+  const deck = await db.select().from(decks)
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+    .limit(1)
+  if (!deck[0]) throw new Error('Deck not found')
+
+  // Trim and truncate to 1000 chars if non-null
+  const processedPhilosophy = philosophy ? philosophy.trim().substring(0, 1000) : null
+
+  await db.update(decks)
+    .set({ philosophy: processedPhilosophy, updatedAt: new Date() })
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+
+  revalidatePath(`/decks/${deckId}`)
+}
+
+export async function updateDeckArchetype(deckId: string, archetype: string | null) {
+  const user = await requireUser()
+
+  // Verify deck ownership
+  const deck = await db.select().from(decks)
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+    .limit(1)
+  if (!deck[0]) throw new Error('Deck not found')
+
+  await db.update(decks)
+    .set({ archetype, updatedAt: new Date() })
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+
+  revalidatePath(`/decks/${deckId}`)
+}
