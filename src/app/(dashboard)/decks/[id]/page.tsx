@@ -7,6 +7,10 @@ import Image from 'next/image'
 import { StatsBar } from '@/components/deck/stats-bar'
 import { DeckCardGrid } from '@/components/deck/deck-card-grid'
 import { AddCardBar } from '@/components/deck/add-card-bar'
+import { DeckPageHeader } from '@/components/deck/deck-page-header'
+import { DeckPageSidebar } from '@/components/deck/deck-page-sidebar'
+import { DeckSettingsButton } from '@/components/deck/deck-settings-button'
+import { ExportDropdown } from '@/components/deck/export-dropdown'
 import type { CardImageUris, CardFace } from '@/types/card'
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -85,12 +89,12 @@ export default async function DeckPage({ params }: DeckPageProps) {
   const gridCards = deckCardEntries.filter((c) => !c.isCommander)
   const commanderCards = deckCardEntries.filter((c) => c.isCommander)
 
-  const BRACKET_LABELS: Record<number, string> = {
-    1: 'Precon',
-    2: 'Upgraded',
-    3: 'Optimized',
-    4: 'cEDH',
-  }
+  // Shape cards for ExportDropdown
+  const exportCards = rows.map((row) => ({
+    quantity: row.quantity,
+    name:     row.name,
+    isCommander: row.isCommander,
+  }))
 
   return (
     <div className="min-h-screen bg-background -mx-4 -mt-8">
@@ -105,25 +109,17 @@ export default async function DeckPage({ params }: DeckPageProps) {
       <div className="container mx-auto px-4 py-6">
 
         {/* Deck header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {deck.name}
-            </h1>
-            {deck.description && (
-              <p className="mt-1 text-sm text-muted-foreground max-w-prose">
-                {deck.description}
-              </p>
-            )}
-          </div>
-          <span className="shrink-0 inline-flex items-center px-3 py-1 rounded-full border text-sm font-semibold bg-muted text-muted-foreground">
-            Bracket {deck.targetBracket}
-            {BRACKET_LABELS[deck.targetBracket] && ` — ${BRACKET_LABELS[deck.targetBracket]}`}
-          </span>
-        </div>
+        <DeckPageHeader
+          deck={deck}
+          isOwner={isOwner}
+          cardCount={rows.length}
+        >
+          <ExportDropdown cards={exportCards} />
+          <DeckSettingsButton deck={deck} />
+        </DeckPageHeader>
 
         {/* Two-column layout */}
-        <div className="flex gap-6 items-start">
+        <div className="flex gap-6 items-start mt-6">
 
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-5">
@@ -178,62 +174,15 @@ export default async function DeckPage({ params }: DeckPageProps) {
           </div>
 
           {/* Right sidebar */}
-          <aside className="w-72 shrink-0 space-y-4">
-            {/* AI Panel placeholder */}
-            <div className="rounded-xl border bg-muted/30 p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="size-6 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
-                  <svg className="size-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-                  </svg>
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">AI Panel</h3>
-                <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
-                  Phase 6
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                AI-powered deck analysis, synergy suggestions, and swap recommendations are coming in Phase 6.
-              </p>
-              <div className="mt-3 space-y-2">
-                {['Synergy Analysis', 'Swap Recommendations', 'Bracket Check', 'Budget Optimizer'].map((feature) => (
-                  <div key={feature} className="flex items-center gap-2 opacity-50">
-                    <div className="size-1.5 rounded-full bg-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">{feature}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Deck meta */}
-            <div className="rounded-xl border bg-background p-4 space-y-2.5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Deck Info
-              </h3>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Format</span>
-                  <span className="font-medium capitalize">{deck.format}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Visibility</span>
-                  <span className="font-medium">{deck.isPublic ? 'Public' : 'Private'}</span>
-                </div>
-                {deck.budgetLimitCents && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Budget</span>
-                    <span className="font-medium">
-                      ${(deck.budgetLimitCents / 100).toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cards</span>
-                  <span className="font-medium tabular-nums">{rows.length} / 100</span>
-                </div>
-              </div>
-            </div>
-          </aside>
+          <div className="w-72 shrink-0">
+            <DeckPageSidebar
+              deckId={id}
+              deck={deck}
+              cardCount={rows.length}
+              statsCards={statsCards}
+              isOwner={isOwner}
+            />
+          </div>
         </div>
       </div>
     </div>

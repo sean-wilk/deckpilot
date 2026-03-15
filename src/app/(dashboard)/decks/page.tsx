@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { db } from '@/lib/db'
 import { decks, cards, deckCards } from '@/lib/db/schema'
 import { eq, count, inArray } from 'drizzle-orm'
-import { buttonVariants } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button-variants'
 import { Plus, Layers, Clock, ChevronRight, Swords } from 'lucide-react'
 import type { CardImageUris, CardFace } from '@/types/card'
 

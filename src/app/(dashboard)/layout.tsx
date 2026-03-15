@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -21,11 +22,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
               <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
             </nav>
           </div>
-          <form action="/auth/signout" method="post">
-            <button type="submit" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sign out
-            </button>
-          </form>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <form action="/auth/signout" method="post">
+              <button type="submit" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       <main className="container mx-auto px-4 py-8">

@@ -71,6 +71,7 @@ function BracketSelector({
 export function NewDeckForm() {
   const [bracket, setBracket] = useState(2)
   const [commanderSelected, setCommanderSelected] = useState(false)
+  const [importAfterCreate, setImportAfterCreate] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
@@ -88,10 +89,11 @@ export function NewDeckForm() {
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
       try {
-        await createDeck(formData)
+        const { id } = await createDeck(formData)
+        const destination = importAfterCreate ? `/decks/${id}/import` : `/decks/${id}`
+        router.push(destination)
       } catch (err: unknown) {
-        // createDeck redirects on success — if we get here it's an error
-        if (err instanceof Error && err.message !== 'NEXT_REDIRECT') {
+        if (err instanceof Error) {
           setError(err.message || 'Something went wrong. Please try again.')
         }
       }
@@ -148,6 +150,20 @@ export function NewDeckForm() {
         <p className="text-xs text-muted-foreground">
           Enter the total budget in dollars. Leave blank for no limit.
         </p>
+      </div>
+
+      {/* Import after creation */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="importAfterCreate"
+          checked={importAfterCreate}
+          onChange={(e) => setImportAfterCreate(e.target.checked)}
+          className="size-4 rounded border-border accent-primary cursor-pointer"
+        />
+        <Label htmlFor="importAfterCreate" className="cursor-pointer font-normal">
+          Import a deck list after creation
+        </Label>
       </div>
 
       {/* Error */}

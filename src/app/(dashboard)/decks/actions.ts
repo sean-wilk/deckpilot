@@ -41,7 +41,7 @@ export async function createDeck(formData: FormData) {
     changeSummary: 'Deck created',
   })
 
-  redirect(`/decks/${deck.id}`)
+  return { id: deck.id }
 }
 
 export async function updateDeck(deckId: string, formData: FormData) {
