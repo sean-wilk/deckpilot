@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Upload, Sparkles } from 'lucide-react'
+import { Upload, Sparkles, Trophy } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button-variants'
@@ -45,7 +45,7 @@ export function DeckPageHeader({
   return (
     <div className="flex flex-col gap-2 pb-4 border-b">
       {/* Top row: name + actions */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         {/* Left: title + meta */}
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -87,6 +87,17 @@ export function DeckPageHeader({
         {/* Right: owner actions */}
         {isOwner && (
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Match History */}
+            <Link
+              href={`/decks/${deck.id}/matches`}
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'sm' }),
+              )}
+            >
+              <Trophy className="size-3.5" />
+              <span className="hidden lg:inline">Match History</span>
+            </Link>
+
             {/* Import Cards */}
             <Link
               href={`/decks/${deck.id}/import`}
@@ -95,7 +106,7 @@ export function DeckPageHeader({
               )}
             >
               <Upload className="size-3.5" />
-              Import Cards
+              <span className="hidden lg:inline">Import Cards</span>
             </Link>
 
             {/* Get Recommendations */}
@@ -106,7 +117,7 @@ export function DeckPageHeader({
               )}
             >
               <Sparkles className="size-3.5" />
-              Get Recommendations
+              <span className="hidden lg:inline">Get Recommendations</span>
             </Link>
 
             {/* Settings gear — slot from children */}

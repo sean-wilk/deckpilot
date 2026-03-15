@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { deckCards, cards, edhrecCommanders, decks } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { deckCards, cards, edhrecCommanders, decks, matchHistory, matchCardPerformance } from '@/lib/db/schema'
+import { eq, desc } from 'drizzle-orm'
 
 export async function buildDeckContext(deckId: string) {
   const deck = await db
@@ -58,6 +58,73 @@ export async function buildDeckContext(deckId: string) {
     })
     .join('\n')
 
+  // Get last 10 matches for this deck
+  const recentMatches = await db
+    .select()
+    .from(matchHistory)
+    .where(eq(matchHistory.deckId, deckId))
+    .orderBy(desc(matchHistory.playedAt))
+    .limit(10)
+
+  // Build match summary with card performance data
+  let matchSummary: string | null = null
+  if (recentMatches.length > 0) {
+    const matchLines: string[] = ['Match History (last 10):']
+
+    for (const match of recentMatches) {
+      // Get MVP and underperformer cards for this match
+      const cardPerfs = await db
+        .select({
+          performance: matchCardPerformance.performance,
+          note: matchCardPerformance.note,
+          cardName: cards.name,
+        })
+        .from(matchCardPerformance)
+        .innerJoin(cards, eq(matchCardPerformance.cardId, cards.id))
+        .where(eq(matchCardPerformance.matchId, match.id))
+
+      const mvpCards = cardPerfs
+        .filter((p) => p.performance === 'mvp')
+        .map((p) => p.cardName)
+      const underperformers = cardPerfs
+        .filter((p) => p.performance === 'underperformer')
+        .map((p) => p.cardName)
+
+      const opponents = match.opponentCommanders?.join(', ') ?? 'unknown'
+      const turnStr = match.turnCount ? ` (Turn ${match.turnCount})` : ''
+      const resultLabel = match.result === 'win' ? 'Win' : 'Loss'
+
+      if (match.result === 'win') {
+        let line = `${resultLabel} vs ${opponents}${turnStr}`
+        if (mvpCards.length) line += ` - MVPs: ${mvpCards.join(', ')}`
+        if (underperformers.length) line += `, Underperformers: ${underperformers.join(', ')}`
+        matchLines.push(line)
+      } else {
+        let line = `${resultLabel} vs ${opponents}${turnStr}`
+        if (mvpCards.length) line += ` - MVPs: ${mvpCards.join(', ')}`
+        if (underperformers.length) line += `, Underperformers: ${underperformers.join(', ')}`
+        if (match.notes) line += ` - Notes: ${match.notes}`
+        matchLines.push(line)
+      }
+    }
+
+    const fullSummary = matchLines.join('\n')
+    // Progressive trimming: if exceeds ~4000 chars, truncate older matches
+    if (fullSummary.length > 4000) {
+      const header = matchLines[0]
+      const trimmedLines = [header]
+      let total = header.length
+      for (let i = 1; i < matchLines.length; i++) {
+        if (total + matchLines[i].length + 1 > 4000) break
+        trimmedLines.push(matchLines[i])
+        total += matchLines[i].length + 1
+      }
+      matchSummary = trimmedLines.join('\n')
+    } else {
+      matchSummary = fullSummary
+    }
+  }
+
   return {
     deckName: deck[0].name,
     commander: commander[0]?.name ?? 'Unknown',
@@ -67,5 +134,6 @@ export async function buildDeckContext(deckId: string) {
     cardCount: cardsInDeck.length,
     cardList,
     edhrecData: edhrecData ? edhrecData.slice(0, 3000) : null,
+    matchSummary,
   }
 }

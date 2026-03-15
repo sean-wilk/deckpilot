@@ -117,7 +117,7 @@ export function DeckPageSidebar({
   isOwner,
 }: DeckPageSidebarProps) {
   return (
-    <aside className="flex flex-col gap-6 w-full">
+    <aside className="flex flex-col gap-6 w-full lg:w-auto lg:min-w-[260px] lg:max-w-[320px]">
       {/* AI Panel */}
       {isOwner && (
         <AiPanel cardCount={cardCount} deckId={deckId} />
@@ -126,7 +126,7 @@ export function DeckPageSidebar({
       {/* Deck Info */}
       <div>
         <SectionHeader title="Deck Info" />
-        <div className="rounded-lg border border-border bg-card px-3 divide-y divide-border">
+        <div className="rounded-lg border border-border bg-card px-3 divide-y divide-border sm:text-sm md:text-xs lg:text-xs">
           <DeckInfoRow label="Format" value={capitalizeFirst(deck.format)} />
           <DeckInfoRow
             label="Visibility"
@@ -144,17 +144,17 @@ export function DeckPageSidebar({
       </div>
 
       {/* Mana Curve */}
-      <div>
+      <div className="sm:block md:block">
         <SectionHeader title="Mana Curve" />
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
           <ManaCurveChart cards={statsCards} />
         </div>
       </div>
 
       {/* Color Distribution */}
-      <div>
+      <div className="sm:block md:block">
         <SectionHeader title="Color Distribution" />
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
           <ColorChart cards={statsCards} />
         </div>
       </div>
