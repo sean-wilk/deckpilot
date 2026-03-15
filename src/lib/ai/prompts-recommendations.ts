@@ -1,3 +1,5 @@
+import { getBracketLabel } from '@/lib/constants/brackets'
+
 export function getRecommendationPrompt(context: {
   commander: string
   targetBracket: number
@@ -15,7 +17,7 @@ Provide specific swap recommendations for this Commander deck. For each recommen
 - Tag each swap with its purpose (synergy, mana_fix, power_level, budget, salt_reduction, curve)
 
 ## Constraints
-- Target Bracket: ${context.targetBracket} (${context.targetBracket === 1 ? 'Precon-level' : context.targetBracket === 2 ? 'Casual' : context.targetBracket === 3 ? 'Focused' : 'Competitive'})
+- Target Bracket: ${context.targetBracket} (${getBracketLabel(context.targetBracket)})
 ${context.budgetLimitCents ? `- Budget Limit: $${(context.budgetLimitCents / 100).toFixed(2)} - do NOT suggest cards that would push the deck over budget` : ''}
 - Only suggest cards legal in Commander format
 - Consider the commander's strategy and synergies

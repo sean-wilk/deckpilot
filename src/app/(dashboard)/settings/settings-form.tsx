@@ -5,13 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { updateProfile } from './actions'
-
-const BRACKET_OPTIONS = [
-  { value: 1, label: '1 — Precon' },
-  { value: 2, label: '2 — Casual' },
-  { value: 3, label: '3 — Focused' },
-  { value: 4, label: '4 — Competitive' },
-] as const
+import { BRACKETS } from '@/lib/constants/brackets'
 
 interface SettingsFormProps {
   displayName: string
@@ -46,9 +40,9 @@ export function SettingsForm({ displayName, defaultBracket }: SettingsFormProps)
               defaultValue={defaultBracket}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {BRACKET_OPTIONS.map((option) => (
+              {BRACKETS.slice(0, 4).map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {option.value} — {option.label}
                 </option>
               ))}
             </select>

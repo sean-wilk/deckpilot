@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { BRACKET_LABELS, BRACKET_BADGE_COLORS } from '@/lib/constants/brackets'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,13 +27,6 @@ const MTG_COLORS = [
   { symbol: 'R', label: 'Red',   bg: 'bg-red-500',     border: 'border-red-700',     text: 'text-white'     },
   { symbol: 'G', label: 'Green', bg: 'bg-green-600',   border: 'border-green-800',   text: 'text-white'     },
 ] as const
-
-const BRACKET_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: 'Precon',    color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  2: { label: 'Upgraded',  color: 'bg-blue-100 text-blue-800 border-blue-200'         },
-  3: { label: 'Optimized', color: 'bg-orange-100 text-orange-800 border-orange-200'   },
-  4: { label: 'cEDH',      color: 'bg-red-100 text-red-800 border-red-200'            },
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -132,7 +126,8 @@ export function StatsBar({ cards, targetBracket, className }: StatsBarProps) {
   const colorCounts = computeColorCounts(cards)
   const totalPrice = computeTotalPrice(cards)
   const totalColored = Object.values(colorCounts).reduce((a, b) => a + b, 0)
-  const bracket = BRACKET_LABELS[targetBracket] ?? BRACKET_LABELS[2]
+  const bracketLabel = BRACKET_LABELS[targetBracket] ?? BRACKET_LABELS[2]
+  const bracketColor = BRACKET_BADGE_COLORS[targetBracket] ?? BRACKET_BADGE_COLORS[2]
 
   return (
     <div
@@ -181,10 +176,10 @@ export function StatsBar({ cards, targetBracket, className }: StatsBarProps) {
           className={cn(
             'inline-flex items-center px-2.5 py-1 rounded-full',
             'text-[11px] font-semibold border',
-            bracket.color,
+            bracketColor,
           )}
         >
-          Bracket {targetBracket} — {bracket.label}
+          Bracket {targetBracket} — {bracketLabel}
         </span>
       </div>
     </div>

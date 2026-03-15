@@ -9,22 +9,9 @@ import { CommanderSearch } from '@/components/deck/commander-search'
 import { Loader2, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createDeck } from '../actions'
+import { BRACKETS, BRACKET_ACCENT_COLORS } from '@/lib/constants/brackets'
 
 // ─── Bracket selector ─────────────────────────────────────────────────────────
-
-const BRACKETS = [
-  { value: 1, label: 'B1', sublabel: 'Casual', description: 'Precon-power or below' },
-  { value: 2, label: 'B2', sublabel: 'Focused', description: 'Upgraded, no combos' },
-  { value: 3, label: 'B3', sublabel: 'Optimized', description: 'Powerful synergies' },
-  { value: 4, label: 'B4', sublabel: 'cEDH', description: 'Competitive play' },
-]
-
-const BRACKET_ACCENT: Record<number, string> = {
-  1: 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  2: 'border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-400',
-  3: 'border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  4: 'border-rose-500 bg-rose-500/10 text-rose-700 dark:text-rose-400',
-}
 
 const BRACKET_UNSELECTED =
   'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:bg-muted/40'
@@ -41,7 +28,7 @@ function BracketSelector({
       <Label>
         Target Bracket <span className="text-destructive">*</span>
       </Label>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {BRACKETS.map((b) => (
           <button
             key={b.value}
@@ -49,7 +36,7 @@ function BracketSelector({
             onClick={() => onChange(b.value)}
             className={cn(
               'flex flex-col items-center gap-0.5 rounded-xl border-2 px-2 py-3 transition-all duration-150 cursor-pointer select-none',
-              value === b.value ? BRACKET_ACCENT[b.value] : BRACKET_UNSELECTED
+              value === b.value ? BRACKET_ACCENT_COLORS[b.value] : BRACKET_UNSELECTED
             )}
           >
             <span className="text-sm font-bold leading-none">{b.label}</span>

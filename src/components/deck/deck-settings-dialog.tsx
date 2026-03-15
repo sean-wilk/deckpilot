@@ -5,6 +5,7 @@ import { updateDeck, deleteDeck } from '@/app/(dashboard)/decks/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { BRACKETS } from '@/lib/constants/brackets'
 
 interface DeckSettingsDialogProps {
   deck: {
@@ -17,13 +18,6 @@ interface DeckSettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
-
-const BRACKET_OPTIONS = [
-  { value: 1, label: 'Precon' },
-  { value: 2, label: 'Casual' },
-  { value: 3, label: 'Focused' },
-  { value: 4, label: 'Competitive' },
-]
 
 export function DeckSettingsDialog({ deck, open, onOpenChange }: DeckSettingsDialogProps) {
   const [name, setName] = useState(deck.name)
@@ -148,7 +142,7 @@ export function DeckSettingsDialog({ deck, open, onOpenChange }: DeckSettingsDia
               onChange={e => setTargetBracket(Number(e.target.value))}
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             >
-              {BRACKET_OPTIONS.map(opt => (
+              {BRACKETS.map(opt => (
                 <option key={opt.value} value={opt.value}>
                   {opt.value} — {opt.label}
                 </option>

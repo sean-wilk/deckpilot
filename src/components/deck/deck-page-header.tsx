@@ -5,6 +5,7 @@ import { Upload, Sparkles, Trophy } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button-variants'
+import { BRACKET_LABELS, BRACKET_BADGE_COLORS } from '@/lib/constants/brackets'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,15 +24,6 @@ interface DeckPageHeaderProps {
   children?: React.ReactNode // Slot for DeckSettingsDialog + ExportDropdown
 }
 
-// ─── Bracket config ───────────────────────────────────────────────────────────
-
-const BRACKET_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: 'Precon',    color: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800' },
-  2: { label: 'Focused',   color: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800'                  },
-  3: { label: 'Optimized', color: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800'       },
-  4: { label: 'cEDH',      color: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800'                         },
-}
-
 // ─── DeckPageHeader ───────────────────────────────────────────────────────────
 
 export function DeckPageHeader({
@@ -40,7 +32,8 @@ export function DeckPageHeader({
   cardCount,
   children,
 }: DeckPageHeaderProps) {
-  const bracket = BRACKET_LABELS[deck.targetBracket] ?? BRACKET_LABELS[2]
+  const bracketLabel = BRACKET_LABELS[deck.targetBracket] ?? BRACKET_LABELS[2]
+  const bracketColor = BRACKET_BADGE_COLORS[deck.targetBracket] ?? BRACKET_BADGE_COLORS[2]
 
   return (
     <div className="flex flex-col gap-2 pb-4 border-b">
@@ -57,10 +50,10 @@ export function DeckPageHeader({
               className={cn(
                 'inline-flex items-center px-2.5 py-0.5 rounded-full',
                 'text-[11px] font-semibold border shrink-0',
-                bracket.color,
+                bracketColor,
               )}
             >
-              Bracket {deck.targetBracket} — {bracket.label}
+              Bracket {deck.targetBracket} — {bracketLabel}
             </span>
             {/* Card count */}
             <span

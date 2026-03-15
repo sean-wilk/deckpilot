@@ -8,6 +8,7 @@ import { eq, count, inArray } from 'drizzle-orm'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Plus, Layers, Clock, ChevronRight, Swords } from 'lucide-react'
 import type { CardImageUris, CardFace } from '@/types/card'
+import { BRACKET_LABELS, BRACKET_BADGE_COLORS } from '@/lib/constants/brackets'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,24 +31,10 @@ interface DeckRow {
 
 // ─── Bracket badge ────────────────────────────────────────────────────────────
 
-const BRACKET_LABELS: Record<number, string> = {
-  1: 'Casual',
-  2: 'Focused',
-  3: 'Optimized',
-  4: 'cEDH',
-}
-
-const BRACKET_COLORS: Record<number, string> = {
-  1: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
-  2: 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30',
-  3: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
-  4: 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30',
-}
-
 function BracketBadge({ bracket }: { bracket: number }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-wide ${BRACKET_COLORS[bracket] ?? 'bg-muted text-muted-foreground border-border'}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-wide ${BRACKET_BADGE_COLORS[bracket] ?? 'bg-muted text-muted-foreground border-border'}`}
     >
       B{bracket} · {BRACKET_LABELS[bracket] ?? 'Unknown'}
     </span>
