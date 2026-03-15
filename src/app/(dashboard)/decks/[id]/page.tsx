@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { decks, deckCards, cards } from '@/lib/db/schema'
 import { eq, asc } from 'drizzle-orm'
 import Image from 'next/image'
+import { Crown } from 'lucide-react'
 import { StatsBar } from '@/components/deck/stats-bar'
 import { DeckCardGrid } from '@/components/deck/deck-card-grid'
 import { AddCardBar } from '@/components/deck/add-card-bar'
@@ -41,6 +42,19 @@ export default async function DeckPage({ params }: DeckPageProps) {
     redirect('/decks')
   }
 
+  // Fetch partner commander card if set
+  const partnerCard = deck.partnerId
+    ? await db
+        .select({
+          name: cards.name,
+          imageUris: cards.imageUris,
+          cardFaces: cards.cardFaces,
+        })
+        .from(cards)
+        .where(eq(cards.id, deck.partnerId))
+        .limit(1)
+    : []
+
   // Fetch deck cards joined with card data
   const rows = await db
     .select({
@@ -49,6 +63,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
       cardId:       deckCards.cardId,
       cardType:     deckCards.cardType,
       isCommander:  deckCards.isCommander,
+      isSideboard:  deckCards.isSideboard,
       quantity:     deckCards.quantity,
       sortOrder:    deckCards.sortOrder,
       // cards fields
@@ -72,6 +87,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
     cardId:      row.cardId,
     cardType:    row.cardType,
     isCommander: row.isCommander,
+    isSideboard: row.isSideboard,
     name:        row.name,
     manaCost:    row.manaCost,
     cmc:         parseFloat(row.cmc),
@@ -79,7 +95,9 @@ export default async function DeckPage({ params }: DeckPageProps) {
     cardFaces:   row.cardFaces as CardFace[] | null,
   }))
 
-  const statsCards = rows.map((row) => ({
+  // Stats only count mainboard cards (exclude sideboard)
+  const mainboardRows = rows.filter((r) => !r.isSideboard)
+  const statsCards = mainboardRows.map((row) => ({
     cmc:    parseFloat(row.cmc),
     colors: row.colors,
     prices: row.prices as Record<string, string | null> | null,
@@ -88,12 +106,15 @@ export default async function DeckPage({ params }: DeckPageProps) {
   // Non-commander cards for the grid
   const gridCards = deckCardEntries.filter((c) => !c.isCommander)
   const commanderCards = deckCardEntries.filter((c) => c.isCommander)
+  const mainboardCards = gridCards.filter((c) => !c.isSideboard)
+  const sideboardCards = gridCards.filter((c) => c.isSideboard)
 
   // Shape cards for ExportDropdown
   const exportCards = rows.map((row) => ({
     quantity: row.quantity,
     name:     row.name,
     isCommander: row.isCommander,
+    isSideboard: row.isSideboard,
   }))
 
   return (
@@ -128,34 +149,59 @@ export default async function DeckPage({ params }: DeckPageProps) {
             {commanderCards.length > 0 && (
               <section className="pb-4 border-b">
                 <div className="flex items-center gap-2 mb-3">
+                  <Crown className="size-4 text-amber-500" />
                   <h3 className="text-sm font-semibold text-foreground">Commander</h3>
                   <div className="flex-1 h-px bg-border" />
                 </div>
-                <div className="flex gap-3 flex-wrap">
+                <div className="flex gap-4 flex-wrap rounded-lg bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-transparent p-4 border border-amber-500/20">
                   {commanderCards.map((c) => (
-                    <div key={c.deckCardId} className="flex flex-col items-center gap-1">
+                    <div key={c.deckCardId} className="flex flex-col items-center gap-1.5">
                       <div className="relative">
-                        {/* CardImage rendered directly — commanders not removable */}
                         <Image
                           src={
-                            (c.imageUris as CardImageUris | null)?.small ??
-                            (c.cardFaces as CardFace[] | null)?.[0]?.image_uris?.small ??
+                            (c.imageUris as CardImageUris | null)?.normal ??
+                            (c.cardFaces as CardFace[] | null)?.[0]?.image_uris?.normal ??
                             ''
                           }
                           alt={c.name}
-                          width={88}
-                          height={123}
-                          className="rounded-[4.75%/3.4%] shadow-md"
+                          width={244}
+                          height={340}
+                          className="rounded-[4.75%/3.4%] shadow-lg"
                         />
-                        <div className="absolute -top-1.5 -left-1.5 px-1 py-0.5 rounded-sm bg-amber-500 text-white text-[8px] font-bold uppercase tracking-wide shadow">
+                        <div className="absolute -top-2 -left-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[9px] font-bold uppercase tracking-wide shadow">
+                          <Crown className="size-3" />
                           CMD
                         </div>
                       </div>
-                      <span className="text-[10px] text-muted-foreground max-w-[88px] truncate text-center">
+                      <span className="text-xs text-muted-foreground max-w-[244px] truncate text-center font-medium">
                         {c.name}
                       </span>
                     </div>
                   ))}
+                  {partnerCard.length > 0 && (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="relative">
+                        <Image
+                          src={
+                            (partnerCard[0].imageUris as CardImageUris | null)?.normal ??
+                            (partnerCard[0].cardFaces as CardFace[] | null)?.[0]?.image_uris?.normal ??
+                            ''
+                          }
+                          alt={partnerCard[0].name}
+                          width={244}
+                          height={340}
+                          className="rounded-[4.75%/3.4%] shadow-lg"
+                        />
+                        <div className="absolute -top-2 -left-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[9px] font-bold uppercase tracking-wide shadow">
+                          <Crown className="size-3" />
+                          Partner
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground max-w-[244px] truncate text-center font-medium">
+                        {partnerCard[0].name}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </section>
             )}
@@ -168,9 +214,30 @@ export default async function DeckPage({ params }: DeckPageProps) {
             {/* Card grid grouped by type */}
             <DeckCardGrid
               deckId={id}
-              cards={gridCards}
+              cards={mainboardCards}
               isOwner={isOwner}
             />
+
+            {/* Sideboard section */}
+            <section className="pt-2">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Sideboard ({sideboardCards.length})
+                </h3>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              {sideboardCards.length > 0 ? (
+                <DeckCardGrid
+                  deckId={id}
+                  cards={sideboardCards}
+                  isOwner={isOwner}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  No sideboard cards
+                </p>
+              )}
+            </section>
           </div>
 
           {/* Right sidebar */}

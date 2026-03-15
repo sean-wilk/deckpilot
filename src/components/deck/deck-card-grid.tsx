@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { ArrowUpDown } from 'lucide-react'
 import { CardImage } from '@/components/cards/card-image'
 import { CardDetailModal } from '@/components/cards/card-detail-modal'
 import { cn } from '@/lib/utils'
 import type { CardImageUris, CardFace } from '@/types/card'
-import { removeCardFromDeck } from '@/app/(dashboard)/decks/actions'
+import { removeCardFromDeck, toggleSideboard } from '@/app/(dashboard)/decks/actions'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +16,7 @@ export interface DeckCardEntry {
   name: string
   cardType: string
   isCommander: boolean
+  isSideboard: boolean
   imageUris: CardImageUris | null
   cardFaces: CardFace[] | null
   manaCost: string | null
@@ -73,10 +75,17 @@ interface CardThumbProps {
 function CardThumb({ card, deckId, isOwner, onCardClick }: CardThumbProps) {
   const [hovered, setHovered] = useState(false)
   const [removing, startRemove] = useTransition()
+  const [toggling, startToggle] = useTransition()
 
   function handleRemove() {
     startRemove(async () => {
       await removeCardFromDeck(deckId, card.deckCardId)
+    })
+  }
+
+  function handleToggleSideboard() {
+    startToggle(async () => {
+      await toggleSideboard(deckId, card.deckCardId)
     })
   }
 
@@ -102,38 +111,67 @@ function CardThumb({ card, deckId, isOwner, onCardClick }: CardThumbProps) {
           className={cn(
             'transition-transform duration-200',
             hovered && 'scale-105 shadow-xl',
-            removing && 'opacity-50',
+            (removing || toggling) && 'opacity-50',
           )}
         />
         </button>
 
-        {/* Hover overlay: remove button */}
+        {/* Hover overlay: action buttons */}
         {isOwner && hovered && !card.isCommander && (
-          <button
-            type="button"
-            onClick={handleRemove}
-            disabled={removing}
-            className={cn(
-              'absolute -top-1.5 -right-1.5 z-20',
-              'size-5 rounded-full',
-              'bg-destructive text-destructive-foreground',
-              'flex items-center justify-center',
-              'text-xs font-bold leading-none',
-              'shadow-md border border-background',
-              'transition-all duration-150',
-              'hover:scale-110',
-              'disabled:opacity-50',
-            )}
-            aria-label={`Remove ${card.name} from deck`}
-          >
-            ×
-          </button>
+          <div className="absolute -top-1.5 -right-1.5 z-20 flex flex-col gap-1">
+            {/* Remove button */}
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={removing}
+              className={cn(
+                'size-5 rounded-full',
+                'bg-destructive text-destructive-foreground',
+                'flex items-center justify-center',
+                'text-xs font-bold leading-none',
+                'shadow-md border border-background',
+                'transition-all duration-150',
+                'hover:scale-110',
+                'disabled:opacity-50',
+              )}
+              aria-label={`Remove ${card.name} from deck`}
+            >
+              ×
+            </button>
+
+            {/* Toggle sideboard button */}
+            <button
+              type="button"
+              onClick={handleToggleSideboard}
+              disabled={toggling}
+              title={card.isSideboard ? 'Move to mainboard' : 'Move to sideboard'}
+              className={cn(
+                'size-5 rounded-full',
+                'bg-secondary text-secondary-foreground',
+                'flex items-center justify-center',
+                'shadow-md border border-background',
+                'transition-all duration-150',
+                'hover:scale-110',
+                'disabled:opacity-50',
+              )}
+              aria-label={card.isSideboard ? `Move ${card.name} to mainboard` : `Move ${card.name} to sideboard`}
+            >
+              <ArrowUpDown className="size-3" />
+            </button>
+          </div>
         )}
 
         {/* Commander badge */}
         {card.isCommander && (
           <div className="absolute -top-1.5 -left-1.5 z-20 px-1 py-0.5 rounded-sm bg-amber-500 text-white text-[8px] font-bold uppercase tracking-wide shadow">
             CMD
+          </div>
+        )}
+
+        {/* Sideboard badge */}
+        {card.isSideboard && (
+          <div className="absolute -bottom-1.5 -left-1.5 z-20 px-1 py-0.5 rounded-sm bg-blue-500 text-white text-[8px] font-bold uppercase tracking-wide shadow">
+            SB
           </div>
         )}
       </div>

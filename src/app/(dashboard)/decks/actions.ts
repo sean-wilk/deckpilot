@@ -68,7 +68,7 @@ export async function deleteDeck(deckId: string) {
   redirect('/decks')
 }
 
-export async function addCardToDeck(deckId: string, cardId: string) {
+export async function addCardToDeck(deckId: string, cardId: string, isSideboard?: boolean) {
   const user = await requireUser()
 
   // Verify deck ownership
@@ -106,6 +106,7 @@ export async function addCardToDeck(deckId: string, cardId: string) {
     cardId,
     cardType: deriveCardType(card[0].typeLine),
     sortOrder: nextOrder,
+    isSideboard: isSideboard ?? false,
   }).onConflictDoNothing()
 
   await db.update(decks).set({ updatedAt: new Date() }).where(eq(decks.id, deckId))
@@ -134,6 +135,32 @@ export async function updatePreferredPrinting(deckCardId: string, imageUris: Rec
     .set({ preferredImageUris: imageUris })
     .where(eq(deckCards.id, deckCardId))
   // No revalidation needed — client updates optimistically
+}
+
+export async function toggleSideboard(deckId: string, deckCardId: string) {
+  const user = await requireUser()
+
+  // Verify deck ownership
+  const deck = await db.select().from(decks)
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+    .limit(1)
+  if (!deck[0]) throw new Error('Deck not found')
+
+  // Read current isSideboard value
+  const current = await db.select({ isSideboard: deckCards.isSideboard })
+    .from(deckCards)
+    .where(eq(deckCards.id, deckCardId))
+    .limit(1)
+  if (!current[0]) throw new Error('Card not found in deck')
+
+  // Toggle
+  await db.update(deckCards)
+    .set({ isSideboard: !current[0].isSideboard })
+    .where(eq(deckCards.id, deckCardId))
+
+  await db.update(decks).set({ updatedAt: new Date() }).where(eq(decks.id, deckId))
+
+  revalidatePath(`/decks/${deckId}`)
 }
 
 export async function createDeckSnapshot(deckId: string, changeSummary: string) {
