@@ -2,6 +2,8 @@ import { inngest } from './client'
 export { syncScryfallCards } from '@/lib/scryfall/sync'
 export { syncScryfallPrices } from '@/lib/scryfall/price-sync'
 export { syncEdhrecCommander, syncEdhrecSaltScores } from '@/lib/edhrec/sync'
+export { analyzeDeck } from './ai-analyze'
+export { recommendCards } from './ai-recommendations'
 
 export const helloWorld = inngest.createFunction(
   { id: 'hello-world' },

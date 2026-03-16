@@ -1,122 +1,11 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { DeckAnalysisSchema } from '@/lib/ai/schemas'
+import { useState, useEffect, useRef } from 'react'
 import type { DeckAnalysis } from '@/lib/ai/schemas'
-import type { z } from 'zod'
 import { getBracketLabel } from '@/lib/constants/brackets'
 import { updateDeckBracket } from '@/app/(dashboard)/decks/actions'
-
-// ─── useObject ────────────────────────────────────────────────────────────────
-
-type UseObjectOptions<T extends z.ZodTypeAny> = {
-  api: string
-  schema: T
-}
-
-type UseObjectResult<T> = {
-  object: Partial<T> | undefined
-  isLoading: boolean
-  error: Error | null
-  submit: (body: Record<string, unknown>) => void
-  stop: () => void
-}
-
-function useObject<T extends z.ZodTypeAny>(
-  options: UseObjectOptions<T>
-): UseObjectResult<z.infer<T>> {
-  const { api } = options
-  const [object, setObject] = useState<Partial<z.infer<T>> | undefined>(undefined)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-
-  const stop = useCallback(() => {
-    abortRef.current?.abort()
-    setIsLoading(false)
-  }, [])
-
-  const submit = useCallback(
-    async (body: Record<string, unknown>) => {
-      setIsLoading(true)
-      setError(null)
-      setObject(undefined)
-
-      const controller = new AbortController()
-      abortRef.current = controller
-
-      try {
-        const res = await fetch(api, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        })
-
-        if (!res.ok) {
-          const text = await res.text()
-          const err = new Error(`HTTP ${res.status}: ${text}`)
-          ;(err as Error & { status: number }).status = res.status as number
-          throw err
-        }
-
-        const reader = res.body?.getReader()
-        if (!reader) throw new Error('No response body')
-
-        const decoder = new TextDecoder()
-        let accumulated = ''
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-          accumulated += chunk
-
-          const lines = accumulated.split('\n')
-          let lastValidObject: Partial<z.infer<T>> | undefined
-
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (trimmed.startsWith('0:') || trimmed.startsWith('2:')) {
-              try {
-                const jsonStr = trimmed.slice(2)
-                const parsed = JSON.parse(jsonStr) as z.infer<T>
-                if (parsed && typeof parsed === 'object') {
-                  lastValidObject = parsed as Partial<z.infer<T>>
-                }
-              } catch {
-                // partial chunk — keep accumulating
-              }
-            }
-          }
-
-          if (!lastValidObject) {
-            try {
-              const parsed = JSON.parse(accumulated) as z.infer<T>
-              if (parsed && typeof parsed === 'object') {
-                lastValidObject = parsed as Partial<z.infer<T>>
-              }
-            } catch {
-              // still accumulating
-            }
-          }
-
-          if (lastValidObject) {
-            setObject(lastValidObject)
-          }
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return
-        setError(err instanceof Error ? err : new Error(String(err)))
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [api]
-  )
-
-  return { object, isLoading, error, submit, stop }
-}
+import { usePollAnalysis } from '@/hooks/use-poll-analysis'
+import { toast } from 'sonner'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -272,11 +161,6 @@ function StrengthsWeaknessesPanel({
 
 // ─── AnalysisTabContent ───────────────────────────────────────────────────────
 
-interface SavedAnalysis {
-  latest: DeckAnalysis | null
-  history: Array<{ id: string; createdAt: string; bracket: number | null }>
-}
-
 interface AnalysisTabContentProps {
   deckId: string
   cardCount: number
@@ -290,53 +174,26 @@ export function AnalysisTabContent({
   targetBracket,
   onSwitchToRecommendations,
 }: AnalysisTabContentProps) {
-  const [savedAnalysis, setSavedAnalysis] = useState<SavedAnalysis | null>(null)
-  const [loadingHistory, setLoadingHistory] = useState(true)
-  const [displayedAnalysis, setDisplayedAnalysis] = useState<Partial<DeckAnalysis> | null>(null)
-  const [lastAnalyzedAt, setLastAnalyzedAt] = useState<string | null>(null)
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
   const [acceptingBracket, setAcceptingBracket] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
 
-  const { object, isLoading, error, submit, stop } = useObject({
-    api: '/api/ai/analyze',
-    schema: DeckAnalysisSchema,
-  })
+  const { data, isPolling, error, trigger } = usePollAnalysis<DeckAnalysis>(deckId, 'full')
 
-  // On mount, fetch saved analysis from /api/ai/analysis/${deckId}
-  useEffect(() => {
-    async function fetchSaved() {
-      setLoadingHistory(true)
-      try {
-        const res = await fetch(`/api/ai/analysis/${deckId}`)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = (await res.json()) as SavedAnalysis
-        setSavedAnalysis(data)
-        if (data.latest) {
-          setDisplayedAnalysis(data.latest)
-          if (data.history[0]?.createdAt) {
-            setLastAnalyzedAt(data.history[0].createdAt)
-          }
-        }
-      } catch {
-        // silently fail — user can still run a fresh analysis
-      } finally {
-        setLoadingHistory(false)
-      }
-    }
-    fetchSaved()
-  }, [deckId])
+  const isLoading = isPolling || data?.status === 'pending' || data?.status === 'processing'
+  const displayedAnalysis = data?.results as DeckAnalysis | undefined
 
-  // When streaming produces a result, surface it
+  // Toast on completion
+  const prevStatusRef = useRef(data?.status)
   useEffect(() => {
-    if (object && Object.keys(object).length > 0) {
-      setDisplayedAnalysis(object as Partial<DeckAnalysis>)
+    if (prevStatusRef.current !== 'complete' && data?.status === 'complete') {
+      toast.success('Deck analysis complete!')
     }
-  }, [object])
+    prevStatusRef.current = data?.status
+  }, [data?.status])
 
   function handleAnalyze() {
-    submit({ deckId })
-    setLastAnalyzedAt(null)
+    trigger({ deckId })
     setSelectedHistoryId(null)
   }
 
@@ -350,34 +207,23 @@ export function AnalysisTabContent({
   }
 
   function handleSelectHistory(id: string) {
-    const entry = savedAnalysis?.history.find((h) => h.id === id)
+    const entry = data?.history.find((h) => h.id === id)
     if (!entry) return
     setSelectedHistoryId(id)
-    setLastAnalyzedAt(entry.createdAt)
-    // For history selection we'd ideally re-fetch the full record;
-    // for now surface what we have in the latest payload when ids match.
-    if (id === savedAnalysis?.history[0]?.id && savedAnalysis.latest) {
-      setDisplayedAnalysis(savedAnalysis.latest)
-    }
     setHistoryOpen(false)
   }
 
   // ── Error message ──
   let errorMessage: string | null = null
-  if (error) {
-    const status = (error as Error & { status?: number }).status
-    if (status === 401) {
-      errorMessage = 'AI not configured — visit /admin to set up a provider'
-    } else if (status === 429) {
-      errorMessage = 'Rate limited — please wait a moment and try again'
-    } else {
-      errorMessage = 'Analysis failed. Try again.'
-    }
+  if (data?.status === 'failed') {
+    errorMessage = data.errorMessage ?? 'Analysis failed. Try again.'
+  } else if (error) {
+    errorMessage = 'Analysis failed. Try again.'
   }
 
   const analysis = displayedAnalysis
   const hasResult = !!analysis && Object.keys(analysis).length > 0
-  const hasHistory = (savedAnalysis?.history ?? []).length > 0
+  const hasHistory = (data?.history ?? []).length > 0
 
   // Bracket suggestion logic
   const suggestedBracket = analysis?.bracket
@@ -414,9 +260,9 @@ export function AnalysisTabContent({
           </div>
           <div>
             <h2 className="text-sm font-semibold">AI Analysis</h2>
-            {lastAnalyzedAt && !isLoading && (
+            {data?.history?.[0]?.createdAt && !isLoading && (
               <p className="text-[11px] text-muted-foreground">
-                Last analyzed: {formatDate(lastAnalyzedAt)}
+                Last analyzed: {formatDate(data.history[0].createdAt)}
               </p>
             )}
             {isLoading && (
@@ -424,7 +270,7 @@ export function AnalysisTabContent({
                 Analyzing <LoadingDots />
               </p>
             )}
-            {loadingHistory && !isLoading && (
+            {!data && !isLoading && !error && (
               <p className="text-[11px] text-muted-foreground">Loading saved analysis…</p>
             )}
           </div>
@@ -466,21 +312,18 @@ export function AnalysisTabContent({
 
               {historyOpen && (
                 <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
-                  {savedAnalysis?.history.map((entry) => (
+                  {data?.history.map((entry) => (
                     <button
                       key={entry.id}
                       type="button"
                       onClick={() => handleSelectHistory(entry.id)}
                       className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-muted transition-colors ${
-                        (selectedHistoryId ?? savedAnalysis?.history[0]?.id) === entry.id
+                        (selectedHistoryId ?? data?.history[0]?.id) === entry.id
                           ? 'bg-muted/60 font-medium'
                           : ''
                       }`}
                     >
                       <span>{formatDate(entry.createdAt)}</span>
-                      {entry.bracket !== null && (
-                        <BracketBadge bracket={entry.bracket} />
-                      )}
                     </button>
                   ))}
                 </div>
@@ -488,24 +331,14 @@ export function AnalysisTabContent({
             </div>
           )}
 
-          {isLoading ? (
-            <button
-              type="button"
-              onClick={stop}
-              className="rounded border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              Stop
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleAnalyze}
-              disabled={cardCount < 10}
-              className="rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-3 py-1.5 transition-colors"
-            >
-              {hasResult ? 'Re-analyze' : 'Analyze Deck'}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleAnalyze}
+            disabled={cardCount < 10 || isLoading}
+            className="rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-3 py-1.5 transition-colors"
+          >
+            {isLoading ? 'Analyzing…' : hasResult ? 'Re-analyze' : 'Analyze Deck'}
+          </button>
         </div>
       </div>
 
@@ -828,7 +661,7 @@ export function AnalysisTabContent({
       )}
 
       {/* ── Empty state ── */}
-      {!isLoading && !hasResult && !errorMessage && !loadingHistory && (
+      {!isLoading && !hasResult && !errorMessage && data !== null && (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
           <div className="size-12 rounded-full bg-blue-500/10 flex items-center justify-center">
             <svg

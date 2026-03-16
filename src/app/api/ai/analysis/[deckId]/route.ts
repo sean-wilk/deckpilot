@@ -17,29 +17,45 @@ export async function GET(
 
     const { deckId } = await params
 
-    const rows = await db
+    // Fetch the most recent record regardless of status (for polling support)
+    const allRows = await db
       .select({
         id: deckAnalyses.id,
         createdAt: deckAnalyses.createdAt,
+        status: deckAnalyses.status,
         results: deckAnalyses.results,
+        errorMessage: deckAnalyses.errorMessage,
       })
       .from(deckAnalyses)
       .where(
         and(
           eq(deckAnalyses.deckId, deckId),
-          eq(deckAnalyses.status, 'complete'),
           eq(deckAnalyses.analysisType, 'full')
         )
       )
       .orderBy(desc(deckAnalyses.createdAt))
 
-    if (rows.length === 0) {
-      return NextResponse.json({ latest: null, history: [] })
+    if (allRows.length === 0) {
+      return NextResponse.json({ latest: null, status: null, history: [] })
     }
 
-    const latest = rows[0].results
+    const mostRecent = allRows[0]
+    const currentStatus = mostRecent.status as 'pending' | 'processing' | 'complete' | 'failed'
 
-    const history = rows.map((row) => ({
+    // Build the latest payload based on status
+    let latest: unknown
+    if (currentStatus === 'complete') {
+      latest = mostRecent.results
+    } else if (currentStatus === 'failed') {
+      latest = null
+    } else {
+      // pending or processing
+      latest = null
+    }
+
+    // History only includes complete records
+    const completeRows = allRows.filter((row) => row.status === 'complete')
+    const history = completeRows.map((row) => ({
       id: row.id,
       createdAt: row.createdAt,
       bracket:
@@ -50,7 +66,12 @@ export async function GET(
           : null,
     }))
 
-    return NextResponse.json({ latest, history })
+    const response: Record<string, unknown> = { latest, status: currentStatus, history }
+    if (currentStatus === 'failed') {
+      response.errorMessage = mostRecent.errorMessage ?? null
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error('[Analysis GET] error:', error)
     return new Response(

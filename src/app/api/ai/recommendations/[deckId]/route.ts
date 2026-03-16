@@ -18,10 +18,12 @@ export async function GET(
 
     const { deckId } = await params
 
-    // Find the latest completed swap_suggestion analysis for this deck
+    // Find the most recent swap_suggestion analysis for this deck (any status)
     const analyses = await db
       .select({
         id: deckAnalyses.id,
+        status: deckAnalyses.status,
+        errorMessage: deckAnalyses.errorMessage,
         results: deckAnalyses.results,
         createdAt: deckAnalyses.createdAt,
       })
@@ -29,7 +31,6 @@ export async function GET(
       .where(
         and(
           eq(deckAnalyses.deckId, deckId),
-          eq(deckAnalyses.status, 'complete'),
           eq(deckAnalyses.analysisType, 'swap_suggestion')
         )
       )
@@ -41,6 +42,54 @@ export async function GET(
     }
 
     const analysis = analyses[0]
+    const status = analysis.status as 'pending' | 'processing' | 'complete' | 'failed'
+
+    // Fetch history of past completed analyses (excluding current)
+    const historyRows = await db
+      .select({
+        id: deckAnalyses.id,
+        createdAt: deckAnalyses.createdAt,
+      })
+      .from(deckAnalyses)
+      .where(
+        and(
+          eq(deckAnalyses.deckId, deckId),
+          eq(deckAnalyses.analysisType, 'swap_suggestion'),
+          eq(deckAnalyses.status, 'complete')
+        )
+      )
+      .orderBy(desc(deckAnalyses.createdAt))
+
+    // Exclude current analysis from history
+    const history = historyRows
+      .filter((r) => r.id !== analysis.id)
+      .map((r) => ({ id: r.id, createdAt: r.createdAt }))
+
+    // For non-complete statuses, return nulls for content fields
+    if (status === 'pending' || status === 'processing') {
+      return NextResponse.json({
+        analysisId: analysis.id,
+        status,
+        recommendations: null,
+        summary: null,
+        estimatedBracketAfter: null,
+        createdAt: analysis.createdAt,
+        history,
+      })
+    }
+
+    if (status === 'failed') {
+      return NextResponse.json({
+        analysisId: analysis.id,
+        status,
+        recommendations: null,
+        summary: null,
+        estimatedBracketAfter: null,
+        errorMessage: analysis.errorMessage ?? null,
+        createdAt: analysis.createdAt,
+        history,
+      })
+    }
 
     // Alias cards table twice for cardOut and cardIn joins
     const cardOut = alias(cards, 'card_out')
@@ -70,6 +119,7 @@ export async function GET(
 
     return NextResponse.json({
       analysisId: analysis.id,
+      status,
       recommendations: recs.map((r) => ({
         id: r.id,
         tier: r.tier,
@@ -89,6 +139,7 @@ export async function GET(
           ? (results.estimatedBracketAfter ?? null)
           : null,
       createdAt: analysis.createdAt,
+      history,
     })
   } catch (error) {
     console.error('[Recommendations GET] error:', error)

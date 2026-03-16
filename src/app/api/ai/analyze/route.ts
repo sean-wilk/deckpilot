@@ -1,12 +1,9 @@
-import { streamObject } from 'ai'
-import { getAiModel } from '@/lib/ai/providers'
-import { DeckAnalysisSchema } from '@/lib/ai/schemas'
-import { buildDeckContext } from '@/lib/ai/context'
-import { getAnalysisPrompt } from '@/lib/ai/prompts'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { deckAnalyses, decks } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { inngest } from '@/lib/inngest/client'
 
 export async function POST(request: Request) {
   try {
@@ -26,10 +23,6 @@ export async function POST(request: Request) {
       .limit(1)
     if (!deck[0]) return new Response('Deck not found', { status: 404 })
 
-    const model = await getAiModel('analysis')
-    const context = await buildDeckContext(deckId)
-    const prompt = getAnalysisPrompt(context)
-
     // Create analysis record
     const [analysis] = await db
       .insert(deckAnalyses)
@@ -42,36 +35,13 @@ export async function POST(request: Request) {
         completionTokens: 0,
         costCents: 0,
         results: {},
-        status: 'streaming',
+        status: 'pending',
       })
       .returning()
 
-    console.log('[Analyze API] Starting streamObject with model:', model)
-    console.log('[Analyze API] Prompt length:', prompt.length)
+    await inngest.send({ name: 'ai/analyze.requested', data: { deckId, analysisId: analysis.id } })
 
-    const result = streamObject({
-      model,
-      schema: DeckAnalysisSchema,
-      prompt,
-      onFinish: async ({ object, usage, error: finishError }) => {
-        if (finishError) {
-          console.error('[Analyze API] streamObject onFinish error:', finishError)
-        }
-        if (object) {
-          await db
-            .update(deckAnalyses)
-            .set({
-              results: object,
-              status: 'complete',
-              promptTokens: usage?.inputTokens ?? 0,
-              completionTokens: usage?.outputTokens ?? 0,
-            })
-            .where(eq(deckAnalyses.id, analysis.id))
-        }
-      },
-    })
-
-    return result.toTextStreamResponse()
+    return NextResponse.json({ analysisId: analysis.id, status: 'pending' })
   } catch (error) {
     console.error('Analysis error:', error)
     return new Response(

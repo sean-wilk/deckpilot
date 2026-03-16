@@ -1,12 +1,9 @@
-import { streamObject } from 'ai'
-import { getAiModel } from '@/lib/ai/providers'
-import { SwapRecommendationSchema } from '@/lib/ai/schemas'
-import { buildDeckContext } from '@/lib/ai/context'
-import { getRecommendationPrompt } from '@/lib/ai/prompts-recommendations'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { deckAnalyses, decks, swapRecommendations, cards } from '@/lib/db/schema'
+import { deckAnalyses, decks } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
+import { inngest } from '@/lib/inngest/client'
 
 export async function POST(request: Request) {
   try {
@@ -21,18 +18,6 @@ export async function POST(request: Request) {
       .limit(1)
     if (!deck[0]) return new Response('Deck not found', { status: 404 })
 
-    const model = await getAiModel('recommendations')
-    const context = await buildDeckContext(deckId)
-    let prompt = getRecommendationPrompt({ ...context, wildcardMode: wildcardMode === true })
-
-    if (focus === 'synergy') {
-      prompt += ' Focus specifically on improving card synergy and reducing dead cards.'
-    } else if (focus === 'mana_base') {
-      prompt += ' Focus specifically on improving the mana base, fixing, and land count.'
-    } else if (focus === 'bracket_down') {
-      prompt += ' Focus specifically on suggesting swaps to lower the deck\'s power level.'
-    }
-
     const [analysis] = await db.insert(deckAnalyses).values({
       deckId,
       analysisType: 'swap_suggestion',
@@ -42,61 +27,12 @@ export async function POST(request: Request) {
       completionTokens: 0,
       costCents: 0,
       results: {},
-      status: 'streaming',
+      status: 'pending',
     }).returning()
 
-    const result = streamObject({
-      model,
-      schema: SwapRecommendationSchema,
-      prompt,
-      onFinish: async ({ object, usage }) => {
-        if (object) {
-          await db.update(deckAnalyses)
-            .set({
-              results: object,
-              status: 'complete',
-              promptTokens: usage?.inputTokens ?? 0,
-              completionTokens: usage?.outputTokens ?? 0,
-            })
-            .where(eq(deckAnalyses.id, analysis.id))
+    await inngest.send({ name: 'ai/recommendations.requested', data: { deckId, analysisId: analysis.id, focus, wildcardMode } })
 
-          // Insert individual recommendations into swap_recommendations table
-          const recs = object.recommendations ?? []
-          for (let i = 0; i < recs.length; i++) {
-            const rec = recs[i]
-
-            let cardOutId: string | null = null
-            let cardInId: string | null = null
-
-            if (rec.card_out) {
-              const [cardOut] = await db.select({ id: cards.id })
-                .from(cards).where(eq(cards.name, rec.card_out)).limit(1)
-              cardOutId = cardOut?.id ?? null
-            }
-
-            if (rec.card_in) {
-              const [cardIn] = await db.select({ id: cards.id })
-                .from(cards).where(eq(cards.name, rec.card_in)).limit(1)
-              cardInId = cardIn?.id ?? null
-            }
-
-            await db.insert(swapRecommendations).values({
-              analysisId: analysis.id,
-              tier: rec.tier,
-              cardOutId,
-              cardInId,
-              reasoning: rec.reasoning,
-              impactSummary: rec.impact_summary,
-              tags: rec.tags,
-              sortOrder: i,
-              accepted: null,
-            })
-          }
-        }
-      },
-    })
-
-    return result.toTextStreamResponse()
+    return NextResponse.json({ analysisId: analysis.id, status: 'pending' })
   } catch (error) {
     console.error('Recommendations error:', error)
     return new Response(JSON.stringify({ error: 'Recommendations failed' }), { status: 500 })
