@@ -34,7 +34,7 @@ export async function PATCH(
     const statusFields =
       status === 'accepted'  ? { accepted: true,  dismissed: false } :
       status === 'skipped'   ? { accepted: false, dismissed: false } :
-      /* dismissed */          { dismissed: true }
+      /* dismissed */          { dismissed: true, accepted: null }
 
     // Fetch the recommendation first (to get cardOutId / cardInId if accepting)
     const [rec] = await db.select().from(swapRecommendations)
