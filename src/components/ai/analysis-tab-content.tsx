@@ -8,6 +8,7 @@ import { usePollAnalysis } from '@/hooks/use-poll-analysis'
 import { toast } from 'sonner'
 import { SaltScoreMeter } from '@/components/ai/salt-score-meter'
 import { TargetApprovalBanner } from '@/components/ai/target-approval-banner'
+import { LandsSection } from '@/components/ai/lands-section'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -534,6 +535,32 @@ export function AnalysisTabContent({
               <StrengthsWeaknessesPanel
                 strengths={analysis.strengths}
                 weaknesses={analysis.weaknesses}
+              />
+            </div>
+          )}
+
+          {/* Lands Analysis */}
+          {displayedAnalysis?.lands_analysis && (
+            <div className="space-y-2">
+              <LandsSection
+                landsAnalysis={displayedAnalysis.lands_analysis}
+                fixingQuality={analysis.fixing_quality}
+                deckId={deckId}
+                onRecommendDualLands={async () => {
+                  try {
+                    await fetch('/api/ai/mana-fixing', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ deckId }),
+                    })
+                    onSwitchToRecommendations?.('mana_base')
+                  } catch (err) {
+                    console.error('Failed to request mana fixing recommendations', err)
+                  }
+                }}
+                onFillWithBasics={() => {
+                  console.log('Fill with basics: not yet implemented', { deckId })
+                }}
               />
             </div>
           )}

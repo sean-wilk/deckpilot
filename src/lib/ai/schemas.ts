@@ -29,6 +29,19 @@ export const DeckAnalysisSchema = z.object({
     target_count: z.number(),
     reasoning: z.string(),
   })).optional(),
+  lands_analysis: z.object({
+    total_lands: z.number(),
+    target_lands: z.number(),
+    basic_count: z.number(),
+    nonbasic_count: z.number(),
+    color_production: z.object({ W: z.number(), U: z.number(), B: z.number(), R: z.number(), G: z.number() }).partial(),
+    color_requirements: z.object({ W: z.number(), U: z.number(), B: z.number(), R: z.number(), G: z.number() }).partial(),
+    fixing_sources: z.number(),
+    utility_lands: z.number(),
+    mana_curve_notes: z.string(),
+    color_balance_notes: z.string(),
+    recommendations: z.array(z.string()),
+  }).optional(),
 })
 
 export const SwapRecommendationSchema = z.object({
