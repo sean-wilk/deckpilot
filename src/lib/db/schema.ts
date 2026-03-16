@@ -287,6 +287,7 @@ export const swapRecommendations = pgTable(
     saltDelta: numeric("salt_delta"),
     sortOrder: integer("sort_order").notNull(),
     accepted: boolean("accepted"),
+    dismissed: boolean("dismissed").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index("idx_swap_recommendations_analysis_id").on(table.analysisId)]

@@ -82,6 +82,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
       imageUris:    cards.imageUris,
       cardFaces:    cards.cardFaces,
       prices:       cards.prices,
+      userNote:     deckCards.userNote,
     })
     .from(deckCards)
     .innerJoin(cards, eq(deckCards.cardId, cards.id))
@@ -100,6 +101,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
     cmc:         parseFloat(row.cmc),
     imageUris:   row.imageUris as CardImageUris | null,
     cardFaces:   row.cardFaces as CardFace[] | null,
+    userNote:    row.userNote ?? null,
   }))
 
   // Stats only count mainboard cards (exclude sideboard)

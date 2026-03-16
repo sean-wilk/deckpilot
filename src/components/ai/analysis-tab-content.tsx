@@ -326,7 +326,7 @@ export function AnalysisTabContent({
     (analysis.fixing_quality === 'poor' || analysis.fixing_quality === 'fair')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* ── Header bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -518,11 +518,11 @@ export function AnalysisTabContent({
         const normalized = normalizeCategories(analysis.categories)
         const allCardNames = [...normalized.core, ...normalized.deck_specific].flatMap((c) => c.cards ?? [])
         return (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Overall assessment */}
           {analysis.overall_assessment && (
-            <div className="rounded-lg border border-border bg-muted/20 px-5 py-4">
-              <p className="text-sm leading-relaxed text-foreground">
+            <div className="rounded-lg border border-border bg-muted/20 px-6 py-5">
+              <p className="text-base leading-relaxed text-foreground">
                 <AnalysisTextWithCards text={analysis.overall_assessment} cardNames={allCardNames} />
               </p>
             </div>
@@ -530,9 +530,9 @@ export function AnalysisTabContent({
 
           {/* Power level */}
           {analysis.bracket !== undefined && (
-            <div className="space-y-2">
-              <SectionLabel>Power Level</SectionLabel>
-              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="space-y-3 pb-8 border-b border-zinc-800">
+              <h3 className="text-lg font-semibold">Power Level</h3>
+              <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                 {(() => {
                   const rawConfidence = analysis.bracket_confidence ?? 0
                   const confidence = rawConfidence > 1 ? rawConfidence : Math.round(rawConfidence * 100)
@@ -552,7 +552,7 @@ export function AnalysisTabContent({
                   )
                 })()}
                 {analysis.bracket_reasoning && (
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     <AnalysisTextWithCards text={analysis.bracket_reasoning} cardNames={allCardNames} />
                   </p>
                 )}
@@ -577,8 +577,8 @@ export function AnalysisTabContent({
 
           {/* Categories — 2-column grid */}
           {analysis.categories && (normalized.core.length > 0 || normalized.deck_specific.length > 0) && (
-            <div className="space-y-2">
-              <SectionLabel>Categories</SectionLabel>
+            <div className="space-y-3 pb-8 border-b border-zinc-800">
+              <h3 className="text-lg font-semibold">Categories</h3>
               <CategoryGrid
                 categories={normalized}
                 categoryTargets={categoryTargets}
@@ -590,8 +590,8 @@ export function AnalysisTabContent({
 
           {/* Strengths & Weaknesses — side by side */}
           {(analysis.strengths || analysis.weaknesses) && (
-            <div className="space-y-2">
-              <SectionLabel>Strengths & Weaknesses</SectionLabel>
+            <div className="space-y-3 pb-8 border-b border-zinc-800">
+              <h3 className="text-lg font-semibold">Strengths &amp; Weaknesses</h3>
               <StrengthsWeaknessesPanel
                 strengths={analysis.strengths}
                 weaknesses={analysis.weaknesses}
@@ -601,7 +601,7 @@ export function AnalysisTabContent({
 
           {/* Lands Analysis */}
           {displayedAnalysis?.lands_analysis && (
-            <div className="space-y-2">
+            <div className="space-y-3 pb-8 border-b border-zinc-800">
               <LandsSection
                 landsAnalysis={displayedAnalysis.lands_analysis}
                 fixingQuality={analysis.fixing_quality}
@@ -626,18 +626,18 @@ export function AnalysisTabContent({
           )}
 
           {/* Mana base + Synergy — two column */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-8 border-b border-zinc-800">
             {/* Mana Base */}
             {(analysis.land_count !== undefined ||
               analysis.mana_base_notes ||
               analysis.fixing_quality) && (
-              <div className="space-y-2">
-                <SectionLabel>Mana Base</SectionLabel>
-                <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">Mana Base</h3>
+                <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                   {analysis.land_count !== undefined && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Land Count</span>
-                      <span className="text-xs font-semibold tabular-nums">
+                      <span className="text-sm text-muted-foreground">Land Count</span>
+                      <span className="text-sm font-semibold tabular-nums">
                         {analysis.land_count}
                         {analysis.recommended_land_count
                           ? ` / ${analysis.recommended_land_count} rec.`
@@ -647,9 +647,9 @@ export function AnalysisTabContent({
                   )}
                   {analysis.fixing_quality && (
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Fixing Quality</span>
+                      <span className="text-sm text-muted-foreground">Fixing Quality</span>
                       <span
-                        className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${
+                        className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                           {
                             poor: 'text-red-500 bg-red-500/10',
                             fair: 'text-orange-500 bg-orange-500/10',
@@ -680,7 +680,7 @@ export function AnalysisTabContent({
                     </div>
                   )}
                   {analysis.mana_base_notes && (
-                    <p className="text-xs text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       <AnalysisTextWithCards text={analysis.mana_base_notes} cardNames={allCardNames} />
                     </p>
                   )}
@@ -692,14 +692,14 @@ export function AnalysisTabContent({
             {(analysis.synergy_score !== undefined ||
               analysis.key_synergies ||
               analysis.dead_cards) && (
-              <div className="space-y-2">
-                <SectionLabel>Synergy</SectionLabel>
-                <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">Synergy</h3>
+                <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                   {analysis.synergy_score !== undefined && (
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Score</span>
-                        <span className="text-xs font-semibold tabular-nums">
+                        <span className="text-sm text-muted-foreground">Score</span>
+                        <span className="text-sm font-semibold tabular-nums">
                           {analysis.synergy_score}/10
                         </span>
                       </div>
@@ -708,12 +708,12 @@ export function AnalysisTabContent({
                   )}
 
                   {analysis.key_synergies && analysis.key_synergies.length > 0 && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Key Synergies
                       </span>
                       {analysis.key_synergies.map((s, i) => (
-                        <p key={i} className="text-xs text-muted-foreground leading-relaxed">
+                        <p key={i} className="text-sm text-muted-foreground leading-relaxed">
                           <AnalysisTextWithCards text={s} cardNames={allCardNames} />
                         </p>
                       ))}
@@ -721,12 +721,12 @@ export function AnalysisTabContent({
                   )}
 
                   {analysis.dead_cards && analysis.dead_cards.length > 0 && (
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                    <div className="space-y-1.5">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Dead Cards
                       </span>
                       {analysis.dead_cards.map((d, i) => (
-                        <p key={i} className="text-xs text-muted-foreground leading-relaxed">
+                        <p key={i} className="text-sm text-muted-foreground leading-relaxed">
                           <AnalysisTextWithCards text={d} cardNames={allCardNames} />
                         </p>
                       ))}
@@ -739,14 +739,14 @@ export function AnalysisTabContent({
 
           {/* Salt */}
           {(analysis.salt_total !== undefined || analysis.salt_notes) && (
-            <div className="space-y-2">
-              <SectionLabel>Salt Assessment</SectionLabel>
-              <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+            <div className="space-y-3 pb-8 border-b border-zinc-800">
+              <h3 className="text-lg font-semibold">Salt Assessment</h3>
+              <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                 {analysis.salt_total !== undefined && (
                   <SaltScoreMeter score={analysis.salt_total} />
                 )}
                 {analysis.salt_notes && (
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
                     <AnalysisTextWithCards text={analysis.salt_notes} cardNames={allCardNames} />
                   </p>
                 )}
@@ -756,8 +756,8 @@ export function AnalysisTabContent({
 
           {/* ── Follow-up action buttons ── */}
           {(showImproveSynergy || showImproveMana) && onSwitchToRecommendations && (
-            <div className="space-y-2">
-              <SectionLabel>Suggested Next Steps</SectionLabel>
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Suggested Next Steps</h3>
               <div className="flex flex-wrap gap-2">
                 {showImproveSynergy && (
                   <button

@@ -23,6 +23,8 @@ interface PersistedRecommendation {
   tags: RecommendationTag[]
   /** DB stored: true = accepted, false = skipped, null = pending */
   accepted: boolean | null
+  /** DB stored: true = dismissed */
+  dismissed: boolean
   sortOrder: number
 }
 
@@ -39,9 +41,10 @@ type LocalStatusMap = Record<string, RecStatus>
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function dbAcceptedToStatus(accepted: boolean | null): RecStatus {
-  if (accepted === true) return 'accepted'
-  if (accepted === false) return 'skipped'
+function dbAcceptedToStatus(rec: Pick<PersistedRecommendation, 'accepted' | 'dismissed'>): RecStatus {
+  if (rec.dismissed === true) return 'dismissed'
+  if (rec.accepted === true) return 'accepted'
+  if (rec.accepted === false) return 'skipped'
   return null
 }
 
@@ -124,7 +127,7 @@ function PersistedRecCard({
   const tierCfg = TIER_CONFIG[rec.tier]
 
   // Effective status: local override takes precedence, else from DB
-  const effectiveStatus = localStatus !== undefined ? localStatus : dbAcceptedToStatus(rec.accepted)
+  const effectiveStatus = localStatus !== undefined ? localStatus : dbAcceptedToStatus(rec)
 
   // Dismissed cards are hidden at parent level
   if (effectiveStatus === 'dismissed') return null
@@ -343,11 +346,11 @@ export function RecommendationsTabContent({
   )
 
   const visibleCuts = cuts.filter((r) => {
-    const status = localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r.accepted)
+    const status = localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r)
     return status !== 'dismissed'
   })
   const visibleAdds = adds.filter((r) => {
-    const status = localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r.accepted)
+    const status = localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r)
     return status !== 'dismissed'
   })
 

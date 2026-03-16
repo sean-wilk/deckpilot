@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { deckAnalyses, swapRecommendations, cards } from '@/lib/db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, and, desc, ne } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 export async function GET(
@@ -38,7 +38,7 @@ export async function GET(
       .limit(1)
 
     if (analyses.length === 0) {
-      return NextResponse.json(null)
+      return NextResponse.json({ status: 'idle', results: null, errorMessage: null, history: [] })
     }
 
     const analysis = analyses[0]
@@ -65,28 +65,20 @@ export async function GET(
       .filter((r) => r.id !== analysis.id)
       .map((r) => ({ id: r.id, createdAt: r.createdAt }))
 
-    // For non-complete statuses, return nulls for content fields
     if (status === 'pending' || status === 'processing') {
       return NextResponse.json({
-        analysisId: analysis.id,
         status,
-        recommendations: null,
-        summary: null,
-        estimatedBracketAfter: null,
-        createdAt: analysis.createdAt,
+        results: null,
+        errorMessage: null,
         history,
       })
     }
 
     if (status === 'failed') {
       return NextResponse.json({
-        analysisId: analysis.id,
         status,
-        recommendations: null,
-        summary: null,
-        estimatedBracketAfter: null,
+        results: null,
         errorMessage: analysis.errorMessage ?? null,
-        createdAt: analysis.createdAt,
         history,
       })
     }
@@ -107,38 +99,48 @@ export async function GET(
         impactSummary: swapRecommendations.impactSummary,
         tags: swapRecommendations.tags,
         accepted: swapRecommendations.accepted,
+        dismissed: swapRecommendations.dismissed,
         sortOrder: swapRecommendations.sortOrder,
       })
       .from(swapRecommendations)
       .leftJoin(cardOut, eq(swapRecommendations.cardOutId, cardOut.id))
       .leftJoin(cardIn, eq(swapRecommendations.cardInId, cardIn.id))
-      .where(eq(swapRecommendations.analysisId, analysis.id))
+      .where(
+        and(
+          eq(swapRecommendations.analysisId, analysis.id),
+          ne(swapRecommendations.dismissed, true)
+        )
+      )
       .orderBy(swapRecommendations.sortOrder)
 
-    const results = analysis.results as Record<string, unknown> | null
+    const dbResults = analysis.results as Record<string, unknown> | null
 
     return NextResponse.json({
-      analysisId: analysis.id,
       status,
-      recommendations: recs.map((r) => ({
-        id: r.id,
-        tier: r.tier,
-        cardOutName: r.cardOutName,
-        cardOutImageUri: r.cardOutImageUri,
-        cardInName: r.cardInName,
-        cardInImageUri: r.cardInImageUri,
-        reasoning: r.reasoning,
-        impactSummary: r.impactSummary,
-        tags: r.tags,
-        accepted: r.accepted,
-        sortOrder: r.sortOrder,
-      })),
-      summary: results != null && typeof results === 'object' ? (results.summary ?? null) : null,
-      estimatedBracketAfter:
-        results != null && typeof results === 'object'
-          ? (results.estimatedBracketAfter ?? null)
-          : null,
-      createdAt: analysis.createdAt,
+      results: {
+        analysisId: analysis.id,
+        recommendations: recs.map((r) => ({
+          id: r.id,
+          tier: r.tier,
+          cardOutName: r.cardOutName,
+          cardOutImageUri: r.cardOutImageUri,
+          cardInName: r.cardInName,
+          cardInImageUri: r.cardInImageUri,
+          reasoning: r.reasoning,
+          impactSummary: r.impactSummary,
+          tags: r.tags,
+          accepted: r.accepted,
+          dismissed: r.dismissed,
+          sortOrder: r.sortOrder,
+        })),
+        summary: dbResults != null && typeof dbResults === 'object' ? (dbResults.summary ?? null) : null,
+        estimatedBracketAfter:
+          dbResults != null && typeof dbResults === 'object'
+            ? (dbResults.estimatedBracketAfter ?? null)
+            : null,
+        createdAt: analysis.createdAt,
+      },
+      errorMessage: null,
       history,
     })
   } catch (error) {

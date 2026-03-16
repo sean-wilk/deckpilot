@@ -21,6 +21,7 @@ export interface DeckCardEntry {
   cardFaces: CardFace[] | null
   manaCost: string | null
   cmc: number
+  userNote: string | null
   // Additional fields for detail modal
   typeLine?: string | null
   oracleText?: string | null
@@ -151,7 +152,13 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
           className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[4.75%]"
           aria-label={`View details for ${card.name}`}
         >
-        <div style={{ width, height: Math.round(width * 1.395), overflow: 'hidden', borderRadius: '4.75% / 3.4%' }}>
+        <div
+          style={{ width, height: Math.round(width * 1.395), overflow: 'hidden', borderRadius: '4.75% / 3.4%' }}
+          className={cn(
+            'transition-all duration-200 shadow-sm',
+            hovered && 'ring-1 ring-zinc-600 shadow-md',
+          )}
+        >
           <CardImage
             name={card.name}
             imageUris={card.imageUris}
@@ -159,7 +166,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
             size={imageSize}
             className={cn(
               'transition-transform duration-200 !w-full !h-full',
-              hovered && 'scale-105 shadow-xl',
+              hovered && 'scale-[1.02]',
               (removing || toggling) && 'opacity-50',
             )}
           />
@@ -271,14 +278,13 @@ interface CardGroupProps {
 function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize }: CardGroupProps) {
   return (
     <section>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-800">
         <h3 className="text-sm font-semibold text-foreground">
           {label}
         </h3>
         <span className="text-xs text-muted-foreground tabular-nums">
           ({cards.length})
         </span>
-        <div className="flex-1 h-px bg-border" />
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -443,6 +449,7 @@ export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'typ
           onOpenChange={setModalOpen}
           deckId={deckId}
           deckCardId={selectedCard.deckCardId}
+          userNote={selectedCard?.userNote ?? undefined}
           isOwner={isOwner}
           isCommander={selectedCard.isCommander}
           onRemove={(id) => {

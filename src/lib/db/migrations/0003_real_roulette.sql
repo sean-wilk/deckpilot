@@ -1,0 +1,1 @@
+ALTER TABLE "swap_recommendations" ADD COLUMN "dismissed" boolean DEFAULT false NOT NULL;

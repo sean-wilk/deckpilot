@@ -55,8 +55,8 @@ function CommanderCard({
       )}
       <div
         className={cn(
-          'relative overflow-hidden rounded-lg shadow-2xl shadow-black/60',
-          'border border-white/10',
+          'relative overflow-hidden rounded-xl shadow-2xl shadow-black/60',
+          'ring-2 ring-zinc-700',
           'w-[72px] h-[100px] md:w-[90px] md:h-[126px]',
           'transition-transform duration-200 hover:scale-105',
         )}
@@ -130,9 +130,9 @@ export function DeckHeroBanner({
       <div
         className={cn(
           'absolute inset-0',
-          'bg-gradient-to-t from-background via-background/70 to-transparent',
+          'bg-gradient-to-t from-zinc-900/95 via-zinc-900/80 to-transparent',
           // Side vignette for extra depth
-          'after:absolute after:inset-0 after:bg-gradient-to-r after:from-background/60 after:via-transparent after:to-background/20',
+          'after:absolute after:inset-0 after:bg-gradient-to-r after:from-zinc-900/60 after:via-transparent after:to-zinc-900/20',
         )}
         aria-hidden="true"
       />
@@ -151,7 +151,7 @@ export function DeckHeroBanner({
         <div className="relative w-full flex items-end gap-4 px-4 md:px-6 pb-4">
 
           {/* Commander card(s) — bottom-left, slightly outside the hero edge */}
-          <div className="flex items-end gap-2 shrink-0 translate-y-6 md:translate-y-8">
+          <div className="flex items-end gap-3 shrink-0 translate-y-6 md:translate-y-8">
             <CommanderCard
               imageUris={commanderImageUris ?? commanderCardFaces?.[0]?.image_uris}
               name={commanderName}
@@ -166,7 +166,7 @@ export function DeckHeroBanner({
           </div>
 
           {/* Text + badges */}
-          <div className="flex-1 min-w-0 pb-1">
+          <div className="flex-1 min-w-0 pb-2">
             {/* Deck title */}
             <h1
               className={cn(
@@ -181,12 +181,12 @@ export function DeckHeroBanner({
             </h1>
 
             {/* Badges row */}
-            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+            <div className="flex items-center gap-2 flex-wrap mt-2">
               {/* Bracket badge */}
               <span
                 className={cn(
-                  'inline-flex items-center px-2 py-0.5 rounded-full',
-                  'text-[10px] font-semibold border shrink-0',
+                  'inline-flex items-center px-3 py-1 rounded-full',
+                  'text-xs font-semibold border shrink-0',
                   bracketColor,
                 )}
               >
@@ -197,8 +197,8 @@ export function DeckHeroBanner({
               {deck.archetype && (
                 <span
                   className={cn(
-                    'inline-flex items-center px-2 py-0.5 rounded-full shrink-0',
-                    'text-[10px] font-medium border',
+                    'inline-flex items-center px-3 py-1 rounded-full shrink-0',
+                    'text-xs font-medium border',
                     'bg-white/10 text-white/80 border-white/20',
                   )}
                 >
@@ -209,8 +209,8 @@ export function DeckHeroBanner({
               {/* Card count badge */}
               <span
                 className={cn(
-                  'inline-flex items-center px-2 py-0.5 rounded-full shrink-0',
-                  'text-[10px] font-medium border',
+                  'inline-flex items-center px-3 py-1 rounded-full shrink-0',
+                  'text-xs font-medium border',
                   cardCount === 100
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                     : cardCount > 100

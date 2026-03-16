@@ -29,6 +29,7 @@ export interface CardDetailModalProps {
   aiActions?: React.ReactNode
   deckId?: string
   deckCardId?: string
+  userNote?: string
   isOwner?: boolean
   isCommander?: boolean
   onRemove?: (deckCardId: string) => void
@@ -53,6 +54,21 @@ interface CardOpinionResult {
 
 // ─── AI Quick Actions ─────────────────────────────────────────────────────────
 
+interface AiCache {
+  replacement: FindReplacementResult | null
+  opinion: CardOpinionResult | null
+  savedAt: number
+}
+
+function formatAgo(ms: number): string {
+  const secs = Math.floor(ms / 1000)
+  if (secs < 60) return `${secs}s ago`
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  return `${hrs}h ago`
+}
+
 function AiQuickActions({
   deckId,
   cardName,
@@ -62,11 +78,55 @@ function AiQuickActions({
   cardName: string
   triggerReplacementRef?: React.MutableRefObject<(() => void) | null>
 }) {
+  const cacheKey = `deckpilot:ai:${deckId}:${cardName}`
+
   const [replacementLoading, setReplacementLoading] = useState(false)
   const [replacementResult, setReplacementResult] = useState<FindReplacementResult | null>(null)
 
   const [opinionLoading, setOpinionLoading] = useState(false)
   const [opinionResult, setOpinionResult] = useState<CardOpinionResult | null>(null)
+
+  const [cachedAt, setCachedAt] = useState<number | null>(null)
+
+  // On mount, load from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(cacheKey)
+      if (raw) {
+        const parsed = JSON.parse(raw) as AiCache
+        if (parsed.replacement) setReplacementResult(parsed.replacement)
+        if (parsed.opinion) setOpinionResult(parsed.opinion)
+        setCachedAt(parsed.savedAt)
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [cacheKey])
+
+  const saveToCache = useCallback(
+    (replacement: FindReplacementResult | null, opinion: CardOpinionResult | null) => {
+      try {
+        const now = Date.now()
+        const cache: AiCache = { replacement, opinion, savedAt: now }
+        localStorage.setItem(cacheKey, JSON.stringify(cache))
+        setCachedAt(now)
+      } catch {
+        // ignore storage errors
+      }
+    },
+    [cacheKey]
+  )
+
+  const handleClearCache = useCallback(() => {
+    try {
+      localStorage.removeItem(cacheKey)
+    } catch {
+      // ignore
+    }
+    setReplacementResult(null)
+    setOpinionResult(null)
+    setCachedAt(null)
+  }, [cacheKey])
 
   const handleFindReplacement = useCallback(async () => {
     setReplacementLoading(true)
@@ -79,12 +139,13 @@ function AiQuickActions({
       })
       const data = (await res.json()) as FindReplacementResult
       setReplacementResult(data)
+      saveToCache(data, opinionResult)
     } catch {
       setReplacementResult({ error: 'Failed to fetch replacements.' })
     } finally {
       setReplacementLoading(false)
     }
-  }, [deckId, cardName])
+  }, [deckId, cardName, opinionResult, saveToCache])
 
   // Expose trigger to parent via ref so "Suggest Swap" button can invoke it
   useEffect(() => {
@@ -104,15 +165,30 @@ function AiQuickActions({
       })
       const data = (await res.json()) as CardOpinionResult
       setOpinionResult(data)
+      saveToCache(replacementResult, data)
     } catch {
       setOpinionResult({ error: 'Failed to fetch opinion.' })
     } finally {
       setOpinionLoading(false)
     }
-  }, [deckId, cardName])
+  }, [deckId, cardName, replacementResult, saveToCache])
 
   return (
     <div className="space-y-4">
+      {/* Cache metadata */}
+      {cachedAt !== null && (
+        <div className="flex items-center justify-between text-xs text-white/40">
+          <span>Results from {formatAgo(Date.now() - cachedAt)}</span>
+          <button
+            type="button"
+            onClick={handleClearCache}
+            className="underline hover:text-white/60 transition-colors"
+          >
+            Clear cached
+          </button>
+        </div>
+      )}
+
       {/* Find Replacement */}
       <div className="space-y-2">
         <button
@@ -120,11 +196,11 @@ function AiQuickActions({
           onClick={handleFindReplacement}
           disabled={replacementLoading}
           className={cn(
-            'w-full px-3 py-2 rounded-lg text-sm font-medium',
+            'w-full h-9 px-3 rounded-lg text-sm font-medium',
             'bg-violet-600/20 border border-violet-500/30 text-violet-300',
             'hover:bg-violet-600/30 hover:text-violet-200',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'transition-all duration-150',
+            'transition-colors duration-150',
           )}
         >
           {replacementLoading ? 'Finding replacements…' : 'Find Replacement'}
@@ -163,11 +239,11 @@ function AiQuickActions({
           onClick={handleCardOpinion}
           disabled={opinionLoading}
           className={cn(
-            'w-full px-3 py-2 rounded-lg text-sm font-medium',
+            'w-full h-9 px-3 rounded-lg text-sm font-medium',
             'bg-sky-600/20 border border-sky-500/30 text-sky-300',
             'hover:bg-sky-600/30 hover:text-sky-200',
             'disabled:opacity-50 disabled:cursor-not-allowed',
-            'transition-all duration-150',
+            'transition-colors duration-150',
           )}
         >
           {opinionLoading ? 'Asking AI…' : 'Ask AI about this card'}
@@ -275,6 +351,82 @@ function CloseButton({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ─── Notes Textarea ───────────────────────────────────────────────────────────
+
+function NotesTextarea({
+  deckId,
+  deckCardId,
+  initialNote,
+}: {
+  deckId: string
+  deckCardId: string
+  initialNote: string
+}) {
+  const [note, setNote] = useState(initialNote)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+  const handleBlur = useCallback(async () => {
+    if (note === initialNote && saveStatus === 'idle') return
+    setSaveStatus('saving')
+    try {
+      const res = await fetch(`/api/decks/${deckId}/cards/${deckCardId}/note`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note }),
+      })
+      if (res.ok) {
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('idle'), 2000)
+      } else {
+        setSaveStatus('error')
+      }
+    } catch {
+      setSaveStatus('error')
+    }
+  }, [deckId, deckCardId, note, initialNote, saveStatus])
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between">
+        <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+          Notes
+        </label>
+        <span className="text-xs text-white/30 italic">
+          AI considers these when analyzing
+        </span>
+      </div>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        onBlur={handleBlur}
+        rows={3}
+        placeholder="Add personal notes about this card…"
+        className={cn(
+          'w-full resize-none rounded-lg px-3 py-2',
+          'bg-white/5 border border-white/10',
+          'text-sm text-white/80 placeholder:text-white/30',
+          'focus:outline-none focus:border-white/25 focus:bg-white/8',
+          'transition-colors duration-150',
+        )}
+      />
+      {saveStatus !== 'idle' && (
+        <p
+          className={cn(
+            'text-xs',
+            saveStatus === 'saving' && 'text-white/40',
+            saveStatus === 'saved' && 'text-emerald-400',
+            saveStatus === 'error' && 'text-red-400',
+          )}
+        >
+          {saveStatus === 'saving' && 'Saving…'}
+          {saveStatus === 'saved' && 'Saved'}
+          {saveStatus === 'error' && 'Failed to save'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── CardDetailModal ──────────────────────────────────────────────────────────
 
 export function CardDetailModal({
@@ -285,6 +437,7 @@ export function CardDetailModal({
   aiActions,
   deckId,
   deckCardId,
+  userNote,
   isOwner,
   isCommander,
   onRemove,
@@ -344,7 +497,7 @@ export function CardDetailModal({
         onClick={(e) => e.stopPropagation()}
         className={cn(
           'relative',
-          'w-full max-w-5xl',
+          'w-full max-w-6xl',
           'rounded-2xl overflow-hidden',
           'bg-zinc-900 border border-white/10',
           'shadow-2xl shadow-black/60',
@@ -367,7 +520,7 @@ export function CardDetailModal({
               'bg-zinc-950/60',
               'p-6 sm:p-8',
               // On mobile: centered; on sm+: left column
-              'sm:w-[300px]',
+              'sm:w-[260px]',
             )}
           >
             <CardImage
@@ -382,7 +535,7 @@ export function CardDetailModal({
           <div
             className={cn(
               'flex-1 flex flex-col gap-5',
-              'p-6 sm:p-8',
+              'px-6 py-6 sm:px-8 sm:py-8',
               'text-white',
               'min-w-0',
             )}
@@ -395,15 +548,15 @@ export function CardDetailModal({
 
               {/* Mana cost */}
               {card.manaCost && (
-                <p className="mt-1 text-sm font-mono text-white/60 tracking-wider">
+                <p className="mt-1 text-sm text-muted-foreground font-mono tracking-wider">
                   {card.manaCost}
                 </p>
               )}
             </div>
 
             {/* Type line */}
-            <div className="border-t border-white/10 pt-4">
-              <p className="text-sm font-semibold text-white/80 uppercase tracking-wider">
+            <div className="border-t border-zinc-800 pt-4">
+              <p className="text-sm text-muted-foreground">
                 {card.typeLine}
               </p>
             </div>
@@ -413,8 +566,8 @@ export function CardDetailModal({
               <div
                 className={cn(
                   'rounded-lg px-4 py-3',
-                  'bg-white/5 border border-white/8',
-                  'text-sm text-white/75',
+                  'bg-white/5 border border-zinc-800',
+                  'text-sm text-white/85 leading-relaxed',
                   'whitespace-pre-wrap',
                 )}
               >
@@ -464,7 +617,7 @@ export function CardDetailModal({
 
             {/* Owner action bar: Remove + Suggest Swap */}
             {isOwner && !isCommander && deckCardId && onRemove && (
-              <div className="border-t border-white/10 pt-4">
+              <div className="border-t border-zinc-800 pt-4">
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -473,10 +626,10 @@ export function CardDetailModal({
                       onOpenChange(false)
                     }}
                     className={cn(
-                      'flex-1 px-3 py-2 rounded-lg text-sm font-medium',
+                      'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
                       'bg-red-600/20 border border-red-500/30 text-red-400',
                       'hover:bg-red-600/30 hover:text-red-300',
-                      'transition-all duration-150',
+                      'transition-colors duration-150',
                     )}
                   >
                     Remove from Deck
@@ -486,10 +639,10 @@ export function CardDetailModal({
                       type="button"
                       onClick={() => triggerReplacementRef.current?.()}
                       className={cn(
-                        'flex-1 px-3 py-2 rounded-lg text-sm font-medium',
+                        'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
                         'bg-violet-600/20 border border-violet-500/30 text-violet-300',
                         'hover:bg-violet-600/30 hover:text-violet-200',
-                        'transition-all duration-150',
+                        'transition-colors duration-150',
                       )}
                     >
                       Suggest Swap
@@ -499,21 +652,32 @@ export function CardDetailModal({
               </div>
             )}
 
+            {/* Notes */}
+            {deckId && deckCardId && (
+              <div className="border-t border-zinc-800 pt-4">
+                <NotesTextarea
+                  deckId={deckId}
+                  deckCardId={deckCardId}
+                  initialNote={userNote ?? ''}
+                />
+              </div>
+            )}
+
             {/* AI quick actions */}
             {deckId && (
-              <div className="border-t border-white/10 pt-4">
+              <div className="border-t border-zinc-800 pt-4">
                 <AiQuickActions deckId={deckId} cardName={card.name} triggerReplacementRef={triggerReplacementRef} />
               </div>
             )}
 
             {/* Printing selector slot */}
-            <div className="border-t border-white/10 pt-4">
+            <div className="border-t border-zinc-800 pt-4">
               {printingSelector ?? <PrintingSelector cardId={card.id} />}
             </div>
 
             {/* AI actions slot */}
             {aiActions && (
-              <div className="border-t border-white/10 pt-4">
+              <div className="border-t border-zinc-800 pt-4">
                 {aiActions}
               </div>
             )}

@@ -22,6 +22,7 @@ interface DeckCardEntry {
   cmc: number
   imageUris: CardImageUris | null
   cardFaces: CardFace[] | null
+  userNote: string | null
 }
 
 interface DeckPageClientProps {

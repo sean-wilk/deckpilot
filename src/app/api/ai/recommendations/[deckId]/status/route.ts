@@ -30,8 +30,11 @@ export async function PATCH(
       return new Response('Invalid request body', { status: 400 })
     }
 
-    // Map status to accepted boolean
-    const acceptedValue = status === 'accepted' ? true : status === 'skipped' ? false : null
+    // Map status to accepted/dismissed columns
+    const statusFields =
+      status === 'accepted'  ? { accepted: true,  dismissed: false } :
+      status === 'skipped'   ? { accepted: false, dismissed: false } :
+      /* dismissed */          { dismissed: true }
 
     // Fetch the recommendation first (to get cardOutId / cardInId if accepting)
     const [rec] = await db.select().from(swapRecommendations)
@@ -72,7 +75,7 @@ export async function PATCH(
 
     // Update the recommendation status
     const [updated] = await db.update(swapRecommendations)
-      .set({ accepted: acceptedValue })
+      .set(statusFields)
       .where(eq(swapRecommendations.id, recommendationId))
       .returning()
 

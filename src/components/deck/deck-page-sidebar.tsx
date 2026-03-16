@@ -93,13 +93,13 @@ function AiPanel({
       <div className="flex flex-col gap-2">
         <button
           onClick={onAnalyze}
-          className="w-full rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           Analyze Deck
         </button>
         <button
           onClick={onRecommend}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted transition-colors"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted hover:border-zinc-600 transition-colors"
         >
           Get Recommendations
         </button>
@@ -112,9 +112,9 @@ function AiPanel({
 
 function DeckInfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-1.5">
+    <div className="flex items-center justify-between py-2">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium">{value}</span>
+      <span className="text-xs font-medium tabular-nums">{value}</span>
     </div>
   )
 }
@@ -123,7 +123,7 @@ function DeckInfoRow({ label, value }: { label: string; value: React.ReactNode }
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
       {title}
     </h3>
   )
@@ -140,7 +140,7 @@ export function DeckPageSidebar({
   onRecommend,
 }: DeckPageSidebarProps) {
   return (
-    <aside className="flex flex-col gap-6 w-full lg:w-auto lg:min-w-[260px] lg:max-w-[320px]">
+    <aside className="flex flex-col gap-4 w-full lg:w-auto lg:min-w-[260px] lg:max-w-[320px]">
       {/* AI Panel */}
       {isOwner && (
         <AiPanel cardCount={cardCount} onAnalyze={onAnalyze} onRecommend={onRecommend} />
@@ -169,7 +169,7 @@ export function DeckPageSidebar({
       {/* Mana Curve */}
       <div className="sm:block md:block">
         <SectionHeader title="Mana Curve" />
-        <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
+        <div className="rounded-lg border border-border bg-card p-3 lg:p-4 overflow-hidden max-h-[220px]">
           <ManaCurveChart cards={statsCards} />
         </div>
       </div>
@@ -177,7 +177,7 @@ export function DeckPageSidebar({
       {/* Color Distribution */}
       <div className="sm:block md:block">
         <SectionHeader title="Color Distribution" />
-        <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
+        <div className="rounded-lg border border-border bg-card p-3 lg:p-4 overflow-hidden max-h-[220px]">
           <ColorChart cards={statsCards} />
         </div>
       </div>
