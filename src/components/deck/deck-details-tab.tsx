@@ -1,34 +1,9 @@
 'use client'
 
 import { startTransition, useState } from 'react'
-import { db } from '@/lib/db'
-import { decks } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
-import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { updateDeckPhilosophy, updateDeckArchetype } from '@/app/(dashboard)/decks/actions'
 import { ARCHETYPES } from '@/lib/constants/archetypes'
 import { cn } from '@/lib/utils'
-
-// ─── Server action ────────────────────────────────────────────────────────────
-
-async function updateDeckDetails(
-  deckId: string,
-  updates: { philosophy?: string | null; archetype?: string | null }
-) {
-  'use server'
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not authenticated')
-
-  await db
-    .update(decks)
-    .set({ ...updates, updatedAt: new Date() })
-    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
-
-  revalidatePath(`/decks/${deckId}`)
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -156,7 +131,7 @@ export function DeckDetailsTab({ deckId, philosophy, archetype, isOwner }: DeckD
     if (trimmed === (philosophy ?? '').trim()) return
     setIsSaving(true)
     startTransition(async () => {
-      await updateDeckDetails(deckId, { philosophy: trimmed || null })
+      await updateDeckPhilosophy(deckId, trimmed || null)
       setIsSaving(false)
     })
   }
@@ -165,7 +140,7 @@ export function DeckDetailsTab({ deckId, philosophy, archetype, isOwner }: DeckD
     const next = e.target.value
     setArchetypeValue(next)
     startTransition(async () => {
-      await updateDeckDetails(deckId, { archetype: next || null })
+      await updateDeckArchetype(deckId, next || null)
     })
   }
 
