@@ -22,6 +22,13 @@ interface DeckCardEntry {
   cmc: number
   imageUris: CardImageUris | null
   cardFaces: CardFace[] | null
+  typeLine?: string | null
+  oracleText?: string | null
+  power?: string | null
+  toughness?: string | null
+  rarity?: string | null
+  setCode?: string | null
+  prices?: Record<string, string | null> | null
   userNote: string | null
 }
 
