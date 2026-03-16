@@ -14,7 +14,7 @@ export interface DeckDisplayControlsProps {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CARD_SIZE_MIN = 72
-const CARD_SIZE_MAX = 180
+const CARD_SIZE_MAX = 350
 const CARD_SIZE_DEFAULT = 100
 const CARD_SIZE_STORAGE_KEY = 'deckpilot:card-size'
 
