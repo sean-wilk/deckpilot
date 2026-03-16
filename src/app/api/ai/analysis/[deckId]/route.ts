@@ -36,21 +36,18 @@ export async function GET(
       .orderBy(desc(deckAnalyses.createdAt))
 
     if (allRows.length === 0) {
-      return NextResponse.json({ latest: null, status: null, history: [] })
+      return NextResponse.json({ results: null, status: null, history: [], errorMessage: null })
     }
 
     const mostRecent = allRows[0]
     const currentStatus = mostRecent.status as 'pending' | 'processing' | 'complete' | 'failed'
 
-    // Build the latest payload based on status
-    let latest: unknown
+    // Build the results payload based on status
+    let results: unknown
     if (currentStatus === 'complete') {
-      latest = mostRecent.results
-    } else if (currentStatus === 'failed') {
-      latest = null
+      results = mostRecent.results
     } else {
-      // pending or processing
-      latest = null
+      results = null
     }
 
     // History only includes complete records
@@ -66,9 +63,11 @@ export async function GET(
           : null,
     }))
 
-    const response: Record<string, unknown> = { latest, status: currentStatus, history }
-    if (currentStatus === 'failed') {
-      response.errorMessage = mostRecent.errorMessage ?? null
+    const response: Record<string, unknown> = {
+      results,
+      status: currentStatus,
+      history,
+      errorMessage: currentStatus === 'failed' ? (mostRecent.errorMessage ?? null) : null,
     }
 
     return NextResponse.json(response)
