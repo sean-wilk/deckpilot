@@ -151,17 +151,19 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
           className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[4.75%]"
           aria-label={`View details for ${card.name}`}
         >
-        <CardImage
-          name={card.name}
-          imageUris={card.imageUris}
-          cardFaces={card.cardFaces}
-          size={imageSize}
-          className={cn(
-            'transition-transform duration-200',
-            hovered && 'scale-105 shadow-xl',
-            (removing || toggling) && 'opacity-50',
-          )}
-        />
+        <div style={{ width, height: Math.round(width * 1.395), overflow: 'hidden', borderRadius: '4.75% / 3.4%' }}>
+          <CardImage
+            name={card.name}
+            imageUris={card.imageUris}
+            cardFaces={card.cardFaces}
+            size={imageSize}
+            className={cn(
+              'transition-transform duration-200 !w-full !h-full',
+              hovered && 'scale-105 shadow-xl',
+              (removing || toggling) && 'opacity-50',
+            )}
+          />
+        </div>
         </button>
 
         {/* Hover overlay: action buttons */}
