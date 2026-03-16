@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { CardImage } from '@/components/cards/card-image'
 import { PrintingSelector } from '@/components/cards/printing-selector'
@@ -28,6 +28,10 @@ export interface CardDetailModalProps {
   printingSelector?: React.ReactNode
   aiActions?: React.ReactNode
   deckId?: string
+  deckCardId?: string
+  isOwner?: boolean
+  isCommander?: boolean
+  onRemove?: (deckCardId: string) => void
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,7 +53,15 @@ interface CardOpinionResult {
 
 // ─── AI Quick Actions ─────────────────────────────────────────────────────────
 
-function AiQuickActions({ deckId, cardName }: { deckId: string; cardName: string }) {
+function AiQuickActions({
+  deckId,
+  cardName,
+  triggerReplacementRef,
+}: {
+  deckId: string
+  cardName: string
+  triggerReplacementRef?: React.MutableRefObject<(() => void) | null>
+}) {
   const [replacementLoading, setReplacementLoading] = useState(false)
   const [replacementResult, setReplacementResult] = useState<FindReplacementResult | null>(null)
 
@@ -73,6 +85,13 @@ function AiQuickActions({ deckId, cardName }: { deckId: string; cardName: string
       setReplacementLoading(false)
     }
   }, [deckId, cardName])
+
+  // Expose trigger to parent via ref so "Suggest Swap" button can invoke it
+  useEffect(() => {
+    if (triggerReplacementRef) {
+      triggerReplacementRef.current = handleFindReplacement
+    }
+  }, [triggerReplacementRef, handleFindReplacement])
 
   const handleCardOpinion = useCallback(async () => {
     setOpinionLoading(true)
@@ -265,8 +284,13 @@ export function CardDetailModal({
   printingSelector,
   aiActions,
   deckId,
+  deckCardId,
+  isOwner,
+  isCommander,
+  onRemove,
 }: CardDetailModalProps) {
   const handleClose = useCallback(() => onOpenChange(false), [onOpenChange])
+  const triggerReplacementRef = useRef<(() => void) | null>(null)
 
   // Keyboard: Escape to close
   useEffect(() => {
@@ -438,10 +462,47 @@ export function CardDetailModal({
               )}
             </div>
 
+            {/* Owner action bar: Remove + Suggest Swap */}
+            {isOwner && !isCommander && deckCardId && onRemove && (
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRemove(deckCardId)
+                      onOpenChange(false)
+                    }}
+                    className={cn(
+                      'flex-1 px-3 py-2 rounded-lg text-sm font-medium',
+                      'bg-red-600/20 border border-red-500/30 text-red-400',
+                      'hover:bg-red-600/30 hover:text-red-300',
+                      'transition-all duration-150',
+                    )}
+                  >
+                    Remove from Deck
+                  </button>
+                  {deckId && (
+                    <button
+                      type="button"
+                      onClick={() => triggerReplacementRef.current?.()}
+                      className={cn(
+                        'flex-1 px-3 py-2 rounded-lg text-sm font-medium',
+                        'bg-violet-600/20 border border-violet-500/30 text-violet-300',
+                        'hover:bg-violet-600/30 hover:text-violet-200',
+                        'transition-all duration-150',
+                      )}
+                    >
+                      Suggest Swap
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* AI quick actions */}
             {deckId && (
               <div className="border-t border-white/10 pt-4">
-                <AiQuickActions deckId={deckId} cardName={card.name} />
+                <AiQuickActions deckId={deckId} cardName={card.name} triggerReplacementRef={triggerReplacementRef} />
               </div>
             )}
 

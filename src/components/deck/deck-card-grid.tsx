@@ -229,6 +229,7 @@ function TypeGroup({ type, cards, deckId, isOwner, onCardClick }: TypeGroupProps
 export function DeckCardGrid({ deckId, cards, isOwner }: DeckCardGridProps) {
   const [selectedCard, setSelectedCard] = useState<DeckCardEntry | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [, startTransition] = useTransition()
 
   function handleCardClick(card: DeckCardEntry) {
     setSelectedCard(card)
@@ -290,6 +291,15 @@ export function DeckCardGrid({ deckId, cards, isOwner }: DeckCardGridProps) {
           }}
           open={modalOpen}
           onOpenChange={setModalOpen}
+          deckId={deckId}
+          deckCardId={selectedCard.deckCardId}
+          isOwner={isOwner}
+          isCommander={selectedCard.isCommander}
+          onRemove={(id) => {
+            startTransition(() => removeCardFromDeck(deckId, id))
+            setSelectedCard(null)
+            setModalOpen(false)
+          }}
         />
       )}
     </>

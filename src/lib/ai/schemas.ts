@@ -1,18 +1,51 @@
 import { z } from 'zod'
 
+const CoreCategoryName = z.enum([
+  'Ramp', 'Card Draw', 'Targeted Removal', 'Board Wipes', 'Win Conditions', 'Protection'
+])
+
+const CoreCategorySchema = z.object({
+  name: CoreCategoryName,
+  count: z.number(),
+  target: z.number(),
+  rating: z.string(),
+  cards: z.array(z.string()).default([]),
+  notes: z.string(),
+})
+
+const DeckSpecificCategorySchema = z.object({
+  name: z.string(),
+  count: z.number(),
+  target: z.number(),
+  rating: z.string(),
+  cards: z.array(z.string()).default([]),
+  notes: z.string(),
+})
+
+const CategoriesObjectSchema = z.object({
+  core: z.array(CoreCategorySchema),
+  deck_specific: z.array(DeckSpecificCategorySchema).default([]),
+})
+
 // Simplified schema for Anthropic compatibility (avoids grammar size limits)
 export const DeckAnalysisSchema = z.object({
   overall_assessment: z.string(),
   bracket: z.number(),
   bracket_confidence: z.number(),
   bracket_reasoning: z.string(),
-  categories: z.array(z.object({
-    name: z.string(),
-    count: z.number(),
-    target: z.number(),
-    rating: z.string(),
-    notes: z.string(),
-  })),
+  categories: z.preprocess(
+    (val) => {
+      // Backward compat: if old flat array, convert to new format
+      if (Array.isArray(val)) {
+        const coreNames = ['Ramp', 'Card Draw', 'Targeted Removal', 'Board Wipes', 'Win Conditions', 'Protection']
+        const core = (val as { name: string }[]).filter((c) => coreNames.includes(c.name))
+        const deck_specific = (val as { name: string }[]).filter((c) => !coreNames.includes(c.name))
+        return { core, deck_specific }
+      }
+      return val
+    },
+    CategoriesObjectSchema
+  ),
   land_count: z.number(),
   recommended_land_count: z.number(),
   mana_base_notes: z.string(),

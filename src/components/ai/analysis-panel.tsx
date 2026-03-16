@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { DeckAnalysisSchema } from '@/lib/ai/schemas'
-import type { DeckAnalysis } from '@/lib/ai/schemas'
 import type { z } from 'zod'
 
 // ─── useObject ────────────────────────────────────────────────────────────────
@@ -226,7 +225,7 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 function CategoryRow({
   cat,
 }: {
-  cat: DeckAnalysis['categories'][number]
+  cat: { name: string; count: number; target: number; rating: string; cards?: string[]; notes: string }
 }) {
   return (
     <div className="space-y-1">
@@ -390,15 +389,19 @@ export function AnalysisPanel({ deckId, cardCount }: AnalysisPanelProps) {
           )}
 
           {/* Categories */}
-          {object.categories && object.categories.length > 0 && (
-            <CollapsibleSection title="Categories" defaultOpen>
-              <div className="space-y-3">
-                {object.categories.map((cat, i) => (
-                  <CategoryRow key={i} cat={cat} />
-                ))}
-              </div>
-            </CollapsibleSection>
-          )}
+          {object.categories && (() => {
+            const cats = object.categories
+            const allCats = [...cats.core, ...cats.deck_specific]
+            return allCats.length > 0 ? (
+              <CollapsibleSection title="Categories" defaultOpen>
+                <div className="space-y-3">
+                  {allCats.map((cat, i) => (
+                    <CategoryRow key={i} cat={cat} />
+                  ))}
+                </div>
+              </CollapsibleSection>
+            ) : null
+          })()}
 
           {/* Mana Base */}
           {(object.land_count !== undefined || object.mana_base_notes || object.fixing_quality) && (

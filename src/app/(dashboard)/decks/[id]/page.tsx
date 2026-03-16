@@ -38,6 +38,17 @@ export default async function DeckPage({ params }: DeckPageProps) {
     redirect('/decks')
   }
 
+  // Fetch commander card by commanderId (authoritative source for hero banner)
+  const commanderCardData = await db
+    .select({
+      name: cards.name,
+      imageUris: cards.imageUris,
+      cardFaces: cards.cardFaces,
+    })
+    .from(cards)
+    .where(eq(cards.id, deck.commanderId))
+    .limit(1)
+
   // Fetch partner commander card if set
   const partnerCard = deck.partnerId
     ? await db
@@ -152,6 +163,11 @@ export default async function DeckPage({ params }: DeckPageProps) {
             mainboardCards={mainboardCards}
             sideboardCards={sideboardCards}
             commanderCards={commanderCards}
+            commanderCard={commanderCardData.length > 0 ? {
+              name: commanderCardData[0].name,
+              imageUris: commanderCardData[0].imageUris as CardImageUris | null,
+              cardFaces: commanderCardData[0].cardFaces as CardFace[] | null,
+            } : null}
             partnerCard={partnerCard.length > 0 ? {
               name: partnerCard[0].name,
               imageUris: partnerCard[0].imageUris as CardImageUris | null,

@@ -38,6 +38,12 @@ interface DeckPageClientProps {
   mainboardCards: DeckCardEntry[]
   sideboardCards: DeckCardEntry[]
   commanderCards: DeckCardEntry[]
+  /** Authoritative commander card fetched directly from decks.commanderId — used as fallback when commanderCards is empty */
+  commanderCard: {
+    name: string
+    imageUris: CardImageUris | null
+    cardFaces: CardFace[] | null
+  } | null
   partnerCard: {
     name: string
     imageUris: CardImageUris | null
@@ -56,6 +62,7 @@ export function DeckPageClient({
   mainboardCards,
   sideboardCards,
   commanderCards,
+  commanderCard,
   partnerCard,
   isOwner,
   statsCards,
@@ -63,23 +70,33 @@ export function DeckPageClient({
 }: DeckPageClientProps) {
   const [activeTab, setActiveTab] = useState('deck')
 
+  // Use the deck_cards commander entry if available; fall back to the
+  // authoritative card fetched directly from decks.commanderId
   const primaryCommander = commanderCards[0] ?? null
+  const heroImageUris = primaryCommander
+    ? primaryCommander.imageUris as Record<string, string> | null
+    : commanderCard?.imageUris as Record<string, string> | null ?? null
+  const heroCardFaces = primaryCommander
+    ? primaryCommander.cardFaces as Array<{ image_uris?: Record<string, string> }> | null
+    : commanderCard?.cardFaces as Array<{ image_uris?: Record<string, string> }> | null ?? null
+  const heroName = primaryCommander?.name ?? commanderCard?.name ?? ''
+  const showHero = primaryCommander !== null || commanderCard !== null
 
   return (
     <div className="flex gap-6 items-start">
       {/* Main content */}
       <div className="flex-1 min-w-0 space-y-5">
         {/* Hero banner */}
-        {primaryCommander && (
+        {showHero && (
           <DeckHeroBanner
             deck={{
               name: deck.name,
               targetBracket: deck.targetBracket,
               archetype: deck.archetype,
             }}
-            commanderImageUris={primaryCommander.imageUris as Record<string, string> | null}
-            commanderCardFaces={primaryCommander.cardFaces as Array<{ image_uris?: Record<string, string> }> | null}
-            commanderName={primaryCommander.name}
+            commanderImageUris={heroImageUris}
+            commanderCardFaces={heroCardFaces}
+            commanderName={heroName}
             partnerImageUris={partnerCard?.imageUris as Record<string, string> | null | undefined}
             partnerName={partnerCard?.name}
             cardCount={cardCount}

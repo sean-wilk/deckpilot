@@ -9,6 +9,8 @@ import { toast } from 'sonner'
 import { SaltScoreMeter } from '@/components/ai/salt-score-meter'
 import { TargetApprovalBanner } from '@/components/ai/target-approval-banner'
 import { LandsSection } from '@/components/ai/lands-section'
+import { ManaSymbol } from '@/components/ui/mana-symbol'
+import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,14 +84,31 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ─── Sub-sections ─────────────────────────────────────────────────────────────
 
-interface CategoryGridProps {
-  categories: DeckAnalysis['categories']
-  categoryTargets?: Record<string, number> | null
-  suggestedTargets?: Array<{ category: string; target_count: number; reasoning: string }>
+type NormalizedCategory = { name: string; count: number; target: number; rating: string; cards: string[]; notes: string }
+
+function normalizeCategories(cats: unknown): { core: NormalizedCategory[]; deck_specific: NormalizedCategory[] } {
+  if (Array.isArray(cats)) {
+    const coreNames = ['Ramp', 'Card Draw', 'Targeted Removal', 'Board Wipes', 'Win Conditions', 'Protection']
+    return {
+      core: (cats as NormalizedCategory[]).filter((c) => coreNames.includes(c.name)),
+      deck_specific: (cats as NormalizedCategory[]).filter((c) => !coreNames.includes(c.name)),
+    }
+  }
+  if (cats && typeof cats === 'object' && 'core' in (cats as object)) {
+    return cats as { core: NormalizedCategory[]; deck_specific: NormalizedCategory[] }
+  }
+  return { core: [], deck_specific: [] }
 }
 
-function CategoryGrid({ categories, categoryTargets, suggestedTargets }: CategoryGridProps) {
-  function getTargetLabel(cat: DeckAnalysis['categories'][number]): string | null {
+interface CategoryGridProps {
+  categories: { core: NormalizedCategory[]; deck_specific: NormalizedCategory[] }
+  categoryTargets?: Record<string, number> | null
+  suggestedTargets?: Array<{ category: string; target_count: number; reasoning: string }>
+  cardNames: string[]
+}
+
+function CategoryGrid({ categories, categoryTargets, suggestedTargets, cardNames }: CategoryGridProps) {
+  function getTargetLabel(cat: NormalizedCategory): string | null {
     const key = cat.name.toLowerCase().replace(/\s+/g, '_')
     if (categoryTargets && key in categoryTargets) {
       return `Target: ${categoryTargets[key]} (approved)`
@@ -104,35 +123,54 @@ function CategoryGrid({ categories, categoryTargets, suggestedTargets }: Categor
     return null
   }
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {categories.map((cat, i) => {
-        const targetLabel = getTargetLabel(cat)
-        return (
-          <div key={i} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">{cat.name}</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  {cat.count}/{cat.target}
-                </span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${RATING_COLORS[cat.rating] ?? ''} ${RATING_BG[cat.rating] ?? ''}`}
-                >
-                  {cat.rating}
-                </span>
-              </div>
-            </div>
-            <ProgressBar value={cat.count} max={cat.target > 0 ? cat.target : 1} />
-            {targetLabel && (
-              <p className="text-[10px] text-muted-foreground/70 font-medium">{targetLabel}</p>
-            )}
-            {cat.notes && (
-              <p className="text-[11px] text-muted-foreground leading-relaxed">{cat.notes}</p>
-            )}
+  function renderCategoryCard(cat: NormalizedCategory, i: number) {
+    const targetLabel = getTargetLabel(cat)
+    return (
+      <div key={i} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">{cat.name}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {cat.count}/{cat.target}
+            </span>
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${RATING_COLORS[cat.rating] ?? ''} ${RATING_BG[cat.rating] ?? ''}`}
+            >
+              {cat.rating}
+            </span>
           </div>
-        )
-      })}
+        </div>
+        <ProgressBar value={cat.count} max={cat.target > 0 ? cat.target : 1} />
+        {targetLabel && (
+          <p className="text-[10px] text-muted-foreground/70 font-medium">{targetLabel}</p>
+        )}
+        {cat.notes && (
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <AnalysisTextWithCards text={cat.notes} cardNames={cardNames} />
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {categories.core.length > 0 && (
+        <div className="space-y-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Core Categories</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {categories.core.map((cat, i) => renderCategoryCard(cat, i))}
+          </div>
+        </div>
+      )}
+      {categories.deck_specific.length > 0 && (
+        <div className="space-y-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Deck-Specific Categories</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {categories.deck_specific.map((cat, i) => renderCategoryCard(cat, i))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -218,16 +256,19 @@ export function AnalysisTabContent({
   const isLoading = isPolling || data?.status === 'pending' || data?.status === 'processing'
   const displayedAnalysis = (selectedHistoryAnalysis ?? data?.results) as DeckAnalysis | undefined
 
-  // Toast on completion
+  // Toast on completion — only fires when the user explicitly triggered analysis
   const prevStatusRef = useRef(data?.status)
+  const userTriggeredRef = useRef(false)
   useEffect(() => {
-    if (prevStatusRef.current !== 'complete' && data?.status === 'complete') {
+    if (userTriggeredRef.current && prevStatusRef.current !== 'complete' && data?.status === 'complete') {
       toast.success('Deck analysis complete!')
+      userTriggeredRef.current = false
     }
     prevStatusRef.current = data?.status
   }, [data?.status])
 
   function handleAnalyze() {
+    userTriggeredRef.current = true
     trigger({ deckId })
     setSelectedHistoryId(null)
   }
@@ -473,13 +514,16 @@ export function AnalysisTabContent({
       )}
 
       {/* ── Results ── */}
-      {hasResult && analysis && (
+      {hasResult && analysis && (() => {
+        const normalized = normalizeCategories(analysis.categories)
+        const allCardNames = [...normalized.core, ...normalized.deck_specific].flatMap((c) => c.cards ?? [])
+        return (
         <div className="space-y-6">
           {/* Overall assessment */}
           {analysis.overall_assessment && (
             <div className="rounded-lg border border-border bg-muted/20 px-5 py-4">
               <p className="text-sm leading-relaxed text-foreground">
-                {analysis.overall_assessment}
+                <AnalysisTextWithCards text={analysis.overall_assessment} cardNames={allCardNames} />
               </p>
             </div>
           )}
@@ -489,24 +533,27 @@ export function AnalysisTabContent({
             <div className="space-y-2">
               <SectionLabel>Power Level</SectionLabel>
               <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                <div className="flex items-center gap-3">
-                  <BracketBadge bracket={analysis.bracket} />
-                  <span className="text-sm font-medium">
-                    {getBracketLabel(analysis.bracket)}
-                  </span>
-                  <div className="flex-1">
-                    <ProgressBar
-                      value={Math.round((analysis.bracket_confidence ?? 0) * 100)}
-                      max={100}
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-                    {Math.round((analysis.bracket_confidence ?? 0) * 100)}% confidence
-                  </span>
-                </div>
+                {(() => {
+                  const rawConfidence = analysis.bracket_confidence ?? 0
+                  const confidence = rawConfidence > 1 ? rawConfidence : Math.round(rawConfidence * 100)
+                  return (
+                    <div className="flex items-center gap-3">
+                      <BracketBadge bracket={analysis.bracket} />
+                      <span className="text-sm font-medium">
+                        {getBracketLabel(analysis.bracket)}
+                      </span>
+                      <div className="flex-1">
+                        <ProgressBar value={confidence} max={100} />
+                      </div>
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                        {confidence}% confidence
+                      </span>
+                    </div>
+                  )
+                })()}
                 {analysis.bracket_reasoning && (
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    {analysis.bracket_reasoning}
+                    <AnalysisTextWithCards text={analysis.bracket_reasoning} cardNames={allCardNames} />
                   </p>
                 )}
               </div>
@@ -529,13 +576,14 @@ export function AnalysisTabContent({
           )}
 
           {/* Categories — 2-column grid */}
-          {analysis.categories && analysis.categories.length > 0 && (
+          {analysis.categories && (normalized.core.length > 0 || normalized.deck_specific.length > 0) && (
             <div className="space-y-2">
               <SectionLabel>Categories</SectionLabel>
               <CategoryGrid
-                categories={analysis.categories}
+                categories={normalized}
                 categoryTargets={categoryTargets}
                 suggestedTargets={analysis.suggested_targets}
+                cardNames={allCardNames}
               />
             </div>
           )}
@@ -614,9 +662,26 @@ export function AnalysisTabContent({
                       </span>
                     </div>
                   )}
+                  {analysis.lands_analysis?.color_production && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Colors:</span>
+                      <div className="flex items-center gap-1">
+                        {(['W', 'U', 'B', 'R', 'G'] as const).map((c) => {
+                          const count = (analysis.lands_analysis?.color_production as Record<string, number | undefined>)?.[c]
+                          if (!count) return null
+                          return (
+                            <span key={c} className="inline-flex items-center gap-0.5">
+                              <ManaSymbol color={c} size="xs" />
+                              <span className="text-[10px] text-muted-foreground tabular-nums">{count}</span>
+                            </span>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {analysis.mana_base_notes && (
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {analysis.mana_base_notes}
+                      <AnalysisTextWithCards text={analysis.mana_base_notes} cardNames={allCardNames} />
                     </p>
                   )}
                 </div>
@@ -649,7 +714,7 @@ export function AnalysisTabContent({
                       </span>
                       {analysis.key_synergies.map((s, i) => (
                         <p key={i} className="text-xs text-muted-foreground leading-relaxed">
-                          {s}
+                          <AnalysisTextWithCards text={s} cardNames={allCardNames} />
                         </p>
                       ))}
                     </div>
@@ -662,7 +727,7 @@ export function AnalysisTabContent({
                       </span>
                       {analysis.dead_cards.map((d, i) => (
                         <p key={i} className="text-xs text-muted-foreground leading-relaxed">
-                          {d}
+                          <AnalysisTextWithCards text={d} cardNames={allCardNames} />
                         </p>
                       ))}
                     </div>
@@ -682,7 +747,7 @@ export function AnalysisTabContent({
                 )}
                 {analysis.salt_notes && (
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    {analysis.salt_notes}
+                    <AnalysisTextWithCards text={analysis.salt_notes} cardNames={allCardNames} />
                   </p>
                 )}
               </div>
@@ -742,7 +807,8 @@ export function AnalysisTabContent({
             </div>
           )}
         </div>
-      )}
+        )
+      })()}
 
       {/* ── Empty state ── */}
       {!isLoading && !hasResult && !errorMessage && data !== null && (

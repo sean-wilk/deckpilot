@@ -54,6 +54,16 @@ ${context.cardList}
 
 ${context.edhrecData ? `### EDHREC Synergy Data (top cards)\n${context.edhrecData}` : ''}
 
+## Response Categories
+Your analysis MUST include these CORE categories (always required):
+- Ramp, Card Draw, Targeted Removal, Board Wipes, Win Conditions, Protection
+
+Additionally, suggest 1-4 DECK-SPECIFIC categories based on this deck's strategy and archetype. Examples: "Burn Spells", "Sacrifice Outlets", "Blink Effects", "Equipment", "Tribal Synergy".
+
+Format categories as: { core: [...], deck_specific: [...] }
+
+Each category object should include: name, count, target, rating, cards (array of card names in that category), notes.
+
 ## Task
 Analyze this Commander deck thoroughly. Evaluate each functional category, assess the mana base, identify synergies and dead cards, estimate power level bracket, and assess salt level.
 
