@@ -117,6 +117,10 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
 
   const width = cardSize ?? 146
 
+  // Map numeric width to the nearest CardImage size variant
+  const imageSize: 'small' | 'normal' | 'large' =
+    width >= 300 ? 'large' : width >= 200 ? 'normal' : 'small'
+
   function handleRemove() {
     startRemove(async () => {
       await removeCardFromDeck(deckId, card.deckCardId)
@@ -151,7 +155,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
           name={card.name}
           imageUris={card.imageUris}
           cardFaces={card.cardFaces}
-          size="small"
+          size={imageSize}
           className={cn(
             'transition-transform duration-200',
             hovered && 'scale-105 shadow-xl',

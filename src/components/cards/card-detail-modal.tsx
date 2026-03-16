@@ -344,7 +344,7 @@ export function CardDetailModal({
         onClick={(e) => e.stopPropagation()}
         className={cn(
           'relative',
-          'w-full max-w-3xl',
+          'w-full max-w-5xl',
           'rounded-2xl overflow-hidden',
           'bg-zinc-900 border border-white/10',
           'shadow-2xl shadow-black/60',
@@ -367,14 +367,14 @@ export function CardDetailModal({
               'bg-zinc-950/60',
               'p-6 sm:p-8',
               // On mobile: centered; on sm+: left column
-              'sm:w-[calc(488px+4rem)]',
+              'sm:w-[300px]',
             )}
           >
             <CardImage
               name={card.name}
               imageUris={card.imageUris}
               cardFaces={card.cardFaces}
-              size="large"
+              size="normal"
             />
           </div>
 
