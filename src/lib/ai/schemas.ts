@@ -62,6 +62,10 @@ export const DeckAnalysisSchema = z.object({
     target_count: z.number(),
     reasoning: z.string(),
   })).optional(),
+  card_roles: z.array(z.object({
+    card_name: z.string(),
+    roles: z.array(z.string()),
+  })).optional(),
   lands_analysis: z.object({
     total_lands: z.number(),
     target_lands: z.number(),

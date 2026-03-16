@@ -67,5 +67,9 @@ Each category object should include: name, count, target, rating, cards (array o
 ## Task
 Analyze this Commander deck thoroughly. Evaluate each functional category, assess the mana base, identify synergies and dead cards, estimate power level bracket, and assess salt level.
 
-Suggest ideal category targets for this specific deck. Consider commander strategy, color identity, archetype, bracket. Populate suggested_targets in response.`
+Suggest ideal category targets for this specific deck. Consider commander strategy, color identity, archetype, bracket. Populate suggested_targets in response.
+
+## Card Role Tagging
+For each non-land card in the deck, assign 1-3 functional roles. Populate the card_roles array.
+Roles should be lowercase, hyphenated. Examples: "ramp", "card-draw", "targeted-removal", "board-wipes", "win-con", "protection", "sac-outlet", "blink", "counter-magic", "burn", "tribal-synergy", "equipment", "token-generator", "damage-doubler"`
 }

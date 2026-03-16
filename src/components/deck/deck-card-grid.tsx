@@ -35,6 +35,9 @@ export interface DeckCardGridProps {
   deckId: string
   cards: DeckCardEntry[]
   isOwner: boolean
+  cardRoles?: Record<string, string[]>
+  groupBy?: 'type' | 'role' | 'cmc'
+  cardSize?: number
 }
 
 // ─── Type ordering & display ──────────────────────────────────────────────────
@@ -63,6 +66,39 @@ const TYPE_LABELS: Record<string, string> = {
   other:        'Other',
 }
 
+// ─── Role ordering & display ─────────────────────────────────────────────────
+
+const ROLE_ORDER = [
+  'ramp',
+  'card-draw',
+  'targeted-removal',
+  'board-wipes',
+  'win-con',
+  'protection',
+]
+
+const ROLE_LABELS: Record<string, string> = {
+  'ramp':              'Ramp',
+  'card-draw':         'Card Draw',
+  'targeted-removal':  'Targeted Removal',
+  'board-wipes':       'Board Wipes',
+  'win-con':           'Win Conditions',
+  'protection':        'Protection',
+}
+
+// ─── Role abbreviation ──────────────────────────────────────────────────────
+
+function abbreviateRole(role: string): string {
+  const abbrevMap: Record<string, string> = {
+    'targeted-removal': 'removal',
+    'board-wipes': 'wipe',
+    'card-draw': 'draw',
+    'win-con': 'wincon',
+    'protection': 'protect',
+  }
+  return abbrevMap[role] ?? role
+}
+
 // ─── Card thumbnail ────────────────────────────────────────────────────────────
 
 interface CardThumbProps {
@@ -70,12 +106,16 @@ interface CardThumbProps {
   deckId: string
   isOwner: boolean
   onCardClick: (card: DeckCardEntry) => void
+  roles?: string[]
+  cardSize?: number
 }
 
-function CardThumb({ card, deckId, isOwner, onCardClick }: CardThumbProps) {
+function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: CardThumbProps) {
   const [hovered, setHovered] = useState(false)
   const [removing, startRemove] = useTransition()
   const [toggling, startToggle] = useTransition()
+
+  const width = cardSize ?? 146
 
   function handleRemove() {
     startRemove(async () => {
@@ -89,9 +129,13 @@ function CardThumb({ card, deckId, isOwner, onCardClick }: CardThumbProps) {
     })
   }
 
+  const visibleRoles = roles?.slice(0, 2) ?? []
+  const extraRoleCount = (roles?.length ?? 0) - visibleRoles.length
+
   return (
     <div
       className="relative group flex flex-col items-center gap-1"
+      style={{ width }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -177,26 +221,48 @@ function CardThumb({ card, deckId, isOwner, onCardClick }: CardThumbProps) {
       </div>
 
       {/* Card name */}
-      <span className="text-[10px] text-center text-muted-foreground leading-tight max-w-[88px] truncate">
+      <span
+        className="text-[10px] text-center text-muted-foreground leading-tight truncate"
+        style={{ maxWidth: Math.max(width - 8, 60) }}
+      >
         {card.name}
       </span>
+
+      {/* Role tag pills */}
+      {visibleRoles.length > 0 && (
+        <div className="flex items-center gap-0.5 flex-wrap justify-center">
+          {visibleRoles.map((role) => (
+            <span
+              key={role}
+              className="text-[9px] rounded-full bg-muted text-muted-foreground px-1.5 leading-relaxed"
+            >
+              {abbreviateRole(role)}
+            </span>
+          ))}
+          {extraRoleCount > 0 && (
+            <span className="text-[9px] text-muted-foreground/60">
+              +{extraRoleCount}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-// ─── Type group ───────────────────────────────────────────────────────────────
+// ─── Card group (generic for type / role / cmc) ──────────────────────────────
 
-interface TypeGroupProps {
-  type: string
+interface CardGroupProps {
+  label: string
   cards: DeckCardEntry[]
   deckId: string
   isOwner: boolean
   onCardClick: (card: DeckCardEntry) => void
+  cardRoles?: Record<string, string[]>
+  cardSize?: number
 }
 
-function TypeGroup({ type, cards, deckId, isOwner, onCardClick }: TypeGroupProps) {
-  const label = TYPE_LABELS[type] ?? type.charAt(0).toUpperCase() + type.slice(1)
-
+function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize }: CardGroupProps) {
   return (
     <section>
       <div className="flex items-center gap-2 mb-3">
@@ -217,6 +283,8 @@ function TypeGroup({ type, cards, deckId, isOwner, onCardClick }: TypeGroupProps
             deckId={deckId}
             isOwner={isOwner}
             onCardClick={onCardClick}
+            roles={cardRoles?.[card.name]}
+            cardSize={cardSize}
           />
         ))}
       </div>
@@ -224,9 +292,80 @@ function TypeGroup({ type, cards, deckId, isOwner, onCardClick }: TypeGroupProps
   )
 }
 
+// ─── Grouping helpers ────────────────────────────────────────────────────────
+
+function groupByType(cards: DeckCardEntry[]): { key: string; label: string; cards: DeckCardEntry[] }[] {
+  const grouped = new Map<string, DeckCardEntry[]>()
+  for (const card of cards) {
+    const key = card.cardType ?? 'other'
+    if (!grouped.has(key)) grouped.set(key, [])
+    grouped.get(key)!.push(card)
+  }
+
+  const sortedTypes = TYPE_ORDER.filter((t) => grouped.has(t))
+  const extraTypes = [...grouped.keys()].filter((t) => !TYPE_ORDER.includes(t))
+
+  return [...sortedTypes, ...extraTypes].map((type) => ({
+    key: type,
+    label: TYPE_LABELS[type] ?? type.charAt(0).toUpperCase() + type.slice(1),
+    cards: grouped.get(type)!,
+  }))
+}
+
+function groupByRole(
+  cards: DeckCardEntry[],
+  cardRoles: Record<string, string[]>,
+): { key: string; label: string; cards: DeckCardEntry[] }[] {
+  const grouped = new Map<string, DeckCardEntry[]>()
+
+  for (const card of cards) {
+    const roles = cardRoles[card.name]
+    const primaryRole = roles?.[0] ?? 'unassigned'
+    if (!grouped.has(primaryRole)) grouped.set(primaryRole, [])
+    grouped.get(primaryRole)!.push(card)
+  }
+
+  // Ordered roles first, then alphabetical extras, then unassigned last
+  const orderedKeys = ROLE_ORDER.filter((r) => grouped.has(r))
+  const extraKeys = [...grouped.keys()]
+    .filter((r) => r !== 'unassigned' && !ROLE_ORDER.includes(r))
+    .sort()
+  if (grouped.has('unassigned')) {
+    extraKeys.push('unassigned')
+  }
+
+  return [...orderedKeys, ...extraKeys].map((role) => ({
+    key: role,
+    label:
+      role === 'unassigned'
+        ? 'Unassigned'
+        : ROLE_LABELS[role] ?? role.charAt(0).toUpperCase() + role.slice(1).replace(/-/g, ' '),
+    cards: grouped.get(role)!,
+  }))
+}
+
+function groupByCmc(cards: DeckCardEntry[]): { key: string; label: string; cards: DeckCardEntry[] }[] {
+  const grouped = new Map<string, DeckCardEntry[]>()
+
+  for (const card of cards) {
+    const bucket = card.cmc >= 7 ? '7+' : String(Math.floor(card.cmc))
+    if (!grouped.has(bucket)) grouped.set(bucket, [])
+    grouped.get(bucket)!.push(card)
+  }
+
+  const cmcOrder = ['0', '1', '2', '3', '4', '5', '6', '7+']
+  const sortedKeys = cmcOrder.filter((k) => grouped.has(k))
+
+  return sortedKeys.map((bucket) => ({
+    key: bucket,
+    label: `CMC ${bucket}`,
+    cards: grouped.get(bucket)!,
+  }))
+}
+
 // ─── DeckCardGrid ─────────────────────────────────────────────────────────────
 
-export function DeckCardGrid({ deckId, cards, isOwner }: DeckCardGridProps) {
+export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'type', cardSize }: DeckCardGridProps) {
   const [selectedCard, setSelectedCard] = useState<DeckCardEntry | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -235,18 +374,6 @@ export function DeckCardGrid({ deckId, cards, isOwner }: DeckCardGridProps) {
     setSelectedCard(card)
     setModalOpen(true)
   }
-
-  // Group by cardType
-  const grouped = new Map<string, DeckCardEntry[]>()
-  for (const card of cards) {
-    const key = card.cardType ?? 'other'
-    if (!grouped.has(key)) grouped.set(key, [])
-    grouped.get(key)!.push(card)
-  }
-
-  // Sort groups by canonical order
-  const sortedTypes = TYPE_ORDER.filter((t) => grouped.has(t))
-  const extraTypes = [...grouped.keys()].filter((t) => !TYPE_ORDER.includes(t))
 
   if (cards.length === 0) {
     return (
@@ -258,17 +385,34 @@ export function DeckCardGrid({ deckId, cards, isOwner }: DeckCardGridProps) {
     )
   }
 
+  // Compute groups based on groupBy mode
+  let groups: { key: string; label: string; cards: DeckCardEntry[] }[]
+  switch (groupBy) {
+    case 'role':
+      groups = groupByRole(cards, cardRoles ?? {})
+      break
+    case 'cmc':
+      groups = groupByCmc(cards)
+      break
+    case 'type':
+    default:
+      groups = groupByType(cards)
+      break
+  }
+
   return (
     <>
       <div className="flex flex-col gap-8">
-        {[...sortedTypes, ...extraTypes].map((type) => (
-          <TypeGroup
-            key={type}
-            type={type}
-            cards={grouped.get(type)!}
+        {groups.map((group) => (
+          <CardGroup
+            key={group.key}
+            label={group.label}
+            cards={group.cards}
             deckId={deckId}
             isOwner={isOwner}
             onCardClick={handleCardClick}
+            cardRoles={cardRoles}
+            cardSize={cardSize}
           />
         ))}
       </div>

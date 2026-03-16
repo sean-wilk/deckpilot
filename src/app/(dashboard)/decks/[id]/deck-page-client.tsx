@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DeckContentTabs } from '@/components/deck/deck-content-tabs'
 import { DeckPageSidebar } from '@/components/deck/deck-page-sidebar'
 import { DeckCardGrid } from '@/components/deck/deck-card-grid'
+import { DeckDisplayControls, getInitialCardSize } from '@/components/deck/deck-display-controls'
 import { AddCardBar } from '@/components/deck/add-card-bar'
 import { DeckHeroBanner } from '@/components/deck/deck-hero-banner'
 import type { CardImageUris, CardFace } from '@/types/card'
@@ -70,6 +71,38 @@ export function DeckPageClient({
 }: DeckPageClientProps) {
   const [activeTab, setActiveTab] = useState('deck')
 
+  // ── Card roles (Task 4.4) ──────────────────────────────────────────────────
+  const [cardRoles, setCardRoles] = useState<Record<string, string[]>>({})
+
+  useEffect(() => {
+    async function fetchCardRoles() {
+      try {
+        const res = await fetch(`/api/ai/analysis/${deckId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        const roles = data?.result?.card_roles
+        if (roles && typeof roles === 'object') {
+          const map: Record<string, string[]> = {}
+          for (const [cardId, roleValue] of Object.entries(roles)) {
+            if (Array.isArray(roleValue)) {
+              map[cardId] = roleValue as string[]
+            } else if (typeof roleValue === 'string') {
+              map[cardId] = [roleValue]
+            }
+          }
+          setCardRoles(map)
+        }
+      } catch {
+        // ignore fetch errors
+      }
+    }
+    void fetchCardRoles()
+  }, [deckId])
+
+  // ── Display controls (Task 5.3) ────────────────────────────────────────────
+  const [groupBy, setGroupBy] = useState<'type' | 'role' | 'cmc'>('type')
+  const [cardSize, setCardSize] = useState(() => getInitialCardSize())
+
   // Use the deck_cards commander entry if available; fall back to the
   // authoritative card fetched directly from decks.commanderId
   const primaryCommander = commanderCards[0] ?? null
@@ -120,10 +153,20 @@ export function DeckPageClient({
             <AddCardBar deckId={deckId} />
           )}
 
+          <DeckDisplayControls
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
+            cardSize={cardSize}
+            onCardSizeChange={setCardSize}
+          />
+
           <DeckCardGrid
             deckId={deckId}
             cards={mainboardCards}
             isOwner={isOwner}
+            cardRoles={cardRoles}
+            groupBy={groupBy}
+            cardSize={cardSize}
           />
 
           {/* Sideboard section */}
@@ -139,6 +182,9 @@ export function DeckPageClient({
                 deckId={deckId}
                 cards={sideboardCards}
                 isOwner={isOwner}
+                cardRoles={cardRoles}
+                groupBy={groupBy}
+                cardSize={cardSize}
               />
             ) : (
               <p className="text-sm text-muted-foreground py-4 text-center">
