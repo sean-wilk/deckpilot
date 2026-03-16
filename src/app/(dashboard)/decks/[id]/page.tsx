@@ -147,6 +147,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
               targetBracket: deck.targetBracket,
               philosophy: deck.philosophy,
               archetype: deck.archetype,
+              categoryTargets: deck.categoryTargets as Record<string, number> | null,
             }}
             mainboardCards={mainboardCards}
             sideboardCards={sideboardCards}

@@ -180,6 +180,8 @@ export const decks = pgTable(
     importUrl: text("import_url"),
     philosophy: text("philosophy"),
     archetype: text("archetype"),
+    categoryTargets: jsonb("category_targets"),
+    landCountTarget: integer("land_count_target"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

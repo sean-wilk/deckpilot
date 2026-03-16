@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import type { DeckAnalysis } from '@/lib/ai/schemas'
 import { getBracketLabel } from '@/lib/constants/brackets'
-import { updateDeckBracket } from '@/app/(dashboard)/decks/actions'
+import { updateDeckBracket, updateCategoryTargets } from '@/app/(dashboard)/decks/actions'
 import { usePollAnalysis } from '@/hooks/use-poll-analysis'
 import { toast } from 'sonner'
+import { SaltScoreMeter } from '@/components/ai/salt-score-meter'
+import { TargetApprovalBanner } from '@/components/ai/target-approval-banner'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,30 +81,57 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ─── Sub-sections ─────────────────────────────────────────────────────────────
 
-function CategoryGrid({ categories }: { categories: DeckAnalysis['categories'] }) {
+interface CategoryGridProps {
+  categories: DeckAnalysis['categories']
+  categoryTargets?: Record<string, number> | null
+  suggestedTargets?: Array<{ category: string; target_count: number; reasoning: string }>
+}
+
+function CategoryGrid({ categories, categoryTargets, suggestedTargets }: CategoryGridProps) {
+  function getTargetLabel(cat: DeckAnalysis['categories'][number]): string | null {
+    const key = cat.name.toLowerCase().replace(/\s+/g, '_')
+    if (categoryTargets && key in categoryTargets) {
+      return `Target: ${categoryTargets[key]} (approved)`
+    }
+    const suggested = suggestedTargets?.find((s) => s.category === key)
+    if (suggested) {
+      return `Target: ${suggested.target_count} (AI-suggested)`
+    }
+    if (cat.target > 0) {
+      return `Target: ${cat.target} (default)`
+    }
+    return null
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {categories.map((cat, i) => (
-        <div key={i} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{cat.name}</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {cat.count}/{cat.target}
-              </span>
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${RATING_COLORS[cat.rating] ?? ''} ${RATING_BG[cat.rating] ?? ''}`}
-              >
-                {cat.rating}
-              </span>
+      {categories.map((cat, i) => {
+        const targetLabel = getTargetLabel(cat)
+        return (
+          <div key={i} className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{cat.name}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {cat.count}/{cat.target}
+                </span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${RATING_COLORS[cat.rating] ?? ''} ${RATING_BG[cat.rating] ?? ''}`}
+                >
+                  {cat.rating}
+                </span>
+              </div>
             </div>
+            <ProgressBar value={cat.count} max={cat.target > 0 ? cat.target : 1} />
+            {targetLabel && (
+              <p className="text-[10px] text-muted-foreground/70 font-medium">{targetLabel}</p>
+            )}
+            {cat.notes && (
+              <p className="text-[11px] text-muted-foreground leading-relaxed">{cat.notes}</p>
+            )}
           </div>
-          <ProgressBar value={cat.count} max={cat.target > 0 ? cat.target : 1} />
-          {cat.notes && (
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{cat.notes}</p>
-          )}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
@@ -165,6 +194,7 @@ interface AnalysisTabContentProps {
   deckId: string
   cardCount: number
   targetBracket: number
+  categoryTargets: Record<string, number> | null
   onSwitchToRecommendations?: (focus?: string) => void
 }
 
@@ -172,11 +202,14 @@ export function AnalysisTabContent({
   deckId,
   cardCount,
   targetBracket,
+  categoryTargets,
   onSwitchToRecommendations,
 }: AnalysisTabContentProps) {
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
   const [acceptingBracket, setAcceptingBracket] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [, startTransition] = useTransition()
 
   const { data, isPolling, error, trigger } = usePollAnalysis<DeckAnalysis>(deckId, 'full')
 
@@ -467,11 +500,30 @@ export function AnalysisTabContent({
             </div>
           )}
 
+          {/* Target Approval Banner */}
+          {analysis.suggested_targets && analysis.suggested_targets.length > 0 && categoryTargets === null && !bannerDismissed && (
+            <TargetApprovalBanner
+              suggestedTargets={analysis.suggested_targets}
+              currentTargets={categoryTargets}
+              onAcceptAll={(targets) => {
+                startTransition(() => {
+                  updateCategoryTargets(deckId, targets)
+                })
+              }}
+              onModify={() => onSwitchToRecommendations?.('details')}
+              onDismiss={() => setBannerDismissed(true)}
+            />
+          )}
+
           {/* Categories — 2-column grid */}
           {analysis.categories && analysis.categories.length > 0 && (
             <div className="space-y-2">
               <SectionLabel>Categories</SectionLabel>
-              <CategoryGrid categories={analysis.categories} />
+              <CategoryGrid
+                categories={analysis.categories}
+                categoryTargets={categoryTargets}
+                suggestedTargets={analysis.suggested_targets}
+              />
             </div>
           )}
 
@@ -587,14 +639,7 @@ export function AnalysisTabContent({
               <SectionLabel>Salt Assessment</SectionLabel>
               <div className="rounded-lg border border-border bg-card p-4 space-y-2">
                 {analysis.salt_total !== undefined && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Total Salt</span>
-                    <span className="text-xs font-semibold tabular-nums">
-                      {typeof analysis.salt_total === 'number'
-                        ? analysis.salt_total.toFixed(1)
-                        : analysis.salt_total}
-                    </span>
-                  </div>
+                  <SaltScoreMeter score={analysis.salt_total} />
                 )}
                 {analysis.salt_notes && (
                   <p className="text-xs text-muted-foreground leading-relaxed">

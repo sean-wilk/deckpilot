@@ -33,6 +33,7 @@ interface DeckPageClientProps {
     targetBracket: number
     philosophy: string | null
     archetype: string | null
+    categoryTargets: Record<string, number> | null
   }
   mainboardCards: DeckCardEntry[]
   sideboardCards: DeckCardEntry[]
@@ -90,6 +91,7 @@ export function DeckPageClient({
           deckId={deckId}
           targetBracket={deck.targetBracket}
           cardCount={cardCount}
+          categoryTargets={deck.categoryTargets}
           philosophy={deck.philosophy}
           archetype={deck.archetype}
           isOwner={isOwner}

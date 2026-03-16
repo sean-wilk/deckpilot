@@ -1,4 +1,5 @@
 import { GAME_CHANGERS, getBracketLabel } from '@/lib/constants/brackets'
+import { SENSIBLE_DEFAULTS, CATEGORY_LABELS } from '@/lib/constants/category-defaults'
 
 export function getAnalysisPrompt(context: {
   commander: string
@@ -9,7 +10,16 @@ export function getAnalysisPrompt(context: {
   edhrecData: string | null
   philosophy?: string | null
   archetype?: string | null
+  categoryTargets?: Record<string, number> | null
+  landCountTarget?: number | null
 }) {
+  const categoryLines = Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+    const approved = context.categoryTargets?.[key]
+    const value = approved ?? SENSIBLE_DEFAULTS[key]
+    const suffix = approved != null ? '(approved target)' : '(starting estimate)'
+    return `- ${label}: ${value} ${suffix}`
+  }).join('\n')
+
   return `You are an expert Magic: The Gathering Commander deck builder and analyst.
 ${context.philosophy ? `
 ## Deck Philosophy (HIGHEST PRIORITY)
@@ -26,34 +36,7 @@ Declared Archetype: ${context.archetype}
 - Functional category targets for a healthy deck
 
 ## Functional Category Targets (Bracket ${context.targetBracket} — ${getBracketLabel(context.targetBracket)})
-${
-  context.targetBracket <= 2
-    ? `
-- Ramp: 8-10 sources
-- Card Draw: 8-10 sources
-- Targeted Removal: 7-10
-- Board Wipes: 2-4
-- Win Conditions: 3-5
-- Protection: 3-5
-- Lands: 35-38`
-    : context.targetBracket === 3
-    ? `
-- Ramp: 9-12 sources
-- Card Draw: 9-12 sources
-- Targeted Removal: 8-11
-- Board Wipes: 2-4
-- Win Conditions: 3-5
-- Protection: 4-6
-- Lands: 33-36`
-    : `
-- Ramp: 10-14 sources
-- Card Draw: 10-14 sources
-- Targeted Removal: 8-12
-- Board Wipes: 2-4
-- Win Conditions: 3-5
-- Protection: 4-6
-- Lands: 30-34`
-}
+${categoryLines}
 
 ## Game Changers
 Cards on the Game Changers list are restricted to Bracket 4+ decks. If the deck contains Game Changers cards, it cannot be lower than Bracket 4.
@@ -72,5 +55,7 @@ ${context.cardList}
 ${context.edhrecData ? `### EDHREC Synergy Data (top cards)\n${context.edhrecData}` : ''}
 
 ## Task
-Analyze this Commander deck thoroughly. Evaluate each functional category, assess the mana base, identify synergies and dead cards, estimate power level bracket, and assess salt level.`
+Analyze this Commander deck thoroughly. Evaluate each functional category, assess the mana base, identify synergies and dead cards, estimate power level bracket, and assess salt level.
+
+Suggest ideal category targets for this specific deck. Consider commander strategy, color identity, archetype, bracket. Populate suggested_targets in response.`
 }

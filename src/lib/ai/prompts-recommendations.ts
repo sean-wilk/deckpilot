@@ -1,4 +1,5 @@
 import { getBracketLabel } from '@/lib/constants/brackets'
+import { SENSIBLE_DEFAULTS, CATEGORY_LABELS } from '@/lib/constants/category-defaults'
 
 export function getRecommendationPrompt(context: {
   commander: string
@@ -10,6 +11,7 @@ export function getRecommendationPrompt(context: {
   philosophy?: string | null
   archetype?: string | null
   wildcardMode?: boolean
+  categoryTargets?: Record<string, number> | null
 }) {
   const philosophySection = context.philosophy
     ? `## Deck Philosophy (HIGHEST PRIORITY)\nThe deck owner has specified: ${context.philosophy}\nALL recommendations MUST respect these constraints.\n\n`
@@ -18,6 +20,13 @@ export function getRecommendationPrompt(context: {
   const archetypeSection = context.archetype
     ? `Declared Archetype: ${context.archetype}. Recommendations should support this archetype.\n\n`
     : ''
+
+  const categoryTargetLines = Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+    const target = context.categoryTargets?.[key] ?? SENSIBLE_DEFAULTS[key]
+    return `- ${label}: ${target}`
+  }).join('\n')
+
+  const categorySection = `\n## Category Targets\nUse these targets when recommending cards to fill gaps:\n${categoryTargetLines}\n`
 
   const discoverySection = context.wildcardMode
     ? `\n## Discovery Mode (ACTIVE)
@@ -31,7 +40,7 @@ You are in Discovery/Wildcard mode. Instead of recommending the most popular met
 - The goal is deck VARIETY and DISCOVERY, not homogenization`
     : ''
 
-  return `${philosophySection}${archetypeSection}You are an expert Magic: The Gathering Commander deck builder.
+  return `${philosophySection}${archetypeSection}You are an expert Magic: The Gathering Commander deck builder.${categorySection}
 
 ## Task
 Provide specific swap recommendations for this Commander deck. For each recommendation:

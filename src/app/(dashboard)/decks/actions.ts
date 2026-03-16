@@ -233,3 +233,19 @@ export async function updateDeckArchetype(deckId: string, archetype: string | nu
 
   revalidatePath(`/decks/${deckId}`)
 }
+
+export async function updateCategoryTargets(deckId: string, targets: Record<string, number> | null) {
+  const user = await requireUser()
+  await db.update(decks)
+    .set({ categoryTargets: targets, updatedAt: new Date() })
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+  revalidatePath(`/decks/${deckId}`)
+}
+
+export async function updateLandCountTarget(deckId: string, target: number | null) {
+  const user = await requireUser()
+  await db.update(decks)
+    .set({ landCountTarget: target, updatedAt: new Date() })
+    .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+  revalidatePath(`/decks/${deckId}`)
+}

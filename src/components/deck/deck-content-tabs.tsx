@@ -25,6 +25,7 @@ export interface DeckContentTabsProps {
   deckId: string
   targetBracket: number
   cardCount: number
+  categoryTargets: Record<string, number> | null
   philosophy?: string | null
   archetype?: string | null
   isOwner?: boolean
@@ -117,6 +118,7 @@ export function DeckContentTabs({
   deckId,
   targetBracket,
   cardCount,
+  categoryTargets,
   philosophy = null,
   archetype = null,
   isOwner = false,
@@ -201,6 +203,7 @@ export function DeckContentTabs({
               deckId={deckId}
               cardCount={cardCount}
               targetBracket={targetBracket}
+              categoryTargets={categoryTargets}
               onSwitchToRecommendations={(focus) => {
                 handleTabChange('recommendations')
                 setRecommendationsFocus(focus)

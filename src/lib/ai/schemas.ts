@@ -24,6 +24,11 @@ export const DeckAnalysisSchema = z.object({
   weaknesses: z.array(z.string()),
   salt_total: z.number(),
   salt_notes: z.string(),
+  suggested_targets: z.array(z.object({
+    category: z.string(),
+    target_count: z.number(),
+    reasoning: z.string(),
+  })).optional(),
 })
 
 export const SwapRecommendationSchema = z.object({

@@ -138,5 +138,7 @@ export async function buildDeckContext(deckId: string) {
     // philosophy and archetype: user-defined deck identity fields
     philosophy: deck[0].philosophy ?? null,
     archetype: deck[0].archetype ?? null,
+    categoryTargets: deck[0].categoryTargets ?? null,
+    landCountTarget: deck[0].landCountTarget ?? null,
   }
 }
