@@ -213,9 +213,10 @@ export function AnalysisTabContent({
   const [, startTransition] = useTransition()
 
   const { data, isPolling, error, trigger } = usePollAnalysis<DeckAnalysis>(deckId, 'full')
+  const [selectedHistoryAnalysis, setSelectedHistoryAnalysis] = useState<DeckAnalysis | null>(null)
 
   const isLoading = isPolling || data?.status === 'pending' || data?.status === 'processing'
-  const displayedAnalysis = data?.results as DeckAnalysis | undefined
+  const displayedAnalysis = (selectedHistoryAnalysis ?? data?.results) as DeckAnalysis | undefined
 
   // Toast on completion
   const prevStatusRef = useRef(data?.status)
@@ -241,10 +242,21 @@ export function AnalysisTabContent({
   }
 
   function handleSelectHistory(id: string) {
-    const entry = data?.history.find((h) => h.id === id)
+    const entry = data?.history?.find((h) => h.id === id)
     if (!entry) return
     setSelectedHistoryId(id)
     setHistoryOpen(false)
+
+    // If selecting the most recent (first in history), clear override to show live data
+    if (id === data?.history?.[0]?.id) {
+      setSelectedHistoryAnalysis(null)
+      return
+    }
+
+    // History entries now include full results — use directly
+    if (entry.results) {
+      setSelectedHistoryAnalysis(entry.results as DeckAnalysis)
+    }
   }
 
   // ── Error message ──

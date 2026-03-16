@@ -7,7 +7,7 @@ type UsePollResult<T> = {
     status: string
     results: T | null
     errorMessage: string | null
-    history: { id: string; createdAt: string }[]
+    history: { id: string; createdAt: string; results?: T | null }[]
   } | null
   isPolling: boolean
   error: Error | null

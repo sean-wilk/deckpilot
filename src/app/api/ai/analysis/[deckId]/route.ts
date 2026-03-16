@@ -50,11 +50,12 @@ export async function GET(
       results = null
     }
 
-    // History only includes complete records
+    // History includes complete records with full results for client-side switching
     const completeRows = allRows.filter((row) => row.status === 'complete')
     const history = completeRows.map((row) => ({
       id: row.id,
       createdAt: row.createdAt,
+      results: row.results,
       bracket:
         row.results != null &&
         typeof row.results === 'object' &&
