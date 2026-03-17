@@ -4,6 +4,8 @@ import { useEffect, useCallback, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { CardImage } from '@/components/cards/card-image'
 import { PrintingSelector } from '@/components/cards/printing-selector'
+import { ManaSymbol } from '@/components/ui/mana-symbol'
+import type { ManaSymbolProps } from '@/components/ui/mana-symbol'
 import type { CardImageUris, CardFace } from '@/types/card'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -189,57 +191,29 @@ function AiQuickActions({
         </div>
       )}
 
-      {/* Find Replacement */}
-      <div className="space-y-2">
+      {/* Find Replacement + Ask AI — side by side */}
+      <div className="flex gap-2">
         <button
           type="button"
           onClick={handleFindReplacement}
           disabled={replacementLoading}
           className={cn(
-            'w-full h-9 px-3 rounded-lg text-sm font-medium',
+            'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
             'bg-violet-600/20 border border-violet-500/30 text-violet-300',
             'hover:bg-violet-600/30 hover:text-violet-200',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'transition-colors duration-150',
           )}
         >
-          {replacementLoading ? 'Finding replacements…' : 'Find Replacement'}
+          {replacementLoading ? 'Finding…' : 'Find Replacement'}
         </button>
 
-        {replacementResult && (
-          <div
-            className={cn(
-              'rounded-lg px-4 py-3',
-              'bg-white/5 border border-white/8',
-              'text-sm text-white/75',
-            )}
-          >
-            {replacementResult.error ? (
-              <p className="text-red-400">{replacementResult.error}</p>
-            ) : replacementResult.replacements && replacementResult.replacements.length > 0 ? (
-              <ul className="space-y-2">
-                {replacementResult.replacements.map((r, i) => (
-                  <li key={i} className="space-y-0.5">
-                    <p className="font-semibold text-white/90">{r.name}</p>
-                    <p className="text-white/55 text-xs leading-relaxed">{r.reasoning}</p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-white/50">No replacements found.</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Ask AI about this card */}
-      <div className="space-y-2">
         <button
           type="button"
           onClick={handleCardOpinion}
           disabled={opinionLoading}
           className={cn(
-            'w-full h-9 px-3 rounded-lg text-sm font-medium',
+            'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
             'bg-sky-600/20 border border-sky-500/30 text-sky-300',
             'hover:bg-sky-600/30 hover:text-sky-200',
             'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -248,24 +222,100 @@ function AiQuickActions({
         >
           {opinionLoading ? 'Asking AI…' : 'Ask AI about this card'}
         </button>
+      </div>
 
-        {opinionResult && (
-          <div
+      {/* Results */}
+      {replacementResult && (
+        <div
+          className={cn(
+            'rounded-lg px-4 py-3',
+            'bg-white/5 border border-white/8',
+            'text-sm text-white/75',
+          )}
+        >
+          {replacementResult.error ? (
+            <p className="text-red-400">{replacementResult.error}</p>
+          ) : replacementResult.replacements && replacementResult.replacements.length > 0 ? (
+            <ul className="space-y-2">
+              {replacementResult.replacements.map((r, i) => (
+                <li key={i} className="space-y-0.5">
+                  <p className="font-semibold text-white/90">{r.name}</p>
+                  <p className="text-white/55 text-xs leading-relaxed">{r.reasoning}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-white/50">No replacements found.</p>
+          )}
+        </div>
+      )}
+
+      {opinionResult && (
+        <div
+          className={cn(
+            'rounded-lg px-4 py-3',
+            'bg-white/5 border border-white/8',
+            'text-sm text-white/75 leading-relaxed whitespace-pre-wrap',
+          )}
+        >
+          {opinionResult.error ? (
+            <p className="text-red-400">{opinionResult.error}</p>
+          ) : (
+            <p>{opinionResult.opinion}</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Mana Cost Display ────────────────────────────────────────────────────────
+
+const VALID_MANA_COLORS = new Set<string>(['W', 'U', 'B', 'R', 'G', 'C'])
+
+/**
+ * Parses a Scryfall mana cost string like "{5}{R}{R}" into rendered symbols.
+ * Color symbols become ManaSymbol components; numeric generics become a
+ * styled circle with the number; X/Y/Z become a neutral circle.
+ */
+function ManaCostDisplay({ manaCost }: { manaCost: string }) {
+  // Split on the pattern {TOKEN} — keep the tokens
+  const tokens = manaCost.split(/\{([^}]+)\}/).filter(Boolean)
+
+  return (
+    <span className="inline-flex items-center gap-0.5 flex-wrap">
+      {tokens.map((token, i) => {
+        const upper = token.toUpperCase()
+
+        // Color mana symbol
+        if (VALID_MANA_COLORS.has(upper)) {
+          return (
+            <ManaSymbol
+              key={i}
+              color={upper as ManaSymbolProps['color']}
+              size="sm"
+            />
+          )
+        }
+
+        // Phyrexian / hybrid — just show the raw token in a neutral circle
+        // Generic numeric or X/Y/Z — render as a gray circle
+        return (
+          <span
+            key={i}
+            role="img"
+            aria-label={`${token} generic mana`}
             className={cn(
-              'rounded-lg px-4 py-3',
-              'bg-white/5 border border-white/8',
-              'text-sm text-white/75 leading-relaxed whitespace-pre-wrap',
+              'inline-flex items-center justify-center rounded-full border',
+              'size-5 text-[10px] font-bold leading-none select-none',
+              'bg-zinc-600 text-zinc-100 border-zinc-500',
             )}
           >
-            {opinionResult.error ? (
-              <p className="text-red-400">{opinionResult.error}</p>
-            ) : (
-              <p>{opinionResult.opinion}</p>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+            {token}
+          </span>
+        )
+      })}
+    </span>
   )
 }
 
@@ -497,7 +547,7 @@ export function CardDetailModal({
         onClick={(e) => e.stopPropagation()}
         className={cn(
           'relative',
-          'w-full max-w-6xl',
+          'w-full max-w-4xl',
           'rounded-2xl overflow-hidden',
           'bg-zinc-900 border border-white/10',
           'shadow-2xl shadow-black/60',
@@ -509,29 +559,45 @@ export function CardDetailModal({
       >
         <CloseButton onClose={handleClose} />
 
-        {/* Two-column layout: image left, details right — stacked on mobile */}
+        {/* ── TOP SECTION: two-column (image | details) ── */}
         <div className="flex flex-col sm:flex-row gap-0">
 
           {/* ── Left: card image ── */}
           <div
             className={cn(
               'flex-shrink-0',
-              'flex items-center justify-center',
+              'flex items-start justify-center',
               'bg-zinc-950/60',
               'p-6 sm:p-8',
-              // On mobile: centered; on sm+: left column
-              'sm:w-[260px]',
+              // Fixed column width that comfortably fits the card
+              'sm:w-[320px]',
             )}
           >
-            <CardImage
-              name={card.name}
-              imageUris={card.imageUris}
-              cardFaces={card.cardFaces}
-              size="normal"
-            />
+            {/* Hover wrapper — scales image up for readability */}
+            <div
+              className={cn(
+                'transition-transform duration-300 ease-out',
+                'hover:scale-105',
+                'cursor-zoom-in',
+                // Preserve aspect ratio, no clipping
+                'w-full',
+                '[&>*]:!w-full [&>*]:!h-auto',
+                // aspect-ratio based sizing — card is 2.5:3.5 (5:7)
+                '[aspect-ratio:5/7]',
+              )}
+              style={{ maxWidth: '280px' }}
+            >
+              <CardImage
+                name={card.name}
+                imageUris={card.imageUris}
+                cardFaces={card.cardFaces}
+                size="normal"
+                className="!w-full !h-auto object-contain"
+              />
+            </div>
           </div>
 
-          {/* ── Right: details ── */}
+          {/* ── Right: card details ── */}
           <div
             className={cn(
               'flex-1 flex flex-col gap-5',
@@ -540,17 +606,17 @@ export function CardDetailModal({
               'min-w-0',
             )}
           >
-            {/* Card name */}
+            {/* Card name + mana cost */}
             <div>
               <h2 className="text-2xl font-bold leading-tight tracking-tight text-white">
                 {card.name}
               </h2>
 
-              {/* Mana cost */}
+              {/* Mana cost — parsed symbols */}
               {card.manaCost && (
-                <p className="mt-1 text-sm text-muted-foreground font-mono tracking-wider">
-                  {card.manaCost}
-                </p>
+                <div className="mt-2">
+                  <ManaCostDisplay manaCost={card.manaCost} />
+                </div>
               )}
             </div>
 
@@ -614,74 +680,77 @@ export function CardDetailModal({
                 </span>
               )}
             </div>
-
-            {/* Owner action bar: Remove + Suggest Swap */}
-            {isOwner && !isCommander && deckCardId && onRemove && (
-              <div className="border-t border-zinc-800 pt-4">
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onRemove(deckCardId)
-                      onOpenChange(false)
-                    }}
-                    className={cn(
-                      'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
-                      'bg-red-600/20 border border-red-500/30 text-red-400',
-                      'hover:bg-red-600/30 hover:text-red-300',
-                      'transition-colors duration-150',
-                    )}
-                  >
-                    Remove from Deck
-                  </button>
-                  {deckId && (
-                    <button
-                      type="button"
-                      onClick={() => triggerReplacementRef.current?.()}
-                      className={cn(
-                        'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
-                        'bg-violet-600/20 border border-violet-500/30 text-violet-300',
-                        'hover:bg-violet-600/30 hover:text-violet-200',
-                        'transition-colors duration-150',
-                      )}
-                    >
-                      Suggest Swap
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Notes */}
-            {deckId && deckCardId && (
-              <div className="border-t border-zinc-800 pt-4">
-                <NotesTextarea
-                  deckId={deckId}
-                  deckCardId={deckCardId}
-                  initialNote={userNote ?? ''}
-                />
-              </div>
-            )}
-
-            {/* AI quick actions */}
-            {deckId && (
-              <div className="border-t border-zinc-800 pt-4">
-                <AiQuickActions deckId={deckId} cardName={card.name} triggerReplacementRef={triggerReplacementRef} />
-              </div>
-            )}
-
-            {/* Printing selector slot */}
-            <div className="border-t border-zinc-800 pt-4">
-              {printingSelector ?? <PrintingSelector cardId={card.id} />}
-            </div>
-
-            {/* AI actions slot */}
-            {aiActions && (
-              <div className="border-t border-zinc-800 pt-4">
-                {aiActions}
-              </div>
-            )}
           </div>
+        </div>
+
+        {/* ── BOTTOM SECTION: full-width actions ── */}
+        <div
+          className={cn(
+            'border-t border-zinc-800',
+            'px-6 py-6 sm:px-8 sm:py-6',
+            'flex flex-col gap-5',
+          )}
+        >
+          {/* Owner action bar: Remove + Suggest Swap */}
+          {isOwner && !isCommander && deckCardId && onRemove && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onRemove(deckCardId)
+                  onOpenChange(false)
+                }}
+                className={cn(
+                  'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
+                  'bg-red-600/20 border border-red-500/30 text-red-400',
+                  'hover:bg-red-600/30 hover:text-red-300',
+                  'transition-colors duration-150',
+                )}
+              >
+                Remove from Deck
+              </button>
+              {deckId && (
+                <button
+                  type="button"
+                  onClick={() => triggerReplacementRef.current?.()}
+                  className={cn(
+                    'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
+                    'bg-violet-600/20 border border-violet-500/30 text-violet-300',
+                    'hover:bg-violet-600/30 hover:text-violet-200',
+                    'transition-colors duration-150',
+                  )}
+                >
+                  Suggest Swap
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Notes */}
+          {deckId && deckCardId && (
+            <NotesTextarea
+              deckId={deckId}
+              deckCardId={deckCardId}
+              initialNote={userNote ?? ''}
+            />
+          )}
+
+          {/* AI quick actions */}
+          {deckId && (
+            <AiQuickActions deckId={deckId} cardName={card.name} triggerReplacementRef={triggerReplacementRef} />
+          )}
+
+          {/* Printing selector slot */}
+          <div className="border-t border-zinc-800 pt-5">
+            {printingSelector ?? <PrintingSelector cardId={card.id} />}
+          </div>
+
+          {/* AI actions slot */}
+          {aiActions && (
+            <div className="border-t border-zinc-800 pt-5">
+              {aiActions}
+            </div>
+          )}
         </div>
       </div>
     </div>
