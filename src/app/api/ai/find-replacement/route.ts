@@ -3,7 +3,7 @@ import { getAiModel } from '@/lib/ai/providers'
 import { FindReplacementSchema } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { decks, cards } from '@/lib/db/schema'
+import { decks, cards, deckAnalyses } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function POST(request: Request) {
@@ -44,12 +44,25 @@ export async function POST(request: Request) {
 
     const prompt = `Given the deck "${deck[0].name}" with commander ${commanderName}, suggest 3-5 replacement cards for "${cardName}". Consider the deck's strategy and the card's role. For each replacement, provide the card name, reasoning for the swap, synergy notes with the deck, and an estimated price in USD if known.`
 
-    const model = await getAiModel('recommendations')
+    const { model, provider, modelId } = await getAiModel('recommendations')
 
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model,
       schema: FindReplacementSchema,
       prompt,
+    })
+
+    await db.insert(deckAnalyses).values({
+      deckId,
+      analysisType: 'card_replacement',
+      cardName,
+      aiProvider: provider,
+      aiModel: modelId,
+      promptTokens: usage?.inputTokens ?? 0,
+      completionTokens: usage?.outputTokens ?? 0,
+      costCents: 0,
+      results: object,
+      status: 'complete',
     })
 
     return new Response(JSON.stringify(object), {

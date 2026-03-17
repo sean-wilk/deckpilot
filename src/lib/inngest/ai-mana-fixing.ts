@@ -34,7 +34,7 @@ export const manaFixingAnalysis = inngest.createFunction(
 
       // Step 4: Call AI
       const result = await step.run('call-ai', async () => {
-        const model = await getAiModel('analysis')
+        const { model } = await getAiModel('analysis')
         const { object, usage } = await generateObject({
           model,
           schema: SwapRecommendationSchema,

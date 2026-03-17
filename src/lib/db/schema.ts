@@ -262,9 +262,13 @@ export const deckAnalyses = pgTable(
     results: jsonb("results").notNull(),
     status: text("status").notNull(),
     errorMessage: text("error_message"),
+    cardName: text("card_name"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index("idx_deck_analyses_deck_id").on(table.deckId)]
+  (table) => [
+    index("idx_deck_analyses_deck_id").on(table.deckId),
+    index("idx_deck_analyses_card").on(table.deckId, table.analysisType, table.cardName),
+  ]
 );
 
 // ─── Swap Recommendations ────────────────────────────────────────────────────

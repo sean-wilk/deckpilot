@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import { CardImage } from '@/components/cards/card-image'
 import { PrintingSelector } from '@/components/cards/printing-selector'
 import { ManaSymbol } from '@/components/ui/mana-symbol'
-import type { ManaSymbolProps } from '@/components/ui/mana-symbol'
 import type { CardImageUris, CardFace } from '@/types/card'
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -54,13 +53,12 @@ interface CardOpinionResult {
   error?: string
 }
 
-// ─── AI Quick Actions ─────────────────────────────────────────────────────────
-
-interface AiCache {
-  replacement: FindReplacementResult | null
-  opinion: CardOpinionResult | null
-  savedAt: number
+interface CardResultsResponse {
+  cardOpinion?: { results: { opinion: string }; createdAt: string } | null
+  cardReplacement?: { results: FindReplacementResult; createdAt: string } | null
 }
+
+// ─── AI Quick Actions ─────────────────────────────────────────────────────────
 
 function formatAgo(ms: number): string {
   const secs = Math.floor(ms / 1000)
@@ -80,55 +78,36 @@ function AiQuickActions({
   cardName: string
   triggerReplacementRef?: React.MutableRefObject<(() => void) | null>
 }) {
-  const cacheKey = `deckpilot:ai:${deckId}:${cardName}`
-
   const [replacementLoading, setReplacementLoading] = useState(false)
   const [replacementResult, setReplacementResult] = useState<FindReplacementResult | null>(null)
 
   const [opinionLoading, setOpinionLoading] = useState(false)
   const [opinionResult, setOpinionResult] = useState<CardOpinionResult | null>(null)
 
-  const [cachedAt, setCachedAt] = useState<number | null>(null)
+  const [savedAt, setSavedAt] = useState<string | null>(null)
 
-  // On mount, load from localStorage
+  const fetchFromServer = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/ai/card-results/${deckId}/${encodeURIComponent(cardName)}`)
+      if (!res.ok) return
+      const data = (await res.json()) as CardResultsResponse
+      if (data.cardOpinion) {
+        setOpinionResult({ opinion: data.cardOpinion.results.opinion })
+        setSavedAt(data.cardOpinion.createdAt)
+      }
+      if (data.cardReplacement) {
+        setReplacementResult(data.cardReplacement.results)
+        if (!data.cardOpinion) setSavedAt(data.cardReplacement.createdAt)
+      }
+    } catch {
+      // ignore fetch errors
+    }
+  }, [deckId, cardName])
+
+  // On mount, load from server
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(cacheKey)
-      if (raw) {
-        const parsed = JSON.parse(raw) as AiCache
-        if (parsed.replacement) setReplacementResult(parsed.replacement)
-        if (parsed.opinion) setOpinionResult(parsed.opinion)
-        setCachedAt(parsed.savedAt)
-      }
-    } catch {
-      // ignore parse errors
-    }
-  }, [cacheKey])
-
-  const saveToCache = useCallback(
-    (replacement: FindReplacementResult | null, opinion: CardOpinionResult | null) => {
-      try {
-        const now = Date.now()
-        const cache: AiCache = { replacement, opinion, savedAt: now }
-        localStorage.setItem(cacheKey, JSON.stringify(cache))
-        setCachedAt(now)
-      } catch {
-        // ignore storage errors
-      }
-    },
-    [cacheKey]
-  )
-
-  const handleClearCache = useCallback(() => {
-    try {
-      localStorage.removeItem(cacheKey)
-    } catch {
-      // ignore
-    }
-    setReplacementResult(null)
-    setOpinionResult(null)
-    setCachedAt(null)
-  }, [cacheKey])
+    void fetchFromServer()
+  }, [fetchFromServer])
 
   const handleFindReplacement = useCallback(async () => {
     setReplacementLoading(true)
@@ -141,13 +120,13 @@ function AiQuickActions({
       })
       const data = (await res.json()) as FindReplacementResult
       setReplacementResult(data)
-      saveToCache(data, opinionResult)
+      await fetchFromServer()
     } catch {
       setReplacementResult({ error: 'Failed to fetch replacements.' })
     } finally {
       setReplacementLoading(false)
     }
-  }, [deckId, cardName, opinionResult, saveToCache])
+  }, [deckId, cardName, fetchFromServer])
 
   // Expose trigger to parent via ref so "Suggest Swap" button can invoke it
   useEffect(() => {
@@ -167,27 +146,20 @@ function AiQuickActions({
       })
       const data = (await res.json()) as CardOpinionResult
       setOpinionResult(data)
-      saveToCache(replacementResult, data)
+      await fetchFromServer()
     } catch {
       setOpinionResult({ error: 'Failed to fetch opinion.' })
     } finally {
       setOpinionLoading(false)
     }
-  }, [deckId, cardName, replacementResult, saveToCache])
+  }, [deckId, cardName, fetchFromServer])
 
   return (
     <div className="space-y-4">
-      {/* Cache metadata */}
-      {cachedAt !== null && (
-        <div className="flex items-center justify-between text-xs text-white/40">
-          <span>Results from {formatAgo(Date.now() - cachedAt)}</span>
-          <button
-            type="button"
-            onClick={handleClearCache}
-            className="underline hover:text-white/60 transition-colors"
-          >
-            Clear cached
-          </button>
+      {/* Server result timestamp */}
+      {savedAt !== null && (
+        <div className="flex items-center text-xs text-white/40">
+          <span>Results from {formatAgo(Date.now() - new Date(savedAt).getTime())}</span>
         </div>
       )}
 
@@ -271,50 +243,19 @@ function AiQuickActions({
 
 // ─── Mana Cost Display ────────────────────────────────────────────────────────
 
-const VALID_MANA_COLORS = new Set<string>(['W', 'U', 'B', 'R', 'G', 'C'])
-
 /**
  * Parses a Scryfall mana cost string like "{5}{R}{R}" into rendered symbols.
- * Color symbols become ManaSymbol components; numeric generics become a
- * styled circle with the number; X/Y/Z become a neutral circle.
+ * All tokens are rendered via Scryfall SVG images.
  */
 function ManaCostDisplay({ manaCost }: { manaCost: string }) {
   // Split on the pattern {TOKEN} — keep the tokens
-  const tokens = manaCost.split(/\{([^}]+)\}/).filter(Boolean)
+  const tokens = manaCost.match(/\{([^}]+)\}/g)?.map(t => t.slice(1, -1)) ?? []
 
   return (
     <span className="inline-flex items-center gap-0.5 flex-wrap">
-      {tokens.map((token, i) => {
-        const upper = token.toUpperCase()
-
-        // Color mana symbol
-        if (VALID_MANA_COLORS.has(upper)) {
-          return (
-            <ManaSymbol
-              key={i}
-              color={upper as ManaSymbolProps['color']}
-              size="sm"
-            />
-          )
-        }
-
-        // Phyrexian / hybrid — just show the raw token in a neutral circle
-        // Generic numeric or X/Y/Z — render as a gray circle
-        return (
-          <span
-            key={i}
-            role="img"
-            aria-label={`${token} generic mana`}
-            className={cn(
-              'inline-flex items-center justify-center rounded-full border',
-              'size-5 text-[10px] font-bold leading-none select-none',
-              'bg-zinc-600 text-zinc-100 border-zinc-500',
-            )}
-          >
-            {token}
-          </span>
-        )
-      })}
+      {tokens.map((token, i) => (
+        <ManaSymbol key={i} symbol={token.toUpperCase()} size="sm" />
+      ))}
     </span>
   )
 }

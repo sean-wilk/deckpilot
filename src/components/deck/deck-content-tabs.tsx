@@ -26,6 +26,8 @@ export interface DeckContentTabsProps {
   targetBracket: number
   cardCount: number
   categoryTargets: Record<string, number> | null
+  /** All card names in the deck — forwarded to AnalysisTabContent for hover previews */
+  deckCardNames?: string[]
   philosophy?: string | null
   archetype?: string | null
   isOwner?: boolean
@@ -119,6 +121,7 @@ export function DeckContentTabs({
   targetBracket,
   cardCount,
   categoryTargets,
+  deckCardNames,
   philosophy = null,
   archetype = null,
   isOwner = false,
@@ -204,6 +207,7 @@ export function DeckContentTabs({
               cardCount={cardCount}
               targetBracket={targetBracket}
               categoryTargets={categoryTargets}
+              deckCardNames={deckCardNames}
               onSwitchToRecommendations={(focus) => {
                 handleTabChange('recommendations')
                 setRecommendationsFocus(focus)

@@ -74,16 +74,16 @@ export function CardHoverPreview({ cardName, children }: CardHoverPreviewProps) 
     const popoverHeight = 204
     const gap = 8
 
-    let top = rect.top + window.scrollY - popoverHeight - gap
-    let left = rect.left + window.scrollX + rect.width / 2 - popoverWidth / 2
+    let top = rect.top - popoverHeight - gap
+    let left = rect.left + rect.width / 2 - popoverWidth / 2
 
     // Flip below if not enough space above
-    if (top < window.scrollY + 8) {
-      top = rect.bottom + window.scrollY + gap
+    if (top < 8) {
+      top = rect.bottom + gap
     }
 
     // Clamp horizontally within viewport
-    left = Math.max(8, Math.min(left, window.scrollX + window.innerWidth - popoverWidth - 8))
+    left = Math.max(8, Math.min(left, window.innerWidth - popoverWidth - 8))
 
     return { top, left }
   }, [])

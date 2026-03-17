@@ -2,7 +2,7 @@ import { generateText } from 'ai'
 import { getAiModel } from '@/lib/ai/providers'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { decks, cards } from '@/lib/db/schema'
+import { decks, cards, deckAnalyses } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function POST(request: Request) {
@@ -51,11 +51,24 @@ export async function POST(request: Request) {
 
     const prompt = `You are an expert MTG Commander analyst. The deck "${deckName}" is led by ${commanderName} targeting bracket ${targetBracket}. Give a brief (2-4 sentence) opinion on ${cardName} in this deck. Consider its synergy with the commander, its role, and whether it's a good fit. Card text: ${oracleText}`
 
-    const model = await getAiModel('chat')
+    const { model, provider, modelId } = await getAiModel('chat')
 
-    const { text } = await generateText({
+    const { text, usage } = await generateText({
       model,
       prompt,
+    })
+
+    await db.insert(deckAnalyses).values({
+      deckId,
+      analysisType: 'card_opinion',
+      cardName,
+      aiProvider: provider,
+      aiModel: modelId,
+      promptTokens: usage?.inputTokens ?? 0,
+      completionTokens: usage?.outputTokens ?? 0,
+      costCents: 0,
+      results: { cardName, opinion: text },
+      status: 'complete',
     })
 
     return new Response(

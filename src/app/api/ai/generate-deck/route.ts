@@ -56,7 +56,7 @@ Select exactly 99 cards that complement "${commanderName}" as the commander. For
 
 Also provide an overall strategy summary and your estimated power bracket for the completed deck.`
 
-    const model = await getAiModel('generation')
+    const { model } = await getAiModel('generation')
 
     const result = streamObject({
       model,

@@ -7,7 +7,7 @@ import { decrypt } from '@/lib/encryption'
 
 export type TaskType = 'analysis' | 'recommendations' | 'chat' | 'generation'
 
-export async function getAiModel(taskType: TaskType) {
+export async function getAiModel(taskType: TaskType): Promise<{ model: ReturnType<ReturnType<typeof createAnthropic>> | ReturnType<ReturnType<typeof createOpenAI>>; provider: string; modelId: string }> {
   const configs = await db
     .select()
     .from(adminAiConfig)
@@ -30,12 +30,12 @@ export async function getAiModel(taskType: TaskType) {
 
   if (config.provider === 'anthropic') {
     const anthropic = createAnthropic({ apiKey })
-    return anthropic(modelId)
+    return { model: anthropic(modelId), provider: config.provider, modelId }
   }
 
   if (config.provider === 'openai') {
     const openai = createOpenAI({ apiKey })
-    return openai(modelId)
+    return { model: openai(modelId), provider: config.provider, modelId }
   }
 
   throw new Error(`Unknown provider: ${config.provider}`)

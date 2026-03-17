@@ -32,7 +32,7 @@ For each commander, provide:
 - Synergy notes explaining how the commander fits the theme
 - Why this commander is a good choice for this theme/description`
 
-    const model = await getAiModel('recommendations')
+    const { model } = await getAiModel('recommendations')
 
     const { object } = await generateObject({
       model,

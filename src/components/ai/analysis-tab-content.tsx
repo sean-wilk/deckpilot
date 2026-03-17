@@ -234,6 +234,8 @@ interface AnalysisTabContentProps {
   cardCount: number
   targetBracket: number
   categoryTargets: Record<string, number> | null
+  /** All card names in the deck — used to power hover previews in analysis text */
+  deckCardNames?: string[]
   onSwitchToRecommendations?: (focus?: string) => void
 }
 
@@ -242,6 +244,7 @@ export function AnalysisTabContent({
   cardCount,
   targetBracket,
   categoryTargets,
+  deckCardNames,
   onSwitchToRecommendations,
 }: AnalysisTabContentProps) {
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
@@ -516,7 +519,9 @@ export function AnalysisTabContent({
       {/* ── Results ── */}
       {hasResult && analysis && (() => {
         const normalized = normalizeCategories(analysis.categories)
-        const allCardNames = [...normalized.core, ...normalized.deck_specific].flatMap((c) => c.cards ?? [])
+        // Prefer the full deck card list passed as prop; fall back to cards extracted from categories
+        const categoryCardNames = [...normalized.core, ...normalized.deck_specific].flatMap((c) => c.cards ?? [])
+        const allCardNames = deckCardNames && deckCardNames.length > 0 ? deckCardNames : categoryCardNames
         return (
         <div className="space-y-8">
           {/* Overall assessment */}
@@ -671,7 +676,7 @@ export function AnalysisTabContent({
                           if (!count) return null
                           return (
                             <span key={c} className="inline-flex items-center gap-0.5">
-                              <ManaSymbol color={c} size="xs" />
+                              <ManaSymbol symbol={c} size="xs" />
                               <span className="text-[10px] text-muted-foreground tabular-nums">{count}</span>
                             </span>
                           )

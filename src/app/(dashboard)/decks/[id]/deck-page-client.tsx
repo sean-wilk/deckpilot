@@ -155,6 +155,11 @@ export function DeckPageClient({
           targetBracket={deck.targetBracket}
           cardCount={cardCount}
           categoryTargets={deck.categoryTargets}
+          deckCardNames={[
+            ...mainboardCards.map((c) => c.name),
+            ...commanderCards.map((c) => c.name),
+            ...sideboardCards.map((c) => c.name),
+          ]}
           philosophy={deck.philosophy}
           archetype={deck.archetype}
           isOwner={isOwner}

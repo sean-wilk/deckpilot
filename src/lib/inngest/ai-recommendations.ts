@@ -49,7 +49,7 @@ export const recommendCards = inngest.createFunction(
 
       // Step 4: Call AI
       const result = await step.run('call-ai', async () => {
-        const model = await getAiModel('recommendations')
+        const { model } = await getAiModel('recommendations')
         const { object, usage } = await generateObject({
           model,
           schema: SwapRecommendationSchema,
