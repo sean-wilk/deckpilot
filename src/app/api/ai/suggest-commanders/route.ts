@@ -1,4 +1,4 @@
-import { generateObject } from 'ai'
+import { chat } from '@tanstack/ai'
 import { getAiModel } from '@/lib/ai/providers'
 import { CommanderSuggestionsSchema } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
@@ -34,10 +34,10 @@ For each commander, provide:
 
     const { model } = await getAiModel('recommendations')
 
-    const { object } = await generateObject({
-      model,
-      schema: CommanderSuggestionsSchema,
-      prompt,
+    const object = await chat({
+      adapter: model,
+      messages: [{ role: 'user', content: prompt }],
+      outputSchema: CommanderSuggestionsSchema,
     })
 
     return new Response(JSON.stringify(object), {

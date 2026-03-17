@@ -1,4 +1,4 @@
-import { generateText } from 'ai'
+import { chat } from '@tanstack/ai'
 import { getAiModel } from '@/lib/ai/providers'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
@@ -53,9 +53,10 @@ export async function POST(request: Request) {
 
     const { model, provider, modelId } = await getAiModel('chat')
 
-    const { text, usage } = await generateText({
-      model,
-      prompt,
+    const text = await chat({
+      adapter: model,
+      messages: [{ role: 'user', content: prompt }],
+      stream: false,
     })
 
     await db.insert(deckAnalyses).values({
@@ -64,8 +65,8 @@ export async function POST(request: Request) {
       cardName,
       aiProvider: provider,
       aiModel: modelId,
-      promptTokens: usage?.inputTokens ?? 0,
-      completionTokens: usage?.outputTokens ?? 0,
+      promptTokens: 0,
+      completionTokens: 0,
       costCents: 0,
       results: { cardName, opinion: text },
       status: 'complete',

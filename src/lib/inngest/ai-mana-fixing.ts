@@ -2,7 +2,7 @@ import { inngest } from './client'
 import { db } from '@/lib/db'
 import { deckAnalyses } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { generateObject } from 'ai'
+import { chat } from '@tanstack/ai'
 import { getAiModel } from '@/lib/ai/providers'
 import { buildDeckContext } from '@/lib/ai/context'
 import { getManaFixingPrompt } from '@/lib/ai/prompts-mana-fixing'
@@ -35,12 +35,12 @@ export const manaFixingAnalysis = inngest.createFunction(
       // Step 4: Call AI
       const result = await step.run('call-ai', async () => {
         const { model } = await getAiModel('analysis')
-        const { object, usage } = await generateObject({
-          model,
-          schema: SwapRecommendationSchema,
-          prompt,
+        const object = await chat({
+          adapter: model,
+          messages: [{ role: 'user', content: prompt }],
+          outputSchema: SwapRecommendationSchema,
         })
-        return { object, usage }
+        return { object }
       })
 
       // Step 5: Save results
@@ -49,8 +49,8 @@ export const manaFixingAnalysis = inngest.createFunction(
           .set({
             results: result.object,
             status: 'complete',
-            promptTokens: result.usage?.inputTokens ?? 0,
-            completionTokens: result.usage?.outputTokens ?? 0,
+            promptTokens: 0,
+            completionTokens: 0,
           })
           .where(eq(deckAnalyses.id, analysisId))
       })

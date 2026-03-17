@@ -1,5 +1,6 @@
-import { streamObject } from 'ai'
+import { chat } from '@tanstack/ai'
 import { getAiModel } from '@/lib/ai/providers'
+import { NextResponse } from 'next/server'
 import { GeneratedDeckSchema } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
@@ -58,13 +59,13 @@ Also provide an overall strategy summary and your estimated power bracket for th
 
     const { model } = await getAiModel('generation')
 
-    const result = streamObject({
-      model,
-      schema: GeneratedDeckSchema,
-      prompt,
+    const object = await chat({
+      adapter: model,
+      messages: [{ role: 'user', content: prompt }],
+      outputSchema: GeneratedDeckSchema,
     })
 
-    return result.toTextStreamResponse()
+    return NextResponse.json(object)
   } catch (error) {
     console.error('Generate deck error:', error)
     return new Response(

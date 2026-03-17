@@ -1,5 +1,5 @@
-import { createAnthropic } from '@ai-sdk/anthropic'
-import { createOpenAI } from '@ai-sdk/openai'
+import { anthropicText } from '@tanstack/ai-anthropic'
+import { openaiText } from '@tanstack/ai-openai'
 import { db } from '@/lib/db'
 import { adminAiConfig } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -7,10 +7,8 @@ import { decrypt } from '@/lib/encryption'
 
 export type TaskType = 'analysis' | 'recommendations' | 'chat' | 'generation'
 
-export async function getAiModel(taskType: TaskType): Promise<{ model: ReturnType<ReturnType<typeof createAnthropic>> | ReturnType<ReturnType<typeof createOpenAI>>; provider: string; modelId: string }> {
-  const configs = await db
-    .select()
-    .from(adminAiConfig)
+export async function getAiModel(taskType: TaskType) {
+  const configs = await db.select().from(adminAiConfig)
     .where(eq(adminAiConfig.isActive, true))
     .limit(1)
 
@@ -28,14 +26,17 @@ export async function getAiModel(taskType: TaskType): Promise<{ model: ReturnTyp
     generation: config.modelGeneration,
   }[taskType]
 
+  // TanStack AI adapters read API keys from env vars — set dynamically from DB
   if (config.provider === 'anthropic') {
-    const anthropic = createAnthropic({ apiKey })
-    return { model: anthropic(modelId), provider: config.provider, modelId }
+    process.env.ANTHROPIC_API_KEY = apiKey
+    const adapter = anthropicText(modelId as Parameters<typeof anthropicText>[0])
+    return { model: adapter, provider: config.provider, modelId }
   }
 
   if (config.provider === 'openai') {
-    const openai = createOpenAI({ apiKey })
-    return { model: openai(modelId), provider: config.provider, modelId }
+    process.env.OPENAI_API_KEY = apiKey
+    const adapter = openaiText(modelId as Parameters<typeof openaiText>[0])
+    return { model: adapter, provider: config.provider, modelId }
   }
 
   throw new Error(`Unknown provider: ${config.provider}`)

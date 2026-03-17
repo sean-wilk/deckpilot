@@ -1,4 +1,4 @@
-import { generateObject } from 'ai'
+import { chat } from '@tanstack/ai'
 import { getAiModel } from '@/lib/ai/providers'
 import { FindReplacementSchema } from '@/lib/ai/schemas'
 import { createClient } from '@/lib/supabase/server'
@@ -46,10 +46,10 @@ export async function POST(request: Request) {
 
     const { model, provider, modelId } = await getAiModel('recommendations')
 
-    const { object, usage } = await generateObject({
-      model,
-      schema: FindReplacementSchema,
-      prompt,
+    const object = await chat({
+      adapter: model,
+      messages: [{ role: 'user', content: prompt }],
+      outputSchema: FindReplacementSchema,
     })
 
     await db.insert(deckAnalyses).values({
@@ -58,8 +58,8 @@ export async function POST(request: Request) {
       cardName,
       aiProvider: provider,
       aiModel: modelId,
-      promptTokens: usage?.inputTokens ?? 0,
-      completionTokens: usage?.outputTokens ?? 0,
+      promptTokens: 0,
+      completionTokens: 0,
       costCents: 0,
       results: object,
       status: 'complete',
