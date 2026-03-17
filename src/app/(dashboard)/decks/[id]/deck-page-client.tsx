@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { DeckContentTabs } from '@/components/deck/deck-content-tabs'
 import { DeckPageSidebar } from '@/components/deck/deck-page-sidebar'
 import { DeckCardGrid } from '@/components/deck/deck-card-grid'
-import { DeckDisplayControls, getInitialCardSize } from '@/components/deck/deck-display-controls'
+import { DeckDisplayControls } from '@/components/deck/deck-display-controls'
 import { AddCardBar } from '@/components/deck/add-card-bar'
 import { DeckHeroBanner } from '@/components/deck/deck-hero-banner'
 import type { CardImageUris, CardFace } from '@/types/card'
@@ -63,6 +63,21 @@ interface DeckPageClientProps {
   cardCount: number
 }
 
+// ─── Card size store (useSyncExternalStore for hydration safety) ──────────────
+
+const _subscribe = () => () => {}
+const _getCardSizeSnapshot = () => {
+  try {
+    const stored = localStorage.getItem('deckpilot:card-size')
+    if (stored) {
+      const parsed = parseInt(stored, 10)
+      if (!isNaN(parsed) && parsed >= 72 && parsed <= 350) return parsed
+    }
+  } catch {}
+  return 100
+}
+const _getServerSnapshot = () => 100
+
 // ─── DeckPageClient ───────────────────────────────────────────────────────────
 
 export function DeckPageClient({
@@ -109,12 +124,10 @@ export function DeckPageClient({
 
   // ── Display controls (Task 5.3) ────────────────────────────────────────────
   const [groupBy, setGroupBy] = useState<'type' | 'role' | 'cmc'>('type')
-  // Initialize from localStorage if available (lazy initializer avoids hydration mismatch
-  // because the value is resolved during the first client render, not via useEffect)
-  const [cardSize, setCardSize] = useState(() => {
-    if (typeof window === 'undefined') return 100
-    return getInitialCardSize()
-  })
+  // useSyncExternalStore ensures server snapshot (100) matches SSR output, while
+  // client snapshot reads localStorage — eliminating the hydration mismatch.
+  const cardSizeFromStore = useSyncExternalStore(_subscribe, _getCardSizeSnapshot, _getServerSnapshot)
+  const [cardSize, setCardSize] = useState(cardSizeFromStore)
 
   // Use the deck_cards commander entry if available; fall back to the
   // authoritative card fetched directly from decks.commanderId
