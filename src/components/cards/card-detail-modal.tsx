@@ -579,20 +579,16 @@ export function CardDetailModal({
                 'transition-transform duration-300 ease-out',
                 'hover:scale-105',
                 'cursor-zoom-in',
-                // Preserve aspect ratio, no clipping
-                'w-full',
-                '[&>*]:!w-full [&>*]:!h-auto',
-                // aspect-ratio based sizing — card is 2.5:3.5 (5:7)
-                '[aspect-ratio:5/7]',
+                'relative overflow-hidden rounded-[4.75%/3.4%]',
               )}
-              style={{ maxWidth: '280px' }}
+              style={{ width: '280px', height: '392px' }}
             >
               <CardImage
                 name={card.name}
                 imageUris={card.imageUris}
                 cardFaces={card.cardFaces}
                 size="normal"
-                className="!w-full !h-auto object-contain"
+                className="!w-full !h-full"
               />
             </div>
           </div>
