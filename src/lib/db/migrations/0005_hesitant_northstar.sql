@@ -1,0 +1,1 @@
+ALTER TABLE "decks" ADD COLUMN "spiciness" integer DEFAULT 30 NOT NULL;

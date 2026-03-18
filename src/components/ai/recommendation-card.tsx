@@ -59,7 +59,7 @@ export const TAG_LABELS: Record<RecommendationTag, string> = {
 
 export function TagBadge({ tag }: { tag: RecommendationTag }) {
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium bg-muted text-muted-foreground border">
       {TAG_LABELS[tag]}
     </span>
   )

@@ -48,7 +48,7 @@ function ColorPip({ color }: { color: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center justify-center w-4 h-4 rounded-full border text-[9px] font-bold leading-none',
+        'inline-flex items-center justify-center w-4 h-4 rounded-full border text-2xs font-bold leading-none',
         COLOR_CLASSES[color] ?? 'bg-gray-200 border-gray-300 text-gray-700'
       )}
       aria-label={color}
@@ -68,7 +68,7 @@ function CardThumb({ card, size = 36 }: { card: SearchCard; size?: number }) {
   if (!src) {
     return (
       <div
-        className="shrink-0 rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground"
+        className="shrink-0 rounded bg-muted flex items-center justify-center text-2xs text-muted-foreground"
         style={{ width: size, height: size }}
       >
         {card.name[0]}

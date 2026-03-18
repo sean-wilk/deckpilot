@@ -138,7 +138,7 @@ export default function ImportPage() {
 
           {result.matched.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-lg font-medium">
+              <h2 className="text-lg font-semibold">
                 Matched ({result.matched.length} card{result.matched.length !== 1 ? 's' : ''})
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -171,7 +171,7 @@ export default function ImportPage() {
 
           {result.unmatched.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-lg font-medium text-destructive">
+              <h2 className="text-lg font-semibold text-destructive">
                 Unmatched ({result.unmatched.length} card{result.unmatched.length !== 1 ? 's' : ''})
               </h2>
               <ul className="rounded-md border border-destructive/50 divide-y divide-destructive/20">

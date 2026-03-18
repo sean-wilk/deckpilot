@@ -264,7 +264,7 @@ function PersistedRecCard({
           {rec.tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border"
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium bg-muted text-muted-foreground border"
             >
               {TAG_LABELS[tag] ?? tag}
             </span>
@@ -277,11 +277,19 @@ function PersistedRecCard({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+function getTierLabel(spiciness: number): string {
+  if (spiciness <= 15) return 'Meta Optimal'
+  if (spiciness <= 35) return 'Tuned'
+  if (spiciness <= 65) return 'Balanced'
+  if (spiciness <= 85) return 'Spicy'
+  return 'Jank Paradise'
+}
+
 interface RecommendationsTabContentProps {
   deckId: string
   cardCount: number
   focus?: string
-  wildcardMode?: boolean
+  spiciness?: number
 }
 
 type ActiveTab = 'cuts' | 'adds'
@@ -290,15 +298,12 @@ export function RecommendationsTabContent({
   deckId,
   cardCount,
   focus,
-  wildcardMode: initialWildcardMode = false,
+  spiciness = 30,
 }: RecommendationsTabContentProps) {
   const { data, isPolling, error, trigger } = usePollAnalysis<RecommendationsResult>(deckId, 'swap_suggestion')
 
   // Local status overrides (from PATCH calls this session)
   const [localStatuses, setLocalStatuses] = useState<LocalStatusMap>({})
-
-  // Wildcard / discovery mode
-  const [wildcardMode, setWildcardMode] = useState(initialWildcardMode)
 
   // Sub-tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('cuts')
@@ -324,7 +329,7 @@ export function RecommendationsTabContent({
 
   async function handleGenerate() {
     setLocalStatuses({})
-    const body: Record<string, unknown> = { deckId, wildcardMode }
+    const body: Record<string, unknown> = { deckId, spiciness }
     if (focus) body.focus = focus
     await trigger(body)
   }
@@ -367,22 +372,10 @@ export function RecommendationsTabContent({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* Mode badge + toggle */}
-          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-            wildcardMode
-              ? 'bg-purple-100 text-purple-700 border-purple-200'
-              : 'bg-blue-100 text-blue-700 border-blue-200'
-          }`}>
-            Mode: {wildcardMode ? 'Discovery' : 'Optimized'}
+          {/* Read-only spiciness badge */}
+          <span className="text-xs text-muted-foreground">
+            Creativity: {getTierLabel(spiciness)} ({spiciness}/100)
           </span>
-          <button
-            onClick={() => setWildcardMode((prev) => !prev)}
-            disabled={isLoading}
-            className="text-[10px] px-2 py-0.5 rounded-full border bg-background hover:bg-muted transition-colors disabled:opacity-50 text-muted-foreground"
-            title={wildcardMode ? 'Switch to Optimized mode' : 'Switch to Discovery mode'}
-          >
-            {wildcardMode ? 'Optimized' : 'Discovery'}
-          </button>
           <button
             onClick={handleGenerate}
             disabled={isLoading}
@@ -447,7 +440,7 @@ export function RecommendationsTabContent({
             >
               Cuts
               {visibleCuts.length > 0 && (
-                <span className="ml-1.5 text-[10px] bg-red-200 text-red-700 rounded-full px-1.5 py-0.5">
+                <span className="ml-1.5 text-2xs bg-red-200 text-red-700 rounded-full px-1.5 py-0.5">
                   {visibleCuts.length}
                 </span>
               )}
@@ -462,7 +455,7 @@ export function RecommendationsTabContent({
             >
               Adds
               {visibleAdds.length > 0 && (
-                <span className="ml-1.5 text-[10px] bg-green-200 text-green-700 rounded-full px-1.5 py-0.5">
+                <span className="ml-1.5 text-2xs bg-green-200 text-green-700 rounded-full px-1.5 py-0.5">
                   {visibleAdds.length}
                 </span>
               )}

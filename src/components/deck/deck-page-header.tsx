@@ -49,7 +49,7 @@ export function DeckPageHeader({
             <span
               className={cn(
                 'inline-flex items-center px-2.5 py-0.5 rounded-full',
-                'text-[11px] font-semibold border shrink-0',
+                'text-xs-plus font-semibold border shrink-0',
                 bracketColor,
               )}
             >
@@ -59,7 +59,7 @@ export function DeckPageHeader({
             <span
               className={cn(
                 'inline-flex items-center px-2 py-0.5 rounded-full shrink-0',
-                'text-[11px] font-medium border',
+                'text-xs-plus font-medium border',
                 'bg-muted text-muted-foreground border-border',
                 cardCount === 100 && 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
                 cardCount > 100  && 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800',

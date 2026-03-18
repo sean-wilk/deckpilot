@@ -70,6 +70,22 @@ export default async function AdminPage() {
                     <dt className="text-muted-foreground">Generation</dt>
                     <dd className="font-mono mt-0.5">{config.modelGeneration}</dd>
                   </div>
+                  <div>
+                    <dt className="text-muted-foreground">Max Tokens (Analysis)</dt>
+                    <dd className="font-mono mt-0.5">{config.maxTokensAnalysis.toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Max Tokens (Recs)</dt>
+                    <dd className="font-mono mt-0.5">{config.maxTokensRecommendations.toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Max Tokens (Chat)</dt>
+                    <dd className="font-mono mt-0.5">{config.maxTokensChat.toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Max Tokens (Gen)</dt>
+                    <dd className="font-mono mt-0.5">{config.maxTokensGeneration.toLocaleString()}</dd>
+                  </div>
                   {config.usageLimitDailyCents != null && (
                     <div>
                       <dt className="text-muted-foreground">Daily Limit</dt>

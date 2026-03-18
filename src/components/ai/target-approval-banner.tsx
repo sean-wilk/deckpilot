@@ -92,14 +92,14 @@ export function TargetApprovalBanner({
                 className="rounded-lg border border-indigo-200/50 dark:border-indigo-800/50 bg-background/60 px-2.5 py-2 space-y-0.5"
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[11px] font-medium text-foreground truncate">
+                  <span className="text-xs-plus font-medium text-foreground truncate">
                     {label}
                   </span>
-                  <span className="text-[11px] font-bold tabular-nums text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <span className="text-xs-plus font-bold tabular-nums text-indigo-600 dark:text-indigo-400 shrink-0">
                     {item.target_count}
                   </span>
                 </div>
-                <p className="text-[9px] text-muted-foreground leading-relaxed line-clamp-2">
+                <p className="text-2xs text-muted-foreground leading-relaxed line-clamp-2">
                   {item.reasoning}
                 </p>
               </div>
@@ -112,21 +112,21 @@ export function TargetApprovalBanner({
           <button
             type="button"
             onClick={handleAcceptAll}
-            className="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-[11px] font-semibold px-3 py-1.5 transition-colors"
+            className="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs-plus font-semibold px-3 py-1.5 transition-colors"
           >
             Accept All
           </button>
           <button
             type="button"
             onClick={onModify}
-            className="rounded-lg border border-indigo-400/50 hover:border-indigo-400 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 text-[11px] font-medium px-3 py-1.5 transition-colors"
+            className="rounded-lg border border-indigo-400/50 hover:border-indigo-400 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 text-xs-plus font-medium px-3 py-1.5 transition-colors"
           >
             Modify
           </button>
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted text-[11px] font-medium px-3 py-1.5 transition-colors"
+            className="rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted text-xs-plus font-medium px-3 py-1.5 transition-colors"
           >
             Dismiss
           </button>

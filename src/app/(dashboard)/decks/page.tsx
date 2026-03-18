@@ -34,7 +34,7 @@ interface DeckRow {
 function BracketBadge({ bracket }: { bracket: number }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-wide ${BRACKET_BADGE_COLORS[bracket] ?? 'bg-muted text-muted-foreground border-border'}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs-plus font-semibold tracking-wide ${BRACKET_BADGE_COLORS[bracket] ?? 'bg-muted text-muted-foreground border-border'}`}
     >
       B{bracket} · {BRACKET_LABELS[bracket] ?? 'Unknown'}
     </span>
@@ -94,7 +94,7 @@ function DeckCard({ deck }: { deck: DeckRow }) {
         </div>
         {deck.commander && (
           <div className="absolute bottom-2 left-3 right-10">
-            <p className="text-[11px] font-medium text-foreground/70 truncate leading-tight">
+            <p className="text-xs-plus font-medium text-foreground/70 truncate leading-tight">
               {deck.commander.name}
             </p>
           </div>
@@ -103,7 +103,7 @@ function DeckCard({ deck }: { deck: DeckRow }) {
 
       {/* Content */}
       <div className="flex flex-col gap-2 p-4 pt-3 flex-1">
-        <h3 className="font-semibold text-base leading-snug line-clamp-2">
+        <h3 className="font-semibold text-sm leading-snug line-clamp-2">
           {deck.name}
         </h3>
         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-auto pt-1">
@@ -135,7 +135,7 @@ function EmptyState() {
           <Plus className="size-3.5 text-primary-foreground" />
         </div>
       </div>
-      <h2 className="text-xl font-semibold mb-2">No decks yet</h2>
+      <h2 className="text-lg font-semibold mb-2">No decks yet</h2>
       <p className="text-muted-foreground text-sm max-w-xs mb-6">
         Build your first Commander deck and start tracking its evolution.
       </p>

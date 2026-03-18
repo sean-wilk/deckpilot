@@ -11,7 +11,10 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new Response('Unauthorized', { status: 401 })
 
-    const { deckId, focus, wildcardMode } = await request.json()
+    const body = await request.json()
+    const { deckId, focus, spiciness, wildcardMode } = body
+    // backward compat: map old wildcardMode to spiciness
+    const effectiveSpiciness: number = spiciness ?? (wildcardMode ? 85 : 30)
 
     const deck = await db.select().from(decks)
       .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
       status: 'pending',
     }).returning()
 
-    await inngest.send({ name: 'ai/recommendations.requested', data: { deckId, analysisId: analysis.id, focus, wildcardMode } })
+    await inngest.send({ name: 'ai/recommendations.requested', data: { deckId, analysisId: analysis.id, focus, spiciness: effectiveSpiciness } })
 
     return NextResponse.json({ analysisId: analysis.id, status: 'pending' })
   } catch (error) {

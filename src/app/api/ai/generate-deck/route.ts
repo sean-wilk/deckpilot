@@ -7,6 +7,8 @@ import { db } from '@/lib/db'
 import { cards } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
+export const maxDuration = 300
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
@@ -57,12 +59,13 @@ Select exactly 99 cards that complement "${commanderName}" as the commander. For
 
 Also provide an overall strategy summary and your estimated power bracket for the completed deck.`
 
-    const { model } = await getAiModel('generation')
+    const { model, maxTokens } = await getAiModel('generation')
 
     const object = await chat({
       adapter: model,
       messages: [{ role: 'user', content: prompt }],
       outputSchema: GeneratedDeckSchema,
+      maxTokens,
     })
 
     return NextResponse.json(object)

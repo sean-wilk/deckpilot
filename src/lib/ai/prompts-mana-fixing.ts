@@ -22,6 +22,12 @@ ${context.currentLands ? `\n## Current Mana Base\n${context.currentLands}` : ''}
 ${context.colorRequirements && Object.keys(context.colorRequirements).length > 0 ? `\n## Color Requirements (pips from non-land cards)\n${Object.entries(context.colorRequirements).map(([c, n]) => `${c}: ${n} pips`).join(', ')}` : ''}
 ${context.colorProduction && Object.keys(context.colorProduction).length > 0 ? `\n## Current Color Production\n${Object.entries(context.colorProduction).map(([c, n]) => `${c}: ${n} sources`).join(', ')}` : ''}
 
+## Card Name Formatting (MANDATORY)
+When mentioning any Magic card by name in your response text, ALWAYS wrap it in double brackets: [[Card Name]].
+Examples: [[Sol Ring]], [[Kodama's Reach]], [[Thassa, Deep-Dwelling]].
+This applies to ALL text fields: notes, reasoning, recommendations, mana_curve_notes, color_balance_notes, etc.
+Do NOT bracket card names inside structured arrays (like the \`cards\` array in categories or \`card_roles\`).
+
 ## Instructions
 - Suggest specific dual lands, fetch lands, and fixing appropriate for Bracket ${context.targetBracket}
 - Consider budget constraints

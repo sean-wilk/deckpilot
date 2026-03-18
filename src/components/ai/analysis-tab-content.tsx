@@ -14,20 +14,21 @@ import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const RATING_COLORS: Record<string, string> = {
-  deficient: 'text-red-500',
-  low: 'text-orange-500',
-  adequate: 'text-yellow-500',
-  strong: 'text-green-500',
-  excessive: 'text-blue-500',
+const GRADE_MAP: Record<string, { grade: string; bg: string; text: string }> = {
+  excessive: { grade: 'A+', bg: 'bg-blue-500', text: 'text-white' },
+  strong:    { grade: 'A', bg: 'bg-green-500', text: 'text-white' },
+  adequate:  { grade: 'B', bg: 'bg-yellow-500', text: 'text-yellow-950' },
+  low:       { grade: 'C', bg: 'bg-orange-500', text: 'text-white' },
+  deficient: { grade: 'D', bg: 'bg-red-500', text: 'text-white' },
 }
 
-const RATING_BG: Record<string, string> = {
-  deficient: 'bg-red-500/10',
-  low: 'bg-orange-500/10',
-  adequate: 'bg-yellow-500/10',
-  strong: 'bg-green-500/10',
-  excessive: 'bg-blue-500/10',
+function RatingBadge({ rating }: { rating: string }) {
+  const config = GRADE_MAP[rating] ?? { grade: '?', bg: 'bg-muted', text: 'text-muted-foreground' }
+  return (
+    <span className={`inline-flex items-center justify-center size-7 rounded-full text-xs font-bold ${config.bg} ${config.text}`}>
+      {config.grade}
+    </span>
+  )
 }
 
 function formatDate(dateStr: string): string {
@@ -76,7 +77,7 @@ function BracketBadge({ bracket }: { bracket: number }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
       {children}
     </span>
   )
@@ -133,19 +134,15 @@ function CategoryGrid({ categories, categoryTargets, suggestedTargets, cardNames
             <span className="text-xs text-muted-foreground tabular-nums">
               {cat.count}/{cat.target}
             </span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${RATING_COLORS[cat.rating] ?? ''} ${RATING_BG[cat.rating] ?? ''}`}
-            >
-              {cat.rating}
-            </span>
+            <RatingBadge rating={cat.rating} />
           </div>
         </div>
         <ProgressBar value={cat.count} max={cat.target > 0 ? cat.target : 1} />
         {targetLabel && (
-          <p className="text-[10px] text-muted-foreground/70 font-medium">{targetLabel}</p>
+          <p className="text-2xs text-muted-foreground/70 font-medium">{targetLabel}</p>
         )}
         {cat.notes && (
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             <AnalysisTextWithCards text={cat.notes} cardNames={cardNames} />
           </p>
         )}
@@ -157,7 +154,7 @@ function CategoryGrid({ categories, categoryTargets, suggestedTargets, cardNames
     <div className="space-y-4">
       {categories.core.length > 0 && (
         <div className="space-y-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Core Categories</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Core Categories</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {categories.core.map((cat, i) => renderCategoryCard(cat, i))}
           </div>
@@ -165,7 +162,7 @@ function CategoryGrid({ categories, categoryTargets, suggestedTargets, cardNames
       )}
       {categories.deck_specific.length > 0 && (
         <div className="space-y-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Deck-Specific Categories</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Deck-Specific Categories</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {categories.deck_specific.map((cat, i) => renderCategoryCard(cat, i))}
           </div>
@@ -178,9 +175,11 @@ function CategoryGrid({ categories, categoryTargets, suggestedTargets, cardNames
 function StrengthsWeaknessesPanel({
   strengths,
   weaknesses,
+  cardNames,
 }: {
   strengths?: string[]
   weaknesses?: string[]
+  cardNames: string[]
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -195,7 +194,7 @@ function StrengthsWeaknessesPanel({
             {strengths.map((s, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                 <span className="mt-1.5 size-1 rounded-full bg-green-500/60 shrink-0" />
-                {s}
+                <AnalysisTextWithCards text={s} cardNames={cardNames} />
               </li>
             ))}
           </ul>
@@ -215,7 +214,7 @@ function StrengthsWeaknessesPanel({
             {weaknesses.map((w, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                 <span className="mt-1.5 size-1 rounded-full bg-red-500/60 shrink-0" />
-                {w}
+                <AnalysisTextWithCards text={w} cardNames={cardNames} />
               </li>
             ))}
           </ul>
@@ -349,19 +348,19 @@ export function AnalysisTabContent({
             </svg>
           </div>
           <div>
-            <h2 className="text-sm font-semibold">AI Analysis</h2>
+            <h2 className="text-lg font-semibold">AI Analysis</h2>
             {data?.history?.[0]?.createdAt && !isLoading && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs-plus text-muted-foreground">
                 Last analyzed: {formatDate(data.history[0].createdAt)}
               </p>
             )}
             {isLoading && (
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+              <p className="text-xs-plus text-muted-foreground flex items-center gap-1">
                 Analyzing <LoadingDots />
               </p>
             )}
             {!data && !isLoading && !error && (
-              <p className="text-[11px] text-muted-foreground">Loading saved analysis…</p>
+              <p className="text-xs-plus text-muted-foreground">Loading saved analysis…</p>
             )}
           </div>
         </div>
@@ -536,7 +535,7 @@ export function AnalysisTabContent({
           {/* Power level */}
           {analysis.bracket !== undefined && (
             <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-lg font-semibold">Power Level</h3>
+              <h3 className="text-base font-semibold">Power Level</h3>
               <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                 {(() => {
                   const rawConfidence = analysis.bracket_confidence ?? 0
@@ -583,7 +582,7 @@ export function AnalysisTabContent({
           {/* Categories — 2-column grid */}
           {analysis.categories && (normalized.core.length > 0 || normalized.deck_specific.length > 0) && (
             <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-lg font-semibold">Categories</h3>
+              <h3 className="text-base font-semibold">Categories</h3>
               <CategoryGrid
                 categories={normalized}
                 categoryTargets={categoryTargets}
@@ -596,10 +595,11 @@ export function AnalysisTabContent({
           {/* Strengths & Weaknesses — side by side */}
           {(analysis.strengths || analysis.weaknesses) && (
             <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-lg font-semibold">Strengths &amp; Weaknesses</h3>
+              <h3 className="text-base font-semibold">Strengths &amp; Weaknesses</h3>
               <StrengthsWeaknessesPanel
                 strengths={analysis.strengths}
                 weaknesses={analysis.weaknesses}
+                cardNames={allCardNames}
               />
             </div>
           )}
@@ -637,7 +637,7 @@ export function AnalysisTabContent({
               analysis.mana_base_notes ||
               analysis.fixing_quality) && (
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold">Mana Base</h3>
+                <h3 className="text-base font-semibold">Mana Base</h3>
                 <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                   {analysis.land_count !== undefined && (
                     <div className="flex items-center justify-between">
@@ -677,7 +677,7 @@ export function AnalysisTabContent({
                           return (
                             <span key={c} className="inline-flex items-center gap-0.5">
                               <ManaSymbol symbol={c} size="xs" />
-                              <span className="text-[10px] text-muted-foreground tabular-nums">{count}</span>
+                              <span className="text-2xs text-muted-foreground tabular-nums">{count}</span>
                             </span>
                           )
                         })}
@@ -698,7 +698,7 @@ export function AnalysisTabContent({
               analysis.key_synergies ||
               analysis.dead_cards) && (
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold">Synergy</h3>
+                <h3 className="text-base font-semibold">Synergy</h3>
                 <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                   {analysis.synergy_score !== undefined && (
                     <div className="space-y-1.5">
@@ -745,7 +745,7 @@ export function AnalysisTabContent({
           {/* Salt */}
           {(analysis.salt_total !== undefined || analysis.salt_notes) && (
             <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-lg font-semibold">Salt Assessment</h3>
+              <h3 className="text-base font-semibold">Salt Assessment</h3>
               <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                 {analysis.salt_total !== undefined && (
                   <SaltScoreMeter score={analysis.salt_total} />
@@ -762,7 +762,7 @@ export function AnalysisTabContent({
           {/* ── Follow-up action buttons ── */}
           {(showImproveSynergy || showImproveMana) && onSwitchToRecommendations && (
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold">Suggested Next Steps</h3>
+              <h3 className="text-base font-semibold">Suggested Next Steps</h3>
               <div className="flex flex-wrap gap-2">
                 {showImproveSynergy && (
                   <button

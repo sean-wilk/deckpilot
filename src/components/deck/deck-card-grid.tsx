@@ -235,7 +235,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
 
       {/* Card name */}
       <span
-        className="text-[10px] text-center text-muted-foreground leading-tight truncate"
+        className="text-2xs text-center text-muted-foreground leading-tight truncate"
         style={{ maxWidth: Math.max(width - 8, 60) }}
       >
         {card.name}
@@ -247,13 +247,13 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
           {visibleRoles.map((role) => (
             <span
               key={role}
-              className="text-[9px] rounded-full bg-muted text-muted-foreground px-1.5 leading-relaxed"
+              className="text-2xs rounded-full bg-muted text-muted-foreground px-1.5 leading-relaxed"
             >
               {abbreviateRole(role)}
             </span>
           ))}
           {extraRoleCount > 0 && (
-            <span className="text-[9px] text-muted-foreground/60">
+            <span className="text-2xs text-muted-foreground/60">
               +{extraRoleCount}
             </span>
           )}

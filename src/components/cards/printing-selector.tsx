@@ -84,12 +84,12 @@ export function PrintingSelector({ cardId, deckCardId, onSelect }: PrintingSelec
               )}
             >
               {/* Set code badge */}
-              <span className="text-[10px] font-bold uppercase tracking-wider leading-none">
+              <span className="text-2xs font-bold uppercase tracking-wider leading-none">
                 {printing.setCode}
               </span>
 
               {/* Year */}
-              <span className="text-[9px] text-white/40 leading-none">
+              <span className="text-2xs text-white/40 leading-none">
                 {printing.releasedAt.slice(0, 4)}
               </span>
 
@@ -97,14 +97,14 @@ export function PrintingSelector({ cardId, deckCardId, onSelect }: PrintingSelec
               {price != null ? (
                 <span
                   className={cn(
-                    'text-[10px] font-semibold leading-none',
+                    'text-2xs font-semibold leading-none',
                     isSelected ? 'text-emerald-400' : 'text-white/50',
                   )}
                 >
                   ${price}
                 </span>
               ) : (
-                <span className="text-[9px] text-white/25 leading-none">—</span>
+                <span className="text-2xs text-white/25 leading-none">—</span>
               )}
             </button>
           )

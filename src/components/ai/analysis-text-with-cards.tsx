@@ -10,8 +10,13 @@ interface AnalysisTextWithCardsProps {
 }
 
 /**
- * Parses analysis text and wraps any card name matches in CardHoverPreview.
- * Uses a case-insensitive split approach — no complex regex.
+ * Parses analysis text and wraps card names in CardHoverPreview.
+ *
+ * Primary path: when text contains [[Card Name]] bracket markers, splits on
+ * those and wraps odd-indexed segments (card names) in CardHoverPreview.
+ *
+ * Fallback path: legacy substring matching for cached analyses that predate
+ * the bracket prompt change.
  */
 export function AnalysisTextWithCards({
   text,
@@ -19,6 +24,28 @@ export function AnalysisTextWithCards({
   className,
 }: AnalysisTextWithCardsProps) {
   if (!text) return null
+
+  // Primary path: bracket markers present
+  if (text.includes('[[')) {
+    const parts = text.split(/\[\[(.+?)\]\]/g)
+    return (
+      <span className={cn(className)}>
+        {parts.map((part, i) =>
+          i % 2 === 1 ? (
+            <CardHoverPreview key={i} cardName={part}>
+              <span className="underline decoration-dotted cursor-help text-foreground">
+                {part}
+              </span>
+            </CardHoverPreview>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </span>
+    )
+  }
+
+  // Fallback path: legacy substring matching for pre-bracket analyses
   if (!cardNames.length) {
     return <span className={className}>{text}</span>
   }

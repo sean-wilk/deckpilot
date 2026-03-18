@@ -1,16 +1,26 @@
 'use client'
 
 import { useState } from 'react'
+import { ManaSymbol } from '@/components/ui/mana-symbol'
 
 // ─── MTG color constants ───────────────────────────────────────────────────────
 
-const MTG_COLORS: Record<string, { label: string; bg: string; bar: string; text: string }> = {
-  W: { label: 'White', bg: 'bg-yellow-50 dark:bg-yellow-950/20', bar: 'bg-yellow-400', text: 'text-yellow-700 dark:text-yellow-300' },
-  U: { label: 'Blue',  bg: 'bg-blue-50 dark:bg-blue-950/20',     bar: 'bg-blue-500',   text: 'text-blue-700 dark:text-blue-300' },
-  B: { label: 'Black', bg: 'bg-neutral-100 dark:bg-neutral-800/40', bar: 'bg-neutral-500', text: 'text-neutral-700 dark:text-neutral-300' },
-  R: { label: 'Red',   bg: 'bg-red-50 dark:bg-red-950/20',       bar: 'bg-red-500',    text: 'text-red-700 dark:text-red-300' },
-  G: { label: 'Green', bg: 'bg-green-50 dark:bg-green-950/20',   bar: 'bg-green-500',  text: 'text-green-700 dark:text-green-300' },
-  C: { label: 'Colorless', bg: 'bg-gray-50 dark:bg-gray-800/40', bar: 'bg-gray-400',   text: 'text-gray-600 dark:text-gray-400' },
+const MTG_BAR_COLORS: Record<string, string> = {
+  W: 'bg-yellow-400',
+  U: 'bg-blue-500',
+  B: 'bg-neutral-500',
+  R: 'bg-red-500',
+  G: 'bg-green-500',
+  C: 'bg-gray-400',
+}
+
+const MTG_LABELS: Record<string, string> = {
+  W: 'White',
+  U: 'Blue',
+  B: 'Black',
+  R: 'Red',
+  G: 'Green',
+  C: 'Colorless',
 }
 
 const WUBRG = ['W', 'U', 'B', 'R', 'G']
@@ -50,7 +60,7 @@ interface LandsSectionProps {
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
       {title}
     </span>
   )
@@ -62,19 +72,19 @@ function LandCountBar({ total, target }: { total: number; target: number }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground">Land Count</span>
+        <span className="text-xs-plus text-muted-foreground">Land Count</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-medium tabular-nums text-foreground">
+          <span className="text-xs-plus font-medium tabular-nums text-foreground">
             {total}
           </span>
-          <span className="text-[10px] text-muted-foreground">/ {target} target</span>
+          <span className="text-2xs text-muted-foreground">/ {target} target</span>
           {overTarget && (
-            <span className="text-[10px] px-1 py-0.5 rounded font-medium text-blue-500 bg-blue-500/10">
+            <span className="text-2xs px-1 py-0.5 rounded font-medium text-blue-500 bg-blue-500/10">
               +{total - target}
             </span>
           )}
           {total < target && (
-            <span className="text-[10px] px-1 py-0.5 rounded font-medium text-orange-500 bg-orange-500/10">
+            <span className="text-2xs px-1 py-0.5 rounded font-medium text-orange-500 bg-orange-500/10">
               -{target - total}
             </span>
           )}
@@ -86,7 +96,7 @@ function LandCountBar({ total, target }: { total: number; target: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-3 text-2xs text-muted-foreground">
         <span>{total} total</span>
         <span className="text-border">·</span>
         <span>{Math.round(pct)}% of target</span>
@@ -115,7 +125,8 @@ function ColorProductionBars({
   return (
     <div className="space-y-2">
       {activeColors.map((c) => {
-        const cfg = MTG_COLORS[c] ?? MTG_COLORS.C
+        const bar = MTG_BAR_COLORS[c] ?? MTG_BAR_COLORS.C
+        const label = MTG_LABELS[c] ?? 'Colorless'
         const prod = production[c] ?? 0
         const req = requirements?.[c] ?? 0
         const prodPct = Math.min((prod / Math.max(maxVal, 1)) * 100, 100)
@@ -126,10 +137,10 @@ function ColorProductionBars({
           <div key={c} className="space-y-0.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className={`text-[10px] font-bold w-3 ${cfg.text}`}>{c}</span>
-                <span className="text-[10px] text-muted-foreground">{cfg.label}</span>
+                <ManaSymbol symbol={c} size="xs" />
+                <span className="text-2xs text-muted-foreground">{label}</span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] tabular-nums">
+              <div className="flex items-center gap-2 text-2xs tabular-nums">
                 <span className="text-foreground font-medium">{prod} src</span>
                 {req > 0 && (
                   <>
@@ -147,7 +158,7 @@ function ColorProductionBars({
             {/* Production bar */}
             <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${cfg.bar}`}
+                className={`h-full rounded-full transition-all duration-500 ${bar}`}
                 style={{ width: `${prodPct}%` }}
               />
             </div>
@@ -164,7 +175,7 @@ function ColorProductionBars({
         )
       })}
       {requirements && Object.keys(requirements).length > 0 && (
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-0.5">
+        <div className="flex items-center gap-3 text-2xs text-muted-foreground pt-0.5">
           <span className="flex items-center gap-1">
             <span className="inline-block w-3 h-1 rounded-full bg-blue-500/60" />
             Sources
@@ -182,8 +193,8 @@ function ColorProductionBars({
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className="text-[11px] font-medium tabular-nums text-foreground">{value}</span>
+      <span className="text-xs-plus text-muted-foreground">{label}</span>
+      <span className="text-xs-plus font-medium tabular-nums text-foreground">{value}</span>
     </div>
   )
 }
@@ -275,7 +286,7 @@ export function LandsSection({
         </div>
         {fixingCfg && (
           <span
-            className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${fixingCfg.color} ${fixingCfg.bg}`}
+            className={`text-2xs px-1.5 py-0.5 rounded font-medium ${fixingCfg.color} ${fixingCfg.bg}`}
           >
             {fixingCfg.label} Fixing
           </span>
@@ -314,20 +325,20 @@ export function LandsSection({
             <div className="space-y-2">
               {mana_curve_notes && (
                 <div className="space-y-0.5">
-                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  <span className="text-2xs font-medium text-muted-foreground uppercase tracking-wide">
                     Mana Curve
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <p className="text-xs-plus text-muted-foreground leading-relaxed">
                     {mana_curve_notes}
                   </p>
                 </div>
               )}
               {color_balance_notes && (
                 <div className="space-y-0.5">
-                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  <span className="text-2xs font-medium text-muted-foreground uppercase tracking-wide">
                     Color Balance
                   </span>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <p className="text-xs-plus text-muted-foreground leading-relaxed">
                     {color_balance_notes}
                   </p>
                 </div>
@@ -341,7 +352,7 @@ export function LandsSection({
           <CollapsibleSection title="Recommendations" defaultOpen>
             <ul className="space-y-1.5">
               {recommendations.map((rec, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                <li key={i} className="flex items-start gap-1.5 text-xs-plus text-muted-foreground leading-relaxed">
                   <span className="mt-1 size-1.5 rounded-full bg-green-500/50 shrink-0" />
                   {rec}
                 </li>
@@ -357,7 +368,7 @@ export function LandsSection({
               <button
                 type="button"
                 onClick={onRecommendDualLands}
-                className="flex-1 rounded bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-[11px] font-medium px-3 py-1.5 transition-colors"
+                className="flex-1 rounded bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs-plus font-medium px-3 py-1.5 transition-colors"
               >
                 Recommend Dual Lands
               </button>
@@ -366,7 +377,7 @@ export function LandsSection({
               <button
                 type="button"
                 onClick={onFillWithBasics}
-                className="flex-1 rounded border border-border hover:bg-muted active:bg-muted/70 text-foreground text-[11px] font-medium px-3 py-1.5 transition-colors"
+                className="flex-1 rounded border border-border hover:bg-muted active:bg-muted/70 text-foreground text-xs-plus font-medium px-3 py-1.5 transition-colors"
               >
                 Fill with Basics
               </button>

@@ -2,6 +2,7 @@
 
 import { ManaCurveChart } from '@/components/deck/mana-curve-chart'
 import { ColorChart } from '@/components/deck/color-chart'
+import { CardDropZone } from '@/components/deck/card-drop-zone'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ function AiPanel({
         </p>
 
         <div className="space-y-1.5">
-          <div className="flex justify-between text-[10px] text-muted-foreground">
+          <div className="flex justify-between text-2xs text-muted-foreground">
             <span>{cardCount} cards</span>
             <span>{threshold} required</span>
           </div>
@@ -132,6 +133,7 @@ function SectionHeader({ title }: { title: string }) {
 // ─── DeckPageSidebar ──────────────────────────────────────────────────────────
 
 export function DeckPageSidebar({
+  deckId,
   deck,
   cardCount,
   statsCards,
@@ -144,6 +146,11 @@ export function DeckPageSidebar({
       {/* AI Panel */}
       {isOwner && (
         <AiPanel cardCount={cardCount} onAnalyze={onAnalyze} onRecommend={onRecommend} />
+      )}
+
+      {/* Card Drop Zone */}
+      {isOwner && (
+        <CardDropZone deckId={deckId} />
       )}
 
       {/* Deck Info */}

@@ -71,7 +71,7 @@ function CommanderCard({
           />
         ) : (
           <div className="w-full h-full bg-slate-800 flex items-center justify-center">
-            <span className="text-[9px] text-slate-400 text-center px-1 leading-tight">
+            <span className="text-2xs text-slate-400 text-center px-1 leading-tight">
               {name}
             </span>
           </div>

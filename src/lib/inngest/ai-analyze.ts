@@ -34,11 +34,12 @@ export const analyzeDeck = inngest.createFunction(
 
       // Step 4: Call AI
       const result = await step.run('call-ai', async () => {
-        const { model } = await getAiModel('analysis')
+        const { model, maxTokens } = await getAiModel('analysis')
         const object = await chat({
           adapter: model,
           messages: [{ role: 'user', content: prompt }],
           outputSchema: DeckAnalysisSchema,
+          maxTokens,
         })
         return { object }
       })

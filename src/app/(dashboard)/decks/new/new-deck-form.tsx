@@ -40,8 +40,8 @@ function BracketSelector({
             )}
           >
             <span className="text-sm font-bold leading-none">{b.label}</span>
-            <span className="text-[11px] font-medium leading-none">{b.sublabel}</span>
-            <span className="text-[10px] leading-snug text-center opacity-70 mt-0.5 hidden sm:block">
+            <span className="text-xs-plus font-medium leading-none">{b.sublabel}</span>
+            <span className="text-2xs leading-snug text-center opacity-70 mt-0.5 hidden sm:block">
               {b.description}
             </span>
           </button>

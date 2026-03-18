@@ -7,14 +7,38 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('q')
   const limit = Math.min(Number(searchParams.get('limit') ?? 20), 50)
+  const exact = searchParams.get('exact') === 'true'
 
   if (!query || query.length < 2) {
     return NextResponse.json({ cards: [] })
   }
 
   try {
-    // Try FTS first, fall back to ilike
     let results
+
+    if (exact) {
+      // Exact case-insensitive match
+      results = await db.select({
+        id: cards.id,
+        name: cards.name,
+        manaCost: cards.manaCost,
+        cmc: cards.cmc,
+        typeLine: cards.typeLine,
+        oracleText: cards.oracleText,
+        colors: cards.colors,
+        colorIdentity: cards.colorIdentity,
+        imageUris: cards.imageUris,
+        cardFaces: cards.cardFaces,
+        prices: cards.prices,
+        rarity: cards.rarity,
+        setCode: cards.setCode,
+        edhrecRank: cards.edhrecRank,
+      })
+      .from(cards)
+      .where(sql`LOWER(${cards.name}) = LOWER(${query})`)
+      .limit(limit)
+    } else {
+    // Try FTS first, fall back to ilike
     try {
       results = await db.execute(
         sql`SELECT id, name, mana_cost, cmc, type_line, oracle_text, colors, color_identity,
@@ -45,6 +69,7 @@ export async function GET(request: NextRequest) {
       .from(cards)
       .where(ilike(cards.name, `${query}%`))
       .limit(limit)
+    }
     }
 
     return NextResponse.json({ cards: results })

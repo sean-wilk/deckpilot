@@ -27,6 +27,18 @@ export async function addAiProvider(formData: FormData) {
   const modelRecommendations = (formData.get('modelRecommendations') as string) || 'claude-sonnet-4-6'
   const modelChat = (formData.get('modelChat') as string) || 'claude-sonnet-4-6'
   const modelGeneration = (formData.get('modelGeneration') as string) || 'claude-sonnet-4-6'
+  const maxTokensAnalysis = formData.get('maxTokensAnalysis')
+    ? Number(formData.get('maxTokensAnalysis'))
+    : 8192
+  const maxTokensRecommendations = formData.get('maxTokensRecommendations')
+    ? Number(formData.get('maxTokensRecommendations'))
+    : 8192
+  const maxTokensChat = formData.get('maxTokensChat')
+    ? Number(formData.get('maxTokensChat'))
+    : 4096
+  const maxTokensGeneration = formData.get('maxTokensGeneration')
+    ? Number(formData.get('maxTokensGeneration'))
+    : 16384
   const usageLimitDailyCents = formData.get('usageLimitDailyCents')
     ? Number(formData.get('usageLimitDailyCents'))
     : null
@@ -37,6 +49,10 @@ export async function addAiProvider(formData: FormData) {
     modelRecommendations,
     modelChat,
     modelGeneration,
+    maxTokensAnalysis,
+    maxTokensRecommendations,
+    maxTokensChat,
+    maxTokensGeneration,
     apiKeyEncrypted: encrypt(apiKey),
     usageLimitDailyCents,
   })

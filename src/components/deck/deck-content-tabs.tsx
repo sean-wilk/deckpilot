@@ -30,6 +30,7 @@ export interface DeckContentTabsProps {
   deckCardNames?: string[]
   philosophy?: string | null
   archetype?: string | null
+  spiciness?: number
   isOwner?: boolean
   activeTab?: string
   onTabChange?: (tab: string) => void
@@ -124,6 +125,7 @@ export function DeckContentTabs({
   deckCardNames,
   philosophy = null,
   archetype = null,
+  spiciness = 30,
   isOwner = false,
   activeTab,
   onTabChange,
@@ -223,6 +225,7 @@ export function DeckContentTabs({
               deckId={deckId}
               cardCount={cardCount}
               focus={recommendationsFocus}
+              spiciness={spiciness}
             />
           </div>
         )}
@@ -234,6 +237,7 @@ export function DeckContentTabs({
               deckId={deckId}
               philosophy={philosophy}
               archetype={archetype}
+              spiciness={spiciness}
               isOwner={isOwner}
             />
           </div>

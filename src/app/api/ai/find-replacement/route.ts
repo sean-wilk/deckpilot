@@ -44,12 +44,13 @@ export async function POST(request: Request) {
 
     const prompt = `Given the deck "${deck[0].name}" with commander ${commanderName}, suggest 3-5 replacement cards for "${cardName}". Consider the deck's strategy and the card's role. For each replacement, provide the card name, reasoning for the swap, synergy notes with the deck, and an estimated price in USD if known.`
 
-    const { model, provider, modelId } = await getAiModel('recommendations')
+    const { model, provider, modelId, maxTokens } = await getAiModel('recommendations')
 
     const object = await chat({
       adapter: model,
       messages: [{ role: 'user', content: prompt }],
       outputSchema: FindReplacementSchema,
+      maxTokens,
     })
 
     await db.insert(deckAnalyses).values({

@@ -32,12 +32,13 @@ For each commander, provide:
 - Synergy notes explaining how the commander fits the theme
 - Why this commander is a good choice for this theme/description`
 
-    const { model } = await getAiModel('recommendations')
+    const { model, maxTokens } = await getAiModel('recommendations')
 
     const object = await chat({
       adapter: model,
       messages: [{ role: 'user', content: prompt }],
       outputSchema: CommanderSuggestionsSchema,
+      maxTokens,
     })
 
     return new Response(JSON.stringify(object), {

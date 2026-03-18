@@ -12,11 +12,11 @@ export const recommendCards = inngest.createFunction(
   { id: 'ai-deck-recommendations', retries: 2 },
   { event: 'ai/recommendations.requested' },
   async ({ event, step }) => {
-    const { deckId, analysisId, focus, wildcardMode } = event.data as {
+    const { deckId, analysisId, focus, spiciness } = event.data as {
       deckId: string
       analysisId: string
       focus?: string
-      wildcardMode?: boolean
+      spiciness?: number
     }
 
     try {
@@ -34,7 +34,7 @@ export const recommendCards = inngest.createFunction(
 
       // Step 3: Build prompt
       const prompt = await step.run('build-prompt', async () => {
-        let p = getRecommendationPrompt({ ...context, wildcardMode: wildcardMode === true })
+        let p = getRecommendationPrompt({ ...context, spiciness })
 
         if (focus === 'synergy') {
           p += ' Focus specifically on improving card synergy and reducing dead cards.'
@@ -49,11 +49,12 @@ export const recommendCards = inngest.createFunction(
 
       // Step 4: Call AI
       const result = await step.run('call-ai', async () => {
-        const { model } = await getAiModel('recommendations')
+        const { model, maxTokens } = await getAiModel('recommendations')
         const object = await chat({
           adapter: model,
           messages: [{ role: 'user', content: prompt }],
           outputSchema: SwapRecommendationSchema,
+          maxTokens,
         })
         return { object }
       })

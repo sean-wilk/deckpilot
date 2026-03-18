@@ -36,7 +36,7 @@ export function SaltScoreMeter({ score }: SaltScoreMeterProps) {
       {/* Header row */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs-plus font-semibold uppercase tracking-wider text-muted-foreground">
             Salt Score
           </span>
           {/* Tooltip trigger */}
@@ -58,7 +58,7 @@ export function SaltScoreMeter({ score }: SaltScoreMeterProps) {
 
             {showTooltip && (
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-50 w-52 rounded-lg border border-border bg-popover px-3 py-2 shadow-md">
-                <p className="text-[10px] text-popover-foreground leading-relaxed">
+                <p className="text-2xs text-popover-foreground leading-relaxed">
                   Salt measures how likely your deck is to frustrate opponents — infinite combos, stax pieces, and targeted removal all raise this score.
                 </p>
                 <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-1 overflow-hidden">
@@ -74,7 +74,7 @@ export function SaltScoreMeter({ score }: SaltScoreMeterProps) {
           <span className={`text-base font-bold tabular-nums leading-none ${getLabelColor(clamped)}`}>
             {clamped % 1 === 0 ? clamped.toFixed(0) : clamped.toFixed(1)}
           </span>
-          <span className="text-[10px] text-muted-foreground">/10</span>
+          <span className="text-2xs text-muted-foreground">/10</span>
         </div>
       </div>
 
@@ -92,11 +92,11 @@ export function SaltScoreMeter({ score }: SaltScoreMeterProps) {
 
       {/* Label */}
       <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-medium ${getLabelColor(clamped)}`}>
+        <span className={`text-2xs font-medium ${getLabelColor(clamped)}`}>
           {getLabel(clamped)}
         </span>
         <div className="flex items-center gap-1">
-          <span className="text-[9px] text-muted-foreground/50">Low</span>
+          <span className="text-2xs text-muted-foreground/50">Low</span>
           <div className="flex gap-px">
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((tick) => (
               <div
@@ -109,7 +109,7 @@ export function SaltScoreMeter({ score }: SaltScoreMeterProps) {
               />
             ))}
           </div>
-          <span className="text-[9px] text-muted-foreground/50">High</span>
+          <span className="text-2xs text-muted-foreground/50">High</span>
         </div>
       </div>
     </div>

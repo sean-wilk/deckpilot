@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { BRACKET_LABELS, BRACKET_BADGE_COLORS } from '@/lib/constants/brackets'
+import { ManaSymbol } from '@/components/ui/mana-symbol'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,11 +22,11 @@ export interface StatsBarProps {
 // ─── MTG color config ─────────────────────────────────────────────────────────
 
 const MTG_COLORS = [
-  { symbol: 'W', label: 'White', bg: 'bg-amber-200',   border: 'border-amber-400',   text: 'text-amber-900' },
-  { symbol: 'U', label: 'Blue',  bg: 'bg-blue-400',    border: 'border-blue-600',    text: 'text-white'     },
-  { symbol: 'B', label: 'Black', bg: 'bg-slate-700',   border: 'border-slate-900',   text: 'text-slate-100' },
-  { symbol: 'R', label: 'Red',   bg: 'bg-red-500',     border: 'border-red-700',     text: 'text-white'     },
-  { symbol: 'G', label: 'Green', bg: 'bg-green-600',   border: 'border-green-800',   text: 'text-white'     },
+  { symbol: 'W', label: 'White' },
+  { symbol: 'U', label: 'Blue'  },
+  { symbol: 'B', label: 'Black' },
+  { symbol: 'R', label: 'Red'   },
+  { symbol: 'G', label: 'Green' },
 ] as const
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ function computeTotalPrice(cards: StatsCard[]): string {
 function StatCell({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className={cn('flex flex-col items-center gap-0.5 px-3', className)}>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-none">
+      <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground leading-none">
         {label}
       </span>
       <span className="text-sm font-semibold tabular-nums text-foreground leading-tight">
@@ -80,17 +81,11 @@ function StatCell({ label, value, className }: { label: string; value: string; c
 
 function ColorPip({
   symbol,
-  bg,
-  border,
-  text,
   label,
   count,
   total,
 }: {
   symbol: string
-  bg: string
-  border: string
-  text: string
   label: string
   count: number
   total: number
@@ -99,19 +94,13 @@ function ColorPip({
   return (
     <div className="flex flex-col items-center gap-1 min-w-[36px]">
       <div
-        className={cn(
-          'size-6 rounded-full flex items-center justify-center',
-          'border text-[10px] font-bold leading-none',
-          'transition-opacity duration-150',
-          bg, border, text,
-          count === 0 && 'opacity-30',
-        )}
+        className={cn('transition-opacity duration-150', count === 0 && 'opacity-30')}
         title={`${label}: ${count} card${count !== 1 ? 's' : ''} (${pct}%)`}
         aria-label={`${label}: ${count}`}
       >
-        {symbol}
+        <ManaSymbol symbol={symbol} size="sm" />
       </div>
-      <span className="text-[10px] tabular-nums text-muted-foreground leading-none">
+      <span className="text-2xs tabular-nums text-muted-foreground leading-none">
         {count}
       </span>
     </div>
@@ -156,14 +145,11 @@ export function StatsBar({ cards, targetBracket, className }: StatsBarProps) {
 
       {/* Center: color pips */}
       <div className="flex items-center gap-2 px-3 shrink-0">
-        {MTG_COLORS.map(({ symbol, label, bg, border, text }) => (
+        {MTG_COLORS.map(({ symbol, label }) => (
           <ColorPip
             key={symbol}
             symbol={symbol}
             label={label}
-            bg={bg}
-            border={border}
-            text={text}
             count={colorCounts[symbol] ?? 0}
             total={totalColored}
           />
@@ -175,7 +161,7 @@ export function StatsBar({ cards, targetBracket, className }: StatsBarProps) {
         <span
           className={cn(
             'inline-flex items-center px-2.5 py-1 rounded-full',
-            'text-[11px] font-semibold border',
+            'text-xs-plus font-semibold border',
             bracketColor,
           )}
         >

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CommanderSearch } from '@/components/deck/commander-search'
+import { ManaSymbolRow } from '@/components/ui/mana-symbol'
 import { cn } from '@/lib/utils'
 import { createDeck, addCardToDeck } from '@/app/(dashboard)/decks/actions'
 import { BRACKETS, BRACKET_ACCENT_COLORS } from '@/lib/constants/brackets'
@@ -74,8 +75,8 @@ function BracketSelector({
             )}
           >
             <span className="text-sm font-bold leading-none">{b.label}</span>
-            <span className="text-[11px] font-medium leading-none">{b.sublabel}</span>
-            <span className="text-[10px] leading-snug text-center opacity-70 mt-0.5 hidden sm:block">
+            <span className="text-xs-plus font-medium leading-none">{b.sublabel}</span>
+            <span className="text-2xs leading-snug text-center opacity-70 mt-0.5 hidden sm:block">
               {b.description}
             </span>
           </button>
@@ -139,28 +140,9 @@ function StepDot({ active, done }: { active: boolean; done: boolean }) {
 
 // ─── Color identity badge ─────────────────────────────────────────────────────
 
-const COLOR_LABELS: Record<string, string> = {
-  W: 'White',
-  U: 'Blue',
-  B: 'Black',
-  R: 'Red',
-  G: 'Green',
-}
-
 function ColorBadges({ colors }: { colors: string[] }) {
   if (colors.length === 0) return <span className="text-xs text-muted-foreground">Colorless</span>
-  return (
-    <div className="flex gap-1 flex-wrap">
-      {colors.map((c) => (
-        <span
-          key={c}
-          className="inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold bg-muted text-muted-foreground"
-        >
-          {COLOR_LABELS[c] ?? c}
-        </span>
-      ))}
-    </div>
-  )
+  return <ManaSymbolRow colors={colors} size="sm" />
 }
 
 // ─── WizardPage ───────────────────────────────────────────────────────────────
@@ -271,65 +253,15 @@ export default function WizardPage() {
         throw new Error((data as { error?: string }).error ?? `Request failed (${res.status})`)
       }
 
-      // Parse streamed text response — the AI SDK streams partial JSON deltas.
-      // We collect the full text then parse the final complete JSON object.
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No response body')
-
-      const decoder = new TextDecoder()
-      let accumulated = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        accumulated += chunk
-
-        // Try to extract cards array from accumulated partial JSON for live preview.
-        // The streamObject format sends incremental JSON — attempt best-effort parse.
-        try {
-          // Find the cards array in the partial JSON
-          const cardsMatch = accumulated.match(/"cards"\s*:\s*(\[[\s\S]*?\])(?=[,}]|$)/)
-          if (cardsMatch) {
-            // Complete any dangling partial object by closing it
-            let partial = cardsMatch[1]
-            // Count open/close braces to check if last object is complete
-            const openBraces = (partial.match(/\{/g) ?? []).length
-            const closeBraces = (partial.match(/\}/g) ?? []).length
-            if (openBraces > closeBraces) {
-              // Last card object is incomplete — truncate to last complete }
-              const lastClose = partial.lastIndexOf('}')
-              if (lastClose !== -1) {
-                partial = partial.slice(0, lastClose + 1) + ']'
-              } else {
-                partial = '[]'
-              }
-            }
-            const parsed = JSON.parse(partial) as GeneratedCard[]
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setGeneratedCards(parsed)
-            }
-          }
-        } catch {
-          // Partial parse failed — keep accumulating
-        }
+      // Server returns plain JSON (not a stream) — parse directly
+      const parsed = await res.json() as {
+        cards?: GeneratedCard[]
+        strategy_summary?: string
+        estimated_bracket?: number
       }
 
-      // Final parse of complete response
-      let finalCards: GeneratedCard[] = []
-      let finalSummary = ''
-      try {
-        const parsed = JSON.parse(accumulated) as {
-          cards?: GeneratedCard[]
-          strategy_summary?: string
-          estimated_bracket?: number
-        }
-        finalCards = parsed.cards ?? []
-        finalSummary = parsed.strategy_summary ?? ''
-      } catch {
-        // Use whatever was accumulated from streaming
-        finalCards = generatedCards
-      }
+      const finalCards = parsed.cards ?? []
+      const finalSummary = parsed.strategy_summary ?? ''
 
       setGeneratedCards(finalCards)
       setStrategySummary(finalSummary)

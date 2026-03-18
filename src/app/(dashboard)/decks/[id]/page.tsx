@@ -173,6 +173,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
               philosophy: deck.philosophy,
               archetype: deck.archetype,
               categoryTargets: deck.categoryTargets as Record<string, number> | null,
+              spiciness: deck.spiciness,
             }}
             mainboardCards={mainboardCards}
             sideboardCards={sideboardCards}

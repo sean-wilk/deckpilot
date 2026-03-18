@@ -43,6 +43,7 @@ interface DeckPageClientProps {
     philosophy: string | null
     archetype: string | null
     categoryTargets: Record<string, number> | null
+    spiciness: number
   }
   mainboardCards: DeckCardEntry[]
   sideboardCards: DeckCardEntry[]
@@ -175,6 +176,7 @@ export function DeckPageClient({
           ]}
           philosophy={deck.philosophy}
           archetype={deck.archetype}
+          spiciness={deck.spiciness}
           isOwner={isOwner}
           activeTab={activeTab}
           onTabChange={setActiveTab}

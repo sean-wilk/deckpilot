@@ -86,7 +86,7 @@ export function DeckDisplayControls({
 
       {/* Right: card size slider */}
       <div className="flex items-center gap-2 shrink-0">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-none select-none">
+        <span className="text-2xs font-medium uppercase tracking-wider text-muted-foreground leading-none select-none">
           Size
         </span>
         <input

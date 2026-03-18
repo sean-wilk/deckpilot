@@ -152,6 +152,56 @@ export function AddProviderForm() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="maxTokensAnalysis">Max Tokens (Analysis)</Label>
+              <Input
+                id="maxTokensAnalysis"
+                name="maxTokensAnalysis"
+                type="number"
+                min="1"
+                defaultValue={8192}
+                className="font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxTokensRecommendations">Max Tokens (Recommendations)</Label>
+              <Input
+                id="maxTokensRecommendations"
+                name="maxTokensRecommendations"
+                type="number"
+                min="1"
+                defaultValue={8192}
+                className="font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxTokensChat">Max Tokens (Chat)</Label>
+              <Input
+                id="maxTokensChat"
+                name="maxTokensChat"
+                type="number"
+                min="1"
+                defaultValue={4096}
+                className="font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxTokensGeneration">Max Tokens (Generation)</Label>
+              <Input
+                id="maxTokensGeneration"
+                name="maxTokensGeneration"
+                type="number"
+                min="1"
+                defaultValue={16384}
+                className="font-mono"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="usageLimitDailyCents">Daily Usage Limit (cents, optional)</Label>
             <Input

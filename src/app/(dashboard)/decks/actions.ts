@@ -249,3 +249,28 @@ export async function updateLandCountTarget(deckId: string, target: number | nul
     .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
   revalidatePath(`/decks/${deckId}`)
 }
+
+export async function updateDeckSpiciness(deckId: string, spiciness: number) {
+  if (spiciness < 0 || spiciness > 100 || !Number.isInteger(spiciness)) {
+    return { error: 'Spiciness must be an integer between 0 and 100' }
+  }
+
+  const user = await requireUser()
+
+  // Verify deck ownership
+  const deck = await db.select({ ownerId: decks.ownerId })
+    .from(decks)
+    .where(eq(decks.id, deckId))
+    .limit(1)
+
+  if (!deck[0] || deck[0].ownerId !== user.id) {
+    return { error: 'Not found or not authorized' }
+  }
+
+  await db.update(decks)
+    .set({ spiciness, updatedAt: new Date() })
+    .where(eq(decks.id, deckId))
+
+  revalidatePath(`/decks/${deckId}`)
+  return { success: true }
+}

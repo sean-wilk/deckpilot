@@ -153,7 +153,7 @@ export default function MatchesPage() {
 
       {/* Log a match form */}
       <div className="rounded-2xl border bg-card p-6 shadow-sm space-y-5">
-        <h2 className="text-base font-semibold">Log a Match</h2>
+        <h2 className="text-lg font-semibold">Log a Match</h2>
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -304,7 +304,7 @@ export default function MatchesPage() {
 
       {/* Match history */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold">Match History</h2>
+        <h2 className="text-lg font-semibold">Match History</h2>
 
         {loadingMatches && (
           <div className="space-y-2">

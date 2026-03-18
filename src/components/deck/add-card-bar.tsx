@@ -64,7 +64,7 @@ function ResultRow({ card, onAdd, adding }: ResultRowProps) {
           <span className="text-xs text-muted-foreground font-mono">{card.mana_cost}</span>
         )}
         <span className={cn(
-          'text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded',
+          'text-2xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded',
           card.rarity === 'mythic'   && 'bg-orange-100 text-orange-700',
           card.rarity === 'rare'     && 'bg-amber-100 text-amber-700',
           card.rarity === 'uncommon' && 'bg-slate-100 text-slate-600',

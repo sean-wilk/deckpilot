@@ -64,6 +64,12 @@ Format categories as: { core: [...], deck_specific: [...] }
 
 Each category object should include: name, count, target, rating, cards (array of card names in that category), notes.
 
+## Card Name Formatting (MANDATORY)
+When mentioning any Magic card by name in your response text, ALWAYS wrap it in double brackets: [[Card Name]].
+Examples: [[Sol Ring]], [[Kodama's Reach]], [[Thassa, Deep-Dwelling]].
+This applies to ALL text fields: notes, reasoning, recommendations, mana_curve_notes, color_balance_notes, etc.
+Do NOT bracket card names inside structured arrays (like the \`cards\` array in categories or \`card_roles\`).
+
 ## Task
 Analyze this Commander deck thoroughly. Evaluate each functional category, assess the mana base, identify synergies and dead cards, estimate power level bracket, and assess salt level.
 

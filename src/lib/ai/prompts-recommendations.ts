@@ -1,6 +1,28 @@
 import { getBracketLabel } from '@/lib/constants/brackets'
 import { SENSIBLE_DEFAULTS, CATEGORY_LABELS } from '@/lib/constants/category-defaults'
 
+function getSpicinessSection(spiciness: number): string {
+  if (spiciness <= 15) return `
+## Creativity Level: Meta Optimal (${spiciness}/100)
+Recommend only the most proven, highest-win-rate cards. Prioritize cards that appear in 50%+ of decks with this commander. Pure optimization.`
+
+  if (spiciness <= 35) return `
+## Creativity Level: Tuned (${spiciness}/100)
+Recommend strong, proven cards but allow 1-2 slightly off-meta picks if they have strong synergy. Favor consistency.`
+
+  if (spiciness <= 65) return `
+## Creativity Level: Balanced (${spiciness}/100)
+Mix of proven staples and interesting alternatives. Include 2-3 lesser-known cards that synergize well. Balance power with personality.`
+
+  if (spiciness <= 85) return `
+## Creativity Level: Spicy (${spiciness}/100)
+Prioritize interesting, underplayed cards. Include hidden gems and budget alternatives. Favor cards that create memorable moments over pure efficiency. At least half of recommendations should be cards most players haven't considered.`
+
+  return `
+## Creativity Level: Jank Paradise (${spiciness}/100)
+Maximum creativity. Suggest the most unexpected, flavorful, and entertaining cards possible. Avoid anything that appears in more than 30% of decks. Embrace jank, combos nobody expects, and cards that make opponents say "wait, that card exists?"`
+}
+
 export function getRecommendationPrompt(context: {
   commander: string
   targetBracket: number
@@ -11,6 +33,7 @@ export function getRecommendationPrompt(context: {
   philosophy?: string | null
   archetype?: string | null
   wildcardMode?: boolean
+  spiciness?: number
   categoryTargets?: Record<string, number> | null
 }) {
   const philosophySection = context.philosophy
@@ -28,19 +51,16 @@ export function getRecommendationPrompt(context: {
 
   const categorySection = `\n## Category Targets\nUse these targets when recommending cards to fill gaps:\n${categoryTargetLines}\n`
 
-  const discoverySection = context.wildcardMode
-    ? `\n## Discovery Mode (ACTIVE)
-You are in Discovery/Wildcard mode. Instead of recommending the most popular meta staples:
-- Prioritize lesser-known cards that most players haven't seen or considered
-- Suggest budget-friendly alternatives to expensive staples
-- Favor fun, interesting, or thematic cards over pure optimization
-- Include at least 2 "hidden gems" that synergize well
-- Avoid cards that appear in more than 50% of decks with this commander
-- Prioritize cards that create memorable game moments over consistent efficiency
-- The goal is deck VARIETY and DISCOVERY, not homogenization`
-    : ''
+  const spiciness = context.spiciness ?? (context.wildcardMode ? 85 : 30)
+  const spicinessSection = getSpicinessSection(spiciness)
 
   return `${philosophySection}${archetypeSection}You are an expert Magic: The Gathering Commander deck builder.${categorySection}
+
+## Card Name Formatting (MANDATORY)
+When mentioning any Magic card by name in your response text, ALWAYS wrap it in double brackets: [[Card Name]].
+Examples: [[Sol Ring]], [[Kodama's Reach]], [[Thassa, Deep-Dwelling]].
+This applies to ALL text fields: notes, reasoning, recommendations, mana_curve_notes, color_balance_notes, etc.
+Do NOT bracket card names inside structured arrays (like the \`cards\` array in categories or \`card_roles\`).
 
 ## Task
 Provide specific swap recommendations for this Commander deck. For each recommendation:
@@ -69,5 +89,5 @@ ${context.cardList}
 
 ${context.edhrecData ? `### EDHREC Synergy Data\n${context.edhrecData}` : ''}
 
-Provide 8-15 recommendations, prioritized by impact.${discoverySection}`
+Provide 8-15 recommendations, prioritized by impact.${spicinessSection}`
 }

@@ -4,6 +4,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── Typography Scale (DeckPilot Design System) ───────────────────────
+ * text-2xs:    10px  — stat labels, micro badges (custom)
+ * text-xs-plus: 11px — inline badges, timestamps (custom)
+ * text-xs:     12px  — section headers, captions
+ * text-sm:     14px  — body text, descriptions
+ * text-base:   16px  — primary body text
+ * text-lg:     18px  — subsection headings (font-semibold)
+ * text-xl:     20px  — section headings (font-semibold)
+ * text-2xl:    24px  — page titles (font-bold tracking-tight)
+ * text-4xl+:   36px+ — marketing hero (font-bold)
+ * ─────────────────────────────────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -45,6 +56,11 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Typography Scale — custom sizes */
+  --font-size-2xs: 0.625rem;
+  --font-size-2xs--line-height: 1rem;
+  --font-size-xs-plus: 0.6875rem;
+  --font-size-xs-plus--line-height: 1rem;
 }
 
 :root {

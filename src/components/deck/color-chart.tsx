@@ -8,6 +8,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+import { ManaSymbol } from '@/components/ui/mana-symbol'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,11 +82,8 @@ function ColorLegend({ payload }: {
     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-1">
       {payload.map((entry) => (
         <div key={entry.payload.symbol} className="flex items-center gap-1">
-          <span
-            className="inline-block size-2 rounded-full flex-shrink-0"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-[10px] text-muted-foreground leading-none">
+          <ManaSymbol symbol={entry.payload?.symbol || entry.value} size="xs" />
+          <span className="text-2xs text-muted-foreground leading-none">
             {entry.value} <span className="font-medium text-foreground tabular-nums">{entry.payload.value}</span>
           </span>
         </div>
