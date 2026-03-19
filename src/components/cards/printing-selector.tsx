@@ -79,7 +79,7 @@ export function PrintingSelector({ cardId, deckCardId, onSelect }: PrintingSelec
                 'text-center transition-all duration-150',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50',
                 isSelected
-                  ? 'border-emerald-500/60 bg-emerald-500/10 text-white'
+                  ? 'border-interactive/60 bg-interactive-muted text-white'
                   : 'border-white/10 bg-white/5 text-white/60 hover:border-white/25 hover:bg-white/10 hover:text-white',
               )}
             >
@@ -98,7 +98,7 @@ export function PrintingSelector({ cardId, deckCardId, onSelect }: PrintingSelec
                 <span
                   className={cn(
                     'text-2xs font-semibold leading-none',
-                    isSelected ? 'text-emerald-400' : 'text-white/50',
+                    isSelected ? 'text-interactive' : 'text-white/50',
                   )}
                 >
                   ${price}

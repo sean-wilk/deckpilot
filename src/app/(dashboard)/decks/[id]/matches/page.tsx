@@ -32,9 +32,9 @@ function formatDate(date: Date | string) {
 }
 
 function resultBadge(result: string) {
-  if (result === 'win')  return { label: 'Win',  classes: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
-  if (result === 'loss') return { label: 'Loss', classes: 'bg-red-100 text-red-700 border-red-200' }
-  return { label: 'Draw', classes: 'bg-slate-100 text-slate-600 border-slate-200' }
+  if (result === 'win')  return { label: 'Win',  classes: 'bg-success-muted text-success border-success/30' }
+  if (result === 'loss') return { label: 'Loss', classes: 'bg-error-muted text-error border-error/30' }
+  return { label: 'Draw', classes: 'bg-muted text-muted-foreground border-border' }
 }
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
@@ -139,9 +139,9 @@ export default function MatchesPage() {
         <div className="grid grid-cols-4 gap-3">
           {[
             { label: 'Games', value: stats.total },
-            { label: 'Wins',  value: stats.wins,   color: 'text-emerald-600' },
-            { label: 'Losses', value: stats.losses, color: 'text-red-600' },
-            { label: 'Win Rate', value: `${stats.winRate}%`, color: stats.winRate >= 50 ? 'text-emerald-600' : 'text-muted-foreground' },
+            { label: 'Wins',  value: stats.wins,   color: 'text-success' },
+            { label: 'Losses', value: stats.losses, color: 'text-error' },
+            { label: 'Win Rate', value: `${stats.winRate}%`, color: stats.winRate >= 50 ? 'text-success' : 'text-muted-foreground' },
           ].map(({ label, value, color }) => (
             <div key={label} className="rounded-xl border bg-card p-4 text-center">
               <div className={`text-2xl font-bold tabular-nums ${color ?? 'text-foreground'}`}>{value}</div>
@@ -167,9 +167,9 @@ export default function MatchesPage() {
                   className={[
                     'flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg border text-sm font-medium cursor-pointer transition-all select-none',
                     result === r
-                      ? r === 'win'  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                        : r === 'loss' ? 'border-red-500 bg-red-50 text-red-700'
-                        : 'border-slate-400 bg-slate-100 text-slate-700'
+                      ? r === 'win'  ? 'border-success bg-success-muted text-success'
+                        : r === 'loss' ? 'border-error bg-error-muted text-error'
+                        : 'border-border bg-muted text-muted-foreground'
                       : 'border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground',
                   ].join(' ')}
                 >
@@ -274,12 +274,12 @@ export default function MatchesPage() {
 
           {/* Error / success */}
           {formError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-lg border border-error/30 bg-error-muted px-4 py-3 text-sm text-error">
               {formError}
             </div>
           )}
           {formSuccess && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="rounded-lg border border-success/30 bg-success-muted px-4 py-3 text-sm text-success">
               Match logged successfully.
             </div>
           )}

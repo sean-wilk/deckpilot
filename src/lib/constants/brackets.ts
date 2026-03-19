@@ -19,19 +19,19 @@ export const BRACKET_LABELS: Record<number, string> = {
 }
 
 export const BRACKET_BADGE_COLORS: Record<number, string> = {
-  1: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  2: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  3: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  4: 'bg-red-500/10 text-red-500 border-red-500/20',
-  5: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  1: 'bg-bracket-1/10 text-bracket-1 border-bracket-1/20',
+  2: 'bg-bracket-2/10 text-bracket-2 border-bracket-2/20',
+  3: 'bg-bracket-3/10 text-bracket-3 border-bracket-3/20',
+  4: 'bg-bracket-4/10 text-bracket-4 border-bracket-4/20',
+  5: 'bg-bracket-5/10 text-bracket-5 border-bracket-5/20',
 }
 
 export const BRACKET_ACCENT_COLORS: Record<number, string> = {
-  1: 'border-emerald-500 bg-emerald-500/5',
-  2: 'border-blue-500 bg-blue-500/5',
-  3: 'border-amber-500 bg-amber-500/5',
-  4: 'border-red-500 bg-red-500/5',
-  5: 'border-purple-500 bg-purple-500/5',
+  1: 'border-bracket-1 bg-bracket-1/5',
+  2: 'border-bracket-2 bg-bracket-2/5',
+  3: 'border-bracket-3 bg-bracket-3/5',
+  4: 'border-bracket-4 bg-bracket-4/5',
+  5: 'border-bracket-5 bg-bracket-5/5',
 }
 
 export function getBracketLabel(bracket: number): string {

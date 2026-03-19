@@ -61,8 +61,8 @@ export function DeckPageHeader({
                 'inline-flex items-center px-2 py-0.5 rounded-full shrink-0',
                 'text-xs-plus font-medium border',
                 'bg-muted text-muted-foreground border-border',
-                cardCount === 100 && 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
-                cardCount > 100  && 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800',
+                cardCount === 100 && 'bg-success-muted text-success border-success-border',
+                cardCount > 100  && 'bg-error-muted text-error border-error-border',
               )}
             >
               {cardCount} / 100 cards

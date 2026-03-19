@@ -185,7 +185,7 @@ export default function ImportPage() {
           )}
 
           {importDone ? (
-            <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+            <div className="rounded-md bg-success-muted border border-success/30 px-4 py-3 text-sm text-success">
               {result.matched.length} card{result.matched.length !== 1 ? 's' : ''} imported successfully.{' '}
               <Link href={`/decks/${deckId}`} className="underline font-medium">
                 View deck

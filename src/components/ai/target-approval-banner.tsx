@@ -41,17 +41,17 @@ export function TargetApprovalBanner({
   }
 
   return (
-    <div className="rounded-xl border-2 border-indigo-400/60 bg-indigo-500/5 overflow-hidden">
+    <div className="rounded-xl border-2 border-interactive/60 bg-interactive-muted overflow-hidden">
       {/* Accent top bar */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-indigo-400 via-blue-400 to-indigo-400" />
+      <div className="h-0.5 w-full bg-gradient-to-r from-interactive via-interactive/70 to-interactive" />
 
       <div className="p-4 space-y-3">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="size-5 rounded bg-indigo-500/15 flex items-center justify-center shrink-0">
+            <div className="size-5 rounded bg-interactive/15 flex items-center justify-center shrink-0">
               <svg
-                className="size-3 text-indigo-500"
+                className="size-3 text-interactive"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -89,13 +89,13 @@ export function TargetApprovalBanner({
             return (
               <div
                 key={item.category}
-                className="rounded-lg border border-indigo-200/50 dark:border-indigo-800/50 bg-background/60 px-2.5 py-2 space-y-0.5"
+                className="rounded-lg border border-interactive/20 bg-background/60 px-2.5 py-2 space-y-0.5"
               >
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-xs-plus font-medium text-foreground truncate">
                     {label}
                   </span>
-                  <span className="text-xs-plus font-bold tabular-nums text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <span className="text-xs-plus font-bold tabular-nums text-interactive shrink-0">
                     {item.target_count}
                   </span>
                 </div>
@@ -112,14 +112,14 @@ export function TargetApprovalBanner({
           <button
             type="button"
             onClick={handleAcceptAll}
-            className="flex-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs-plus font-semibold px-3 py-1.5 transition-colors"
+            className="flex-1 rounded-lg bg-interactive hover:bg-interactive-hover active:bg-interactive-hover text-interactive-foreground text-xs-plus font-semibold px-3 py-1.5 transition-colors"
           >
             Accept All
           </button>
           <button
             type="button"
             onClick={onModify}
-            className="rounded-lg border border-indigo-400/50 hover:border-indigo-400 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 text-xs-plus font-medium px-3 py-1.5 transition-colors"
+            className="rounded-lg border border-interactive/50 hover:border-interactive hover:bg-interactive-muted text-interactive text-xs-plus font-medium px-3 py-1.5 transition-colors"
           >
             Modify
           </button>

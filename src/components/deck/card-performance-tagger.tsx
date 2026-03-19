@@ -46,8 +46,8 @@ function CardRow({ card, performance, onSelect }: CardRowProps) {
           className={cn(
             'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors',
             performance === 'mvp'
-              ? 'bg-green-600 text-white'
-              : 'bg-muted text-muted-foreground hover:bg-green-100 hover:text-green-700 dark:hover:bg-green-900/30 dark:hover:text-green-400',
+              ? 'bg-success text-success-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-success-muted hover:text-success',
           )}
         >
           <span aria-hidden>★</span>
@@ -63,8 +63,8 @@ function CardRow({ card, performance, onSelect }: CardRowProps) {
           className={cn(
             'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-colors',
             performance === 'underperformer'
-              ? 'bg-red-600 text-white'
-              : 'bg-muted text-muted-foreground hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/30 dark:hover:text-red-400',
+              ? 'bg-error text-error-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-error-muted hover:text-error',
           )}
         >
           <span aria-hidden>👎</span>
@@ -131,12 +131,12 @@ export function CardPerformanceTagger({ matchId, cards, onComplete }: CardPerfor
       {taggedCount > 0 && (
         <div className="flex gap-2 text-xs">
           {mvpCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-medium">
+            <span className="px-2 py-0.5 rounded-full bg-success-muted text-success font-medium">
               {mvpCount} MVP{mvpCount !== 1 ? 's' : ''}
             </span>
           )}
           {underperformerCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-medium">
+            <span className="px-2 py-0.5 rounded-full bg-error-muted text-error font-medium">
               {underperformerCount} underperformer{underperformerCount !== 1 ? 's' : ''}
             </span>
           )}

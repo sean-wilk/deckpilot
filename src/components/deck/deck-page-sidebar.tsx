@@ -71,7 +71,7 @@ function AiPanel({
           </div>
           <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full rounded-full bg-blue-500/50 transition-all duration-500"
+              className="h-full rounded-full bg-interactive/50 transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -100,7 +100,7 @@ function AiPanel({
         </button>
         <button
           onClick={onRecommend}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted hover:border-zinc-600 transition-colors"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted hover:border-border transition-colors"
         >
           Get Recommendations
         </button>
@@ -124,7 +124,7 @@ function DeckInfoRow({ label, value }: { label: string; value: React.ReactNode }
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+    <h3 className="text-section-label mb-3">
       {title}
     </h3>
   )
@@ -161,7 +161,7 @@ export function DeckPageSidebar({
           <DeckInfoRow
             label="Visibility"
             value={
-              <span className={deck.isPublic ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}>
+              <span className={deck.isPublic ? 'text-success' : 'text-muted-foreground'}>
                 {deck.isPublic ? 'Public' : 'Private'}
               </span>
             }

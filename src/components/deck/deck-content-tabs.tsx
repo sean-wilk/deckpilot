@@ -76,7 +76,7 @@ function TabLoadingState({ label }: { label: string }) {
 function NotificationDot() {
   return (
     <span
-      className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-blue-500 ring-1 ring-background"
+      className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-interactive ring-1 ring-background"
       aria-hidden="true"
     />
   )

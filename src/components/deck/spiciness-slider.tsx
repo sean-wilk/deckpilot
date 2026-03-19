@@ -16,11 +16,11 @@ interface SpicinessSliderProps {
 // ─── Tiers ────────────────────────────────────────────────────────────────────
 
 const TIERS = [
-  { max: 15,  label: 'Meta Optimal',  color: 'text-blue-400' },
-  { max: 35,  label: 'Tuned',         color: 'text-cyan-400' },
-  { max: 65,  label: 'Balanced',      color: 'text-purple-400' },
-  { max: 85,  label: 'Spicy',         color: 'text-orange-400' },
-  { max: 100, label: 'Jank Paradise', color: 'text-red-400' },
+  { max: 15,  label: 'Meta Optimal',  color: 'text-interactive' },
+  { max: 35,  label: 'Tuned',         color: 'text-info' },
+  { max: 65,  label: 'Balanced',      color: 'text-muted-foreground' },
+  { max: 85,  label: 'Spicy',         color: 'text-warning' },
+  { max: 100, label: 'Jank Paradise', color: 'text-error' },
 ] as const
 
 function getTier(value: number) {

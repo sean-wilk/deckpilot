@@ -15,11 +15,11 @@ import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const GRADE_MAP: Record<string, { grade: string; bg: string; text: string }> = {
-  excessive: { grade: 'A+', bg: 'bg-blue-500', text: 'text-white' },
-  strong:    { grade: 'A', bg: 'bg-green-500', text: 'text-white' },
-  adequate:  { grade: 'B', bg: 'bg-yellow-500', text: 'text-yellow-950' },
-  low:       { grade: 'C', bg: 'bg-orange-500', text: 'text-white' },
-  deficient: { grade: 'D', bg: 'bg-red-500', text: 'text-white' },
+  excessive: { grade: 'A+', bg: 'bg-info', text: 'text-info-foreground' },
+  strong:    { grade: 'A', bg: 'bg-success', text: 'text-success-foreground' },
+  adequate:  { grade: 'B', bg: 'bg-warning', text: 'text-warning-foreground' },
+  low:       { grade: 'C', bg: 'bg-warning', text: 'text-warning-foreground' },
+  deficient: { grade: 'D', bg: 'bg-error', text: 'text-error-foreground' },
 }
 
 function RatingBadge({ rating }: { rating: string }) {
@@ -51,7 +51,7 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
   return (
     <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
       <div
-        className="h-full rounded-full bg-blue-500/70 transition-all duration-500"
+        className="h-full rounded-full bg-interactive/70 transition-all duration-500"
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -60,11 +60,11 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 
 function BracketBadge({ bracket }: { bracket: number }) {
   const colors: Record<number, string> = {
-    1: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-    2: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-    3: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-    4: 'bg-red-500/15 text-red-500',
-    5: 'bg-purple-500/15 text-purple-500',
+    1: 'bg-bracket-1/15 text-bracket-1',
+    2: 'bg-bracket-2/15 text-bracket-2',
+    3: 'bg-bracket-3/15 text-bracket-3',
+    4: 'bg-bracket-4/15 text-bracket-4',
+    5: 'bg-bracket-5/15 text-bracket-5',
   }
   return (
     <span
@@ -77,7 +77,7 @@ function BracketBadge({ bracket }: { bracket: number }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <span className="text-section-label text-2xs">
       {children}
     </span>
   )
@@ -154,7 +154,7 @@ function CategoryGrid({ categories, categoryTargets, suggestedTargets, cardNames
     <div className="space-y-4">
       {categories.core.length > 0 && (
         <div className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Core Categories</span>
+          <span className="text-section-label">Core Categories</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {categories.core.map((cat, i) => renderCategoryCard(cat, i))}
           </div>
@@ -162,7 +162,7 @@ function CategoryGrid({ categories, categoryTargets, suggestedTargets, cardNames
       )}
       {categories.deck_specific.length > 0 && (
         <div className="space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Deck-Specific Categories</span>
+          <span className="text-section-label">Deck-Specific Categories</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {categories.deck_specific.map((cat, i) => renderCategoryCard(cat, i))}
           </div>
@@ -184,16 +184,16 @@ function StrengthsWeaknessesPanel({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* Strengths */}
-      <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-4 space-y-3">
+      <div className="rounded-lg border border-success-border bg-success-muted p-4 space-y-3">
         <div className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-green-500" />
+          <span className="size-2 rounded-full bg-success" />
           <SectionLabel>Strengths</SectionLabel>
         </div>
         {strengths && strengths.length > 0 ? (
           <ul className="space-y-2">
             {strengths.map((s, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                <span className="mt-1.5 size-1 rounded-full bg-green-500/60 shrink-0" />
+                <span className="mt-1.5 size-1 rounded-full bg-success/60 shrink-0" />
                 <AnalysisTextWithCards text={s} cardNames={cardNames} />
               </li>
             ))}
@@ -204,16 +204,16 @@ function StrengthsWeaknessesPanel({
       </div>
 
       {/* Weaknesses */}
-      <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+      <div className="rounded-lg border border-error-border bg-error-muted p-4 space-y-3">
         <div className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-red-500" />
+          <span className="size-2 rounded-full bg-error" />
           <SectionLabel>Weaknesses</SectionLabel>
         </div>
         {weaknesses && weaknesses.length > 0 ? (
           <ul className="space-y-2">
             {weaknesses.map((w, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                <span className="mt-1.5 size-1 rounded-full bg-red-500/60 shrink-0" />
+                <span className="mt-1.5 size-1 rounded-full bg-error/60 shrink-0" />
                 <AnalysisTextWithCards text={w} cardNames={cardNames} />
               </li>
             ))}
@@ -332,9 +332,9 @@ export function AnalysisTabContent({
       {/* ── Header bar ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="size-7 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+          <div className="size-7 rounded-md bg-interactive-muted flex items-center justify-center shrink-0">
             <svg
-              className="size-4 text-blue-500"
+              className="size-4 text-interactive"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -424,7 +424,7 @@ export function AnalysisTabContent({
             type="button"
             onClick={handleAnalyze}
             disabled={cardCount < 10 || isLoading}
-            className="rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium px-3 py-1.5 transition-colors"
+            className="rounded bg-interactive hover:bg-interactive-hover active:bg-interactive-hover disabled:opacity-40 disabled:cursor-not-allowed text-interactive-foreground text-xs font-medium px-3 py-1.5 transition-colors"
           >
             {isLoading ? 'Analyzing…' : hasResult ? 'Re-analyze' : 'Analyze Deck'}
           </button>
@@ -433,8 +433,8 @@ export function AnalysisTabContent({
 
       {/* ── Error ── */}
       {errorMessage && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3">
-          <p className="text-sm text-red-500">{errorMessage}</p>
+        <div className="rounded-lg border border-error-border bg-error-muted px-4 py-3">
+          <p className="text-sm text-error">{errorMessage}</p>
         </div>
       )}
 
@@ -464,11 +464,11 @@ export function AnalysisTabContent({
 
       {/* ── Bracket change CTA ── */}
       {hasResult && bracketDiffers && suggestedBracket !== undefined && (
-        <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/5 px-5 py-4 space-y-3">
+        <div className="rounded-lg border-2 border-warning-border bg-warning-muted px-5 py-4 space-y-3">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 size-5 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+            <div className="mt-0.5 size-5 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
               <svg
-                className="size-3 text-amber-500"
+                className="size-3 text-warning"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -498,7 +498,7 @@ export function AnalysisTabContent({
               type="button"
               onClick={() => handleAcceptBracket(suggestedBracket)}
               disabled={acceptingBracket}
-              className="rounded bg-amber-500 hover:bg-amber-600 active:bg-amber-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 transition-colors"
+              className="rounded bg-warning hover:bg-warning/90 active:bg-warning/80 disabled:opacity-50 text-warning-foreground text-xs font-semibold px-3 py-1.5 transition-colors"
             >
               {acceptingBracket ? 'Saving…' : `Accept B${suggestedBracket}`}
             </button>
@@ -534,8 +534,8 @@ export function AnalysisTabContent({
 
           {/* Power level */}
           {analysis.bracket !== undefined && (
-            <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-base font-semibold">Power Level</h3>
+            <div className="space-y-3 pb-8 border-b border-divider">
+              <h3 className="text-section-heading">Power Level</h3>
               <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                 {(() => {
                   const rawConfidence = analysis.bracket_confidence ?? 0
@@ -581,8 +581,8 @@ export function AnalysisTabContent({
 
           {/* Categories — 2-column grid */}
           {analysis.categories && (normalized.core.length > 0 || normalized.deck_specific.length > 0) && (
-            <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-base font-semibold">Categories</h3>
+            <div className="space-y-3 pb-8 border-b border-divider">
+              <h3 className="text-section-heading">Categories</h3>
               <CategoryGrid
                 categories={normalized}
                 categoryTargets={categoryTargets}
@@ -594,8 +594,8 @@ export function AnalysisTabContent({
 
           {/* Strengths & Weaknesses — side by side */}
           {(analysis.strengths || analysis.weaknesses) && (
-            <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-base font-semibold">Strengths &amp; Weaknesses</h3>
+            <div className="space-y-3 pb-8 border-b border-divider">
+              <h3 className="text-section-heading">Strengths &amp; Weaknesses</h3>
               <StrengthsWeaknessesPanel
                 strengths={analysis.strengths}
                 weaknesses={analysis.weaknesses}
@@ -606,7 +606,7 @@ export function AnalysisTabContent({
 
           {/* Lands Analysis */}
           {displayedAnalysis?.lands_analysis && (
-            <div className="space-y-3 pb-8 border-b border-zinc-800">
+            <div className="space-y-3 pb-8 border-b border-divider">
               <LandsSection
                 landsAnalysis={displayedAnalysis.lands_analysis}
                 fixingQuality={analysis.fixing_quality}
@@ -631,13 +631,13 @@ export function AnalysisTabContent({
           )}
 
           {/* Mana base + Synergy — two column */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-8 border-b border-zinc-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-8 border-b border-divider">
             {/* Mana Base */}
             {(analysis.land_count !== undefined ||
               analysis.mana_base_notes ||
               analysis.fixing_quality) && (
               <div className="space-y-3">
-                <h3 className="text-base font-semibold">Mana Base</h3>
+                <h3 className="text-section-heading">Mana Base</h3>
                 <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                   {analysis.land_count !== undefined && (
                     <div className="flex items-center justify-between">
@@ -656,10 +656,10 @@ export function AnalysisTabContent({
                       <span
                         className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                           {
-                            poor: 'text-red-500 bg-red-500/10',
-                            fair: 'text-orange-500 bg-orange-500/10',
-                            good: 'text-yellow-500 bg-yellow-500/10',
-                            excellent: 'text-green-500 bg-green-500/10',
+                            poor: 'text-error bg-error-muted',
+                            fair: 'text-warning bg-warning-muted',
+                            good: 'text-warning bg-warning-muted',
+                            excellent: 'text-success bg-success-muted',
                           }[analysis.fixing_quality] ?? ''
                         }`}
                       >
@@ -698,7 +698,7 @@ export function AnalysisTabContent({
               analysis.key_synergies ||
               analysis.dead_cards) && (
               <div className="space-y-3">
-                <h3 className="text-base font-semibold">Synergy</h3>
+                <h3 className="text-section-heading">Synergy</h3>
                 <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                   {analysis.synergy_score !== undefined && (
                     <div className="space-y-1.5">
@@ -714,7 +714,7 @@ export function AnalysisTabContent({
 
                   {analysis.key_synergies && analysis.key_synergies.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      <span className="text-section-label">
                         Key Synergies
                       </span>
                       {analysis.key_synergies.map((s, i) => (
@@ -727,7 +727,7 @@ export function AnalysisTabContent({
 
                   {analysis.dead_cards && analysis.dead_cards.length > 0 && (
                     <div className="space-y-1.5">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      <span className="text-section-label">
                         Dead Cards
                       </span>
                       {analysis.dead_cards.map((d, i) => (
@@ -744,8 +744,8 @@ export function AnalysisTabContent({
 
           {/* Salt */}
           {(analysis.salt_total !== undefined || analysis.salt_notes) && (
-            <div className="space-y-3 pb-8 border-b border-zinc-800">
-              <h3 className="text-base font-semibold">Salt Assessment</h3>
+            <div className="space-y-3 pb-8 border-b border-divider">
+              <h3 className="text-section-heading">Salt Assessment</h3>
               <div className="rounded-lg border border-border bg-card p-5 space-y-3">
                 {analysis.salt_total !== undefined && (
                   <SaltScoreMeter score={analysis.salt_total} />
@@ -762,7 +762,7 @@ export function AnalysisTabContent({
           {/* ── Follow-up action buttons ── */}
           {(showImproveSynergy || showImproveMana) && onSwitchToRecommendations && (
             <div className="space-y-3">
-              <h3 className="text-base font-semibold">Suggested Next Steps</h3>
+              <h3 className="text-section-heading">Suggested Next Steps</h3>
               <div className="flex flex-wrap gap-2">
                 {showImproveSynergy && (
                   <button
@@ -771,7 +771,7 @@ export function AnalysisTabContent({
                     className="flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-muted px-3 py-2 text-xs font-medium transition-colors"
                   >
                     <svg
-                      className="size-3.5 text-blue-500"
+                      className="size-3.5 text-interactive"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -793,7 +793,7 @@ export function AnalysisTabContent({
                     className="flex items-center gap-1.5 rounded-lg border border-border bg-card hover:bg-muted px-3 py-2 text-xs font-medium transition-colors"
                   >
                     <svg
-                      className="size-3.5 text-amber-500"
+                      className="size-3.5 text-warning"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -818,9 +818,9 @@ export function AnalysisTabContent({
       {/* ── Empty state ── */}
       {!isLoading && !hasResult && !errorMessage && data !== null && (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-          <div className="size-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+          <div className="size-12 rounded-full bg-interactive-muted flex items-center justify-center">
             <svg
-              className="size-6 text-blue-500/60"
+              className="size-6 text-interactive/60"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -847,7 +847,7 @@ export function AnalysisTabContent({
             <button
               type="button"
               onClick={handleAnalyze}
-              className="rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 transition-colors"
+              className="rounded bg-interactive hover:bg-interactive-hover text-interactive-foreground text-sm font-medium px-4 py-2 transition-colors"
             >
               Analyze Deck
             </button>

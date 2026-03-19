@@ -449,7 +449,7 @@ export default function WizardPage() {
             <div className="max-h-64 overflow-y-auto space-y-1">
               {generatedCards.map((card, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
-                  <Check className="size-3.5 text-emerald-500 shrink-0" />
+                  <Check className="size-3.5 text-success shrink-0" />
                   <span className="font-medium">{card.name}</span>
                   <span className="text-muted-foreground text-xs">{card.category}</span>
                 </div>

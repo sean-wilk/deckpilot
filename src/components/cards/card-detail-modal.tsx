@@ -158,7 +158,7 @@ function AiQuickActions({
     <div className="space-y-4">
       {/* Server result timestamp */}
       {savedAt !== null && (
-        <div className="flex items-center text-xs text-white/40">
+        <div className="flex items-center text-xs text-md-text-muted">
           <span>Results from {formatAgo(Date.now() - new Date(savedAt).getTime())}</span>
         </div>
       )}
@@ -201,23 +201,23 @@ function AiQuickActions({
         <div
           className={cn(
             'rounded-lg px-4 py-3',
-            'bg-white/5 border border-white/8',
-            'text-sm text-white/75',
+            'bg-md-bg-subtle border border-md-border',
+            'text-sm text-md-text-secondary',
           )}
         >
           {replacementResult.error ? (
-            <p className="text-red-400">{replacementResult.error}</p>
+            <p className="text-error">{replacementResult.error}</p>
           ) : replacementResult.replacements && replacementResult.replacements.length > 0 ? (
             <ul className="space-y-2">
               {replacementResult.replacements.map((r, i) => (
                 <li key={i} className="space-y-0.5">
-                  <p className="font-semibold text-white/90">{r.name}</p>
-                  <p className="text-white/55 text-xs leading-relaxed">{r.reasoning}</p>
+                  <p className="font-semibold text-md-text">{r.name}</p>
+                  <p className="text-md-text-tertiary text-xs leading-relaxed">{r.reasoning}</p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-white/50">No replacements found.</p>
+            <p className="text-md-text-muted">No replacements found.</p>
           )}
         </div>
       )}
@@ -226,12 +226,12 @@ function AiQuickActions({
         <div
           className={cn(
             'rounded-lg px-4 py-3',
-            'bg-white/5 border border-white/8',
-            'text-sm text-white/75 leading-relaxed whitespace-pre-wrap',
+            'bg-md-bg-subtle border border-md-border',
+            'text-sm text-md-text-secondary leading-relaxed whitespace-pre-wrap',
           )}
         >
           {opinionResult.error ? (
-            <p className="text-red-400">{opinionResult.error}</p>
+            <p className="text-error">{opinionResult.error}</p>
           ) : (
             <p>{opinionResult.opinion}</p>
           )}
@@ -289,7 +289,7 @@ function OracleTextBlock({ text }: { text: string }) {
             {segments.map((seg, si) => {
               const isReminder = seg.startsWith('(') && seg.endsWith(')')
               return isReminder ? (
-                <em key={si} className="text-white/50 not-italic italic">
+                <em key={si} className="text-md-text-muted not-italic italic">
                   {seg}
                 </em>
               ) : (
@@ -315,11 +315,11 @@ function CloseButton({ onClose }: { onClose: () => void }) {
         'absolute top-3 right-3 z-10',
         'flex items-center justify-center',
         'size-8 rounded-full',
-        'bg-white/10 text-white/70',
-        'border border-white/15',
+        'bg-md-bg-raised text-md-text-secondary',
+        'border border-md-border',
         'backdrop-blur-sm',
         'transition-all duration-150',
-        'hover:bg-white/20 hover:text-white',
+        'hover:bg-md-hover hover:text-md-text',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50',
         'active:scale-95',
       )}
@@ -379,10 +379,10 @@ function NotesTextarea({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+        <label className="text-xs font-semibold text-md-text-tertiary uppercase tracking-wider">
           Notes
         </label>
-        <span className="text-xs text-white/30 italic">
+        <span className="text-xs text-md-text-muted italic">
           AI considers these when analyzing
         </span>
       </div>
@@ -394,9 +394,9 @@ function NotesTextarea({
         placeholder="Add personal notes about this card…"
         className={cn(
           'w-full resize-none rounded-lg px-3 py-2',
-          'bg-white/5 border border-white/10',
-          'text-sm text-white/80 placeholder:text-white/30',
-          'focus:outline-none focus:border-white/25 focus:bg-white/8',
+          'bg-md-bg-subtle border border-md-border',
+          'text-sm text-md-text-secondary placeholder:text-md-text-muted',
+          'focus:outline-none focus:border-white/25 focus:bg-md-bg-subtle',
           'transition-colors duration-150',
         )}
       />
@@ -404,9 +404,9 @@ function NotesTextarea({
         <p
           className={cn(
             'text-xs',
-            saveStatus === 'saving' && 'text-white/40',
-            saveStatus === 'saved' && 'text-emerald-400',
-            saveStatus === 'error' && 'text-red-400',
+            saveStatus === 'saving' && 'text-md-text-muted',
+            saveStatus === 'saved' && 'text-success',
+            saveStatus === 'error' && 'text-error',
           )}
         >
           {saveStatus === 'saving' && 'Saving…'}
@@ -487,10 +487,11 @@ export function CardDetailModal({
       <div
         onClick={(e) => e.stopPropagation()}
         className={cn(
+          'modal-dark',
           'relative',
           'w-full max-w-4xl',
           'rounded-2xl overflow-hidden',
-          'bg-zinc-900 border border-white/10',
+          'bg-md-bg border border-md-border',
           'shadow-2xl shadow-black/60',
           // Slide-up entrance
           'animate-in slide-in-from-bottom-4 duration-200',
@@ -539,13 +540,13 @@ export function CardDetailModal({
             className={cn(
               'flex-1 flex flex-col gap-5',
               'px-6 py-6 sm:px-8 sm:py-8',
-              'text-white',
+              'text-md-text',
               'min-w-0',
             )}
           >
             {/* Card name + mana cost */}
             <div>
-              <h2 className="text-2xl font-bold leading-tight tracking-tight text-white">
+              <h2 className="text-2xl font-bold leading-tight tracking-tight text-md-text">
                 {card.name}
               </h2>
 
@@ -558,7 +559,7 @@ export function CardDetailModal({
             </div>
 
             {/* Type line */}
-            <div className="border-t border-zinc-800 pt-4">
+            <div className="border-t border-md-border pt-4">
               <p className="text-sm text-muted-foreground">
                 {card.typeLine}
               </p>
@@ -569,8 +570,8 @@ export function CardDetailModal({
               <div
                 className={cn(
                   'rounded-lg px-4 py-3',
-                  'bg-white/5 border border-zinc-800',
-                  'text-sm text-white/85 leading-relaxed',
+                  'bg-md-bg-subtle border border-md-border',
+                  'text-sm text-md-text leading-relaxed',
                   'whitespace-pre-wrap',
                 )}
               >
@@ -581,10 +582,10 @@ export function CardDetailModal({
             {/* Power / Toughness */}
             {isCreature && (
               <div className="flex items-center gap-2">
-                <span className="text-xs uppercase tracking-widest text-white/40 font-semibold">
+                <span className="text-xs uppercase tracking-widest text-md-text-muted font-semibold">
                   P/T
                 </span>
-                <span className="text-base font-bold text-white tabular-nums">
+                <span className="text-base font-bold text-md-text tabular-nums">
                   {card.power} / {card.toughness}
                 </span>
               </div>
@@ -601,18 +602,18 @@ export function CardDetailModal({
                       ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
                       : card.rarity === 'uncommon'
                         ? 'bg-slate-400/20 text-slate-300 border border-slate-400/30'
-                        : 'bg-white/10 text-white/50 border border-white/15',
+                        : 'bg-md-bg-raised text-md-text-muted border border-md-border',
                 )}
               >
                 {formatRarity(card.rarity)}
               </span>
 
-              <span className="text-xs font-mono text-white/40 uppercase tracking-widest">
+              <span className="text-xs font-mono text-md-text-muted uppercase tracking-widest">
                 {card.setCode}
               </span>
 
               {price && (
-                <span className="ml-auto text-sm font-semibold text-emerald-400">
+                <span className="ml-auto text-sm font-semibold text-success">
                   {price}
                 </span>
               )}
@@ -623,7 +624,7 @@ export function CardDetailModal({
         {/* ── BOTTOM SECTION: full-width actions ── */}
         <div
           className={cn(
-            'border-t border-zinc-800',
+            'border-t border-md-border',
             'px-6 py-6 sm:px-8 sm:py-6',
             'flex flex-col gap-5',
           )}
@@ -639,8 +640,8 @@ export function CardDetailModal({
                 }}
                 className={cn(
                   'flex-1 h-9 px-3 rounded-lg text-sm font-medium',
-                  'bg-red-600/20 border border-red-500/30 text-red-400',
-                  'hover:bg-red-600/30 hover:text-red-300',
+                  'bg-error-muted border border-error-border text-error',
+                  'hover:bg-error-muted/70 hover:text-error',
                   'transition-colors duration-150',
                 )}
               >
@@ -678,13 +679,13 @@ export function CardDetailModal({
           )}
 
           {/* Printing selector slot */}
-          <div className="border-t border-zinc-800 pt-5">
+          <div className="border-t border-md-border pt-5">
             {printingSelector ?? <PrintingSelector cardId={card.id} />}
           </div>
 
           {/* AI actions slot */}
           {aiActions && (
-            <div className="border-t border-zinc-800 pt-5">
+            <div className="border-t border-md-border pt-5">
               {aiActions}
             </div>
           )}

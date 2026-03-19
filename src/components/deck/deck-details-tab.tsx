@@ -76,7 +76,7 @@ export function DeckDetailsTab({ deckId, philosophy, archetype, spiciness, isOwn
     charCount > MAX_PHILOSOPHY_LENGTH * 0.9
       ? 'text-destructive'
       : charCount > MAX_PHILOSOPHY_LENGTH * 0.75
-        ? 'text-amber-500'
+        ? 'text-warning'
         : 'text-muted-foreground'
 
   return (

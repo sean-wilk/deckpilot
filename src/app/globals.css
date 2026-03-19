@@ -61,6 +61,67 @@
   --font-size-2xs--line-height: 1rem;
   --font-size-xs-plus: 0.6875rem;
   --font-size-xs-plus--line-height: 1rem;
+
+  /* ── Design System Color Tokens ── */
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-divider: var(--divider);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-success-border: var(--success-border);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-warning-border: var(--warning-border);
+
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-muted: var(--info-muted);
+  --color-info-border: var(--info-border);
+
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-error-muted: var(--error-muted);
+  --color-error-border: var(--error-border);
+
+  --color-interactive: var(--interactive);
+  --color-interactive-foreground: var(--interactive-foreground);
+  --color-interactive-muted: var(--interactive-muted);
+  --color-interactive-hover: var(--interactive-hover);
+
+  --color-bracket-1: var(--bracket-1);
+  --color-bracket-2: var(--bracket-2);
+  --color-bracket-3: var(--bracket-3);
+  --color-bracket-4: var(--bracket-4);
+  --color-bracket-5: var(--bracket-5);
+
+  /* ── Modal-dark scoped tokens ── */
+  --color-md-bg: var(--md-bg);
+  --color-md-bg-raised: var(--md-bg-raised);
+  --color-md-bg-subtle: var(--md-bg-subtle);
+  --color-md-text: var(--md-text);
+  --color-md-text-secondary: var(--md-text-secondary);
+  --color-md-text-tertiary: var(--md-text-tertiary);
+  --color-md-text-muted: var(--md-text-muted);
+  --color-md-border: var(--md-border);
+  --color-md-border-strong: var(--md-border-strong);
+  --color-md-hover: var(--md-hover);
+}
+
+@layer utilities {
+  .text-display { @apply text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]; }
+  .text-page-title { @apply text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-tight; }
+  .text-section-heading { @apply text-base font-semibold leading-snug; }
+  .text-subsection-heading { @apply text-sm font-semibold leading-snug; }
+  .text-section-label { @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground; }
+  .text-body { @apply text-sm leading-relaxed; }
+  .text-body-sm { @apply text-xs leading-relaxed; }
+  .text-caption { font-size: var(--font-size-xs-plus); line-height: var(--font-size-xs-plus--line-height); @apply text-muted-foreground; }
+  .text-micro { font-size: var(--font-size-2xs); line-height: var(--font-size-2xs--line-height); @apply font-medium; }
 }
 
 :root {
@@ -96,6 +157,50 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ── Extended surface tokens ── */
+  --surface-raised: oklch(0.97 0 0);
+  --surface-sunken: oklch(0.94 0 0);
+  --surface-overlay: oklch(1 0 0);
+
+  /* ── Section divider ── */
+  --divider: oklch(0.922 0 0);
+
+  /* ── Status colors ── */
+  --success: oklch(0.65 0.2 145);
+  --success-foreground: oklch(0.98 0 0);
+  --success-muted: oklch(0.65 0.2 145 / 10%);
+  --success-border: oklch(0.65 0.2 145 / 20%);
+
+  --warning: oklch(0.75 0.18 75);
+  --warning-foreground: oklch(0.25 0 0);
+  --warning-muted: oklch(0.75 0.18 75 / 10%);
+  --warning-border: oklch(0.75 0.18 75 / 20%);
+
+  --info: oklch(0.65 0.2 250);
+  --info-foreground: oklch(0.98 0 0);
+  --info-muted: oklch(0.65 0.2 250 / 10%);
+  --info-border: oklch(0.65 0.2 250 / 20%);
+
+  /* NOTE: shadcn defines --destructive for its Button destructive variant.
+     --error is SEPARATE for custom status indicators. See design-system.md 2.2.1b */
+  --error: oklch(0.58 0.24 27);
+  --error-foreground: oklch(0.98 0 0);
+  --error-muted: oklch(0.58 0.24 27 / 10%);
+  --error-border: oklch(0.58 0.24 27 / 20%);
+
+  /* ── Interactive accent ── */
+  --interactive: oklch(0.55 0.22 260);
+  --interactive-foreground: oklch(0.98 0 0);
+  --interactive-muted: oklch(0.55 0.22 260 / 10%);
+  --interactive-hover: oklch(0.48 0.22 260);
+
+  /* ── Bracket colors (MTG-specific) ── */
+  --bracket-1: oklch(0.65 0.2 160);
+  --bracket-2: oklch(0.60 0.2 250);
+  --bracket-3: oklch(0.75 0.17 75);
+  --bracket-4: oklch(0.60 0.22 25);
+  --bracket-5: oklch(0.58 0.22 300);
 }
 
 .dark {
@@ -130,6 +235,55 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* ── Extended surface tokens ── */
+  --surface-raised: oklch(0.22 0 0);
+  --surface-sunken: oklch(0.16 0 0);
+  --surface-overlay: oklch(0.18 0 0);
+
+  /* ── Section divider ── */
+  --divider: oklch(1 0 0 / 8%);
+
+  /* ── Status colors (brighter for dark bg) ── */
+  --success: oklch(0.72 0.19 150);
+  --success-foreground: oklch(0.15 0 0);
+  --success-muted: oklch(0.72 0.19 150 / 10%);
+  --success-border: oklch(0.72 0.19 150 / 20%);
+
+  --warning: oklch(0.80 0.16 80);
+  --warning-foreground: oklch(0.15 0 0);
+  --warning-muted: oklch(0.80 0.16 80 / 10%);
+  --warning-border: oklch(0.80 0.16 80 / 20%);
+
+  --info: oklch(0.75 0.15 250);
+  --info-foreground: oklch(0.15 0 0);
+  --info-muted: oklch(0.75 0.15 250 / 10%);
+  --info-border: oklch(0.75 0.15 250 / 20%);
+
+  --error: oklch(0.70 0.19 22);
+  --error-foreground: oklch(0.15 0 0);
+  --error-muted: oklch(0.70 0.19 22 / 10%);
+  --error-border: oklch(0.70 0.19 22 / 20%);
+
+  --interactive: oklch(0.70 0.17 260);
+  --interactive-foreground: oklch(0.15 0 0);
+  --interactive-muted: oklch(0.70 0.17 260 / 10%);
+  --interactive-hover: oklch(0.63 0.17 260);
+
+  /* Bracket colors stay the same in dark */
+}
+
+.modal-dark {
+  --md-bg: oklch(0.13 0 0);
+  --md-bg-raised: oklch(0.18 0 0);
+  --md-bg-subtle: oklch(1 0 0 / 5%);
+  --md-text: oklch(0.95 0 0);
+  --md-text-secondary: oklch(0.85 0 0);
+  --md-text-tertiary: oklch(0.60 0 0);
+  --md-text-muted: oklch(0.45 0 0);
+  --md-border: oklch(1 0 0 / 10%);
+  --md-border-strong: oklch(1 0 0 / 15%);
+  --md-hover: oklch(1 0 0 / 8%);
 }
 
 @layer base {

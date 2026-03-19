@@ -18,10 +18,10 @@ function getLabel(score: number): string {
 }
 
 function getLabelColor(score: number): string {
-  if (score <= 3) return 'text-green-600 dark:text-green-400'
-  if (score <= 5) return 'text-yellow-600 dark:text-yellow-400'
-  if (score <= 7) return 'text-orange-500'
-  return 'text-red-500'
+  if (score <= 3) return 'text-success'
+  if (score <= 5) return 'text-warning'
+  if (score <= 7) return 'text-warning'
+  return 'text-error'
 }
 
 // ─── SaltScoreMeter ───────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ export function SaltScoreMeter({ score }: SaltScoreMeterProps) {
       {/* Header row */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs-plus font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-section-label text-xs-plus">
             Salt Score
           </span>
           {/* Tooltip trigger */}

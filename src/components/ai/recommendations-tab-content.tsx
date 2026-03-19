@@ -66,8 +66,8 @@ function CardImage({
   variant: 'cut' | 'add'
 }) {
   const url = getCardImageUrl(imageUri)
-  const borderClass = variant === 'cut' ? 'border-red-400/60' : 'border-green-400/60'
-  const ringClass = variant === 'cut' ? 'ring-red-300/30' : 'ring-green-300/30'
+  const borderClass = variant === 'cut' ? 'border-error/60' : 'border-success/60'
+  const ringClass = variant === 'cut' ? 'ring-error/30' : 'ring-success/30'
 
   if (!url || !cardName) return null
 
@@ -165,7 +165,7 @@ function PersistedRecCard({
             {tierCfg.label}
           </span>
           {effectiveStatus === 'accepted' && (
-            <span className="text-xs font-medium text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-medium text-success bg-success-muted border border-success-border px-2 py-0.5 rounded-full">
               Accepted
             </span>
           )}
@@ -237,14 +237,14 @@ function PersistedRecCard({
         <div className="flex-1 min-w-0 space-y-1">
           {rec.cardOutName && (
             <p className="text-xs">
-              <span className="font-medium text-red-800 bg-red-100 border border-red-200 px-1.5 py-0.5 rounded">
+              <span className="font-medium text-error bg-error-muted border border-error-border px-1.5 py-0.5 rounded">
                 {rec.cardOutName}
               </span>
             </p>
           )}
           {rec.cardInName && (
             <p className="text-xs">
-              <span className="font-medium text-green-800 bg-green-100 border border-green-200 px-1.5 py-0.5 rounded">
+              <span className="font-medium text-success bg-success-muted border border-success-border px-1.5 py-0.5 rounded">
                 {rec.cardInName}
               </span>
             </p>
@@ -364,7 +364,7 @@ export function RecommendationsTabContent({
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold">AI Recommendations</h3>
+          <h3 className="text-subsection-heading">AI Recommendations</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {cardCount} card{cardCount !== 1 ? 's' : ''}
             {focus ? ` · Focus: ${focus}` : ''}
@@ -388,14 +388,14 @@ export function RecommendationsTabContent({
 
       {/* Hook-level error */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+        <div className="rounded-lg border border-error-border bg-error-muted p-3 text-xs text-error">
           {error.message}
         </div>
       )}
 
       {/* Analysis failed */}
       {isFailed && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+        <div className="rounded-lg border border-error-border bg-error-muted p-3 text-xs text-error">
           {data?.errorMessage ?? 'Recommendations failed. Please try again.'}
         </div>
       )}
@@ -434,13 +434,13 @@ export function RecommendationsTabContent({
               onClick={() => setActiveTab('cuts')}
               className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
                 activeTab === 'cuts'
-                  ? 'bg-red-100 text-red-800 border border-red-200'
+                  ? 'bg-error-muted text-error border border-error-border'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               Cuts
               {visibleCuts.length > 0 && (
-                <span className="ml-1.5 text-2xs bg-red-200 text-red-700 rounded-full px-1.5 py-0.5">
+                <span className="ml-1.5 text-2xs bg-error-muted text-error rounded-full px-1.5 py-0.5">
                   {visibleCuts.length}
                 </span>
               )}
@@ -449,13 +449,13 @@ export function RecommendationsTabContent({
               onClick={() => setActiveTab('adds')}
               className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
                 activeTab === 'adds'
-                  ? 'bg-green-100 text-green-800 border border-green-200'
+                  ? 'bg-success-muted text-success border border-success-border'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
               Adds
               {visibleAdds.length > 0 && (
-                <span className="ml-1.5 text-2xs bg-green-200 text-green-700 rounded-full px-1.5 py-0.5">
+                <span className="ml-1.5 text-2xs bg-success-muted text-success rounded-full px-1.5 py-0.5">
                   {visibleAdds.length}
                 </span>
               )}

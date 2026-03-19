@@ -135,8 +135,8 @@ export function StatsBar({ cards, targetBracket, className }: StatsBarProps) {
           value={`${cardCount}/100`}
           className={cn(
             'pr-3 pl-0',
-            cardCount === 100 && '[&_span:last-child]:text-emerald-600',
-            cardCount > 100 && '[&_span:last-child]:text-red-500',
+            cardCount === 100 && '[&_span:last-child]:text-success',
+            cardCount > 100 && '[&_span:last-child]:text-error',
           )}
         />
         <StatCell label="Avg CMC" value={avgCmc} />

@@ -22,27 +22,27 @@ export interface Recommendation {
 export const TIER_CONFIG: Record<RecommendationTier, { label: string; color: string; bg: string; border: string }> = {
   must_cut: {
     label: 'Must Cut',
-    color: 'text-red-700',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
+    color: 'text-error',
+    bg: 'bg-error-muted',
+    border: 'border-error-border',
   },
   consider_cutting: {
     label: 'Consider Cutting',
-    color: 'text-orange-700',
-    bg: 'bg-orange-50',
-    border: 'border-orange-200',
+    color: 'text-warning',
+    bg: 'bg-warning-muted',
+    border: 'border-warning-border',
   },
   must_add: {
     label: 'Must Add',
-    color: 'text-green-700',
-    bg: 'bg-green-50',
-    border: 'border-green-200',
+    color: 'text-success',
+    bg: 'bg-success-muted',
+    border: 'border-success-border',
   },
   consider_adding: {
     label: 'Consider Adding',
-    color: 'text-blue-700',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
+    color: 'text-info',
+    bg: 'bg-info-muted',
+    border: 'border-info-border',
   },
 }
 
@@ -107,7 +107,7 @@ export function RecommendationCard({
             {tierCfg.label}
           </span>
           {accepted === true && (
-            <span className="text-xs font-medium text-green-700 bg-green-100 border border-green-200 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-medium text-success bg-success-muted border border-success-border px-2 py-0.5 rounded-full">
               Accepted
             </span>
           )}
@@ -143,7 +143,7 @@ export function RecommendationCard({
       {(rec.card_out || rec.card_in) && (
         <div className="flex items-center gap-2 text-sm">
           {rec.card_out && (
-            <span className="font-medium text-red-800 bg-red-100 border border-red-200 px-2 py-0.5 rounded">
+            <span className="font-medium text-error bg-error-muted border border-error-border px-2 py-0.5 rounded">
               {rec.card_out}
             </span>
           )}
@@ -151,7 +151,7 @@ export function RecommendationCard({
             <span className="text-muted-foreground">→</span>
           )}
           {rec.card_in && (
-            <span className="font-medium text-green-800 bg-green-100 border border-green-200 px-2 py-0.5 rounded">
+            <span className="font-medium text-success bg-success-muted border border-success-border px-2 py-0.5 rounded">
               {rec.card_in}
             </span>
           )}

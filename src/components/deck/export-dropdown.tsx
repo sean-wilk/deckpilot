@@ -41,36 +41,36 @@ export function ExportDropdown({ cards }: ExportDropdownProps) {
     <div className="relative inline-block">
       <button
         onClick={() => setOpen(prev => !prev)}
-        className="flex items-center gap-2 px-3 py-2 rounded-md bg-gray-800 text-white hover:bg-gray-700 transition-colors text-sm"
+        className="flex items-center gap-2 px-3 py-2 rounded-md bg-surface-raised text-foreground hover:bg-muted transition-colors text-sm border border-border"
       >
         <Download className="w-4 h-4" />
         {copied ? 'Copied!' : 'Export'}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-10">
+        <div className="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-popover border border-border z-10">
           <div className="py-1">
             <button
               onClick={() => handleExport('mtgo')}
-              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
             >
               Copy MTGO
             </button>
             <button
               onClick={() => handleExport('arena')}
-              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
             >
               Copy Arena
             </button>
             <button
               onClick={() => handleDownload('mtgo')}
-              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
             >
               Download MTGO .txt
             </button>
             <button
               onClick={() => handleDownload('arena')}
-              className="w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-700 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-colors"
             >
               Download Arena .txt
             </button>
@@ -79,7 +79,7 @@ export function ExportDropdown({ cards }: ExportDropdownProps) {
       )}
 
       {showToast && (
-        <div className="absolute right-0 mt-2 px-3 py-2 rounded-md bg-green-700 text-white text-sm shadow-lg z-20 transition-opacity duration-500">
+        <div className="absolute right-0 mt-2 px-3 py-2 rounded-md bg-success text-success-foreground text-sm shadow-lg z-20 transition-opacity duration-500">
           Copied to clipboard!
         </div>
       )}

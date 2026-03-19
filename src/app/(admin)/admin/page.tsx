@@ -41,7 +41,7 @@ export default async function AdminPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <CardTitle className="text-base capitalize">{config.provider}</CardTitle>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config.isActive ? 'bg-success-muted text-success' : 'bg-muted text-muted-foreground'}`}>
                       {config.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>

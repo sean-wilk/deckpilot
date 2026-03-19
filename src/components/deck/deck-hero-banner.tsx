@@ -24,11 +24,11 @@ interface DeckHeroBannerProps {
 // ─── Bracket fallback gradient backgrounds ────────────────────────────────────
 
 const BRACKET_FALLBACK_GRADIENTS: Record<number, string> = {
-  1: 'from-emerald-950 via-slate-900 to-slate-950',
-  2: 'from-blue-950 via-slate-900 to-slate-950',
-  3: 'from-amber-950 via-slate-900 to-slate-950',
-  4: 'from-red-950 via-slate-900 to-slate-950',
-  5: 'from-purple-950 via-slate-900 to-slate-950',
+  1: 'from-bracket-1/40 via-background to-background',
+  2: 'from-bracket-2/40 via-background to-background',
+  3: 'from-bracket-3/40 via-background to-background',
+  4: 'from-bracket-4/40 via-background to-background',
+  5: 'from-bracket-5/40 via-background to-background',
 }
 
 // ─── Commander Card ────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ function CommanderCard({
       <div
         className={cn(
           'relative overflow-hidden rounded-xl shadow-2xl shadow-black/60',
-          'ring-2 ring-zinc-700',
+          'ring-2 ring-border',
           'w-[72px] h-[100px] md:w-[90px] md:h-[126px]',
           'transition-transform duration-200 hover:scale-105',
         )}
@@ -70,8 +70,8 @@ function CommanderCard({
             className="object-cover object-top"
           />
         ) : (
-          <div className="w-full h-full bg-slate-800 flex items-center justify-center">
-            <span className="text-2xs text-slate-400 text-center px-1 leading-tight">
+          <div className="w-full h-full bg-surface-raised flex items-center justify-center">
+            <span className="text-2xs text-muted-foreground text-center px-1 leading-tight">
               {name}
             </span>
           </div>
@@ -212,9 +212,9 @@ export function DeckHeroBanner({
                   'inline-flex items-center px-3 py-1 rounded-full shrink-0',
                   'text-xs font-medium border',
                   cardCount === 100
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    ? 'bg-success-muted text-success border-success-border'
                     : cardCount > 100
-                    ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                    ? 'bg-error-muted text-error border-error-border'
                     : 'bg-white/10 text-white/70 border-white/20',
                 )}
               >

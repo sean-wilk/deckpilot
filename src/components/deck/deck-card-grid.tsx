@@ -156,7 +156,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
           style={{ width, height: Math.round(width * 1.395), overflow: 'hidden', borderRadius: '4.75% / 3.4%' }}
           className={cn(
             'transition-all duration-200 shadow-sm',
-            hovered && 'ring-1 ring-zinc-600 shadow-md',
+            hovered && 'ring-1 ring-border shadow-md',
           )}
         >
           <CardImage
@@ -227,7 +227,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
 
         {/* Sideboard badge */}
         {card.isSideboard && (
-          <div className="absolute -bottom-1.5 -left-1.5 z-20 px-1 py-0.5 rounded-sm bg-blue-500 text-white text-[8px] font-bold uppercase tracking-wide shadow">
+          <div className="absolute -bottom-1.5 -left-1.5 z-20 px-1 py-0.5 rounded-sm bg-interactive text-interactive-foreground text-[8px] font-bold uppercase tracking-wide shadow">
             SB
           </div>
         )}
@@ -278,7 +278,7 @@ interface CardGroupProps {
 function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize }: CardGroupProps) {
   return (
     <section>
-      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-zinc-800">
+      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-divider">
         <h3 className="text-sm font-semibold text-foreground">
           {label}
         </h3>

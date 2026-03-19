@@ -293,7 +293,7 @@ export function RecommendationsPanel({ deckId, cardCount }: RecommendationsPanel
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+        <div className="rounded-lg border border-error-border bg-error-muted p-3 text-xs text-error">
           {error}
         </div>
       )}

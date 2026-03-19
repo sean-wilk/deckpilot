@@ -26,10 +26,10 @@ const MTG_LABELS: Record<string, string> = {
 const WUBRG = ['W', 'U', 'B', 'R', 'G']
 
 const FIXING_QUALITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  poor:      { label: 'Poor',      color: 'text-red-500',    bg: 'bg-red-500/10' },
-  fair:      { label: 'Fair',      color: 'text-orange-500', bg: 'bg-orange-500/10' },
-  good:      { label: 'Good',      color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-  excellent: { label: 'Excellent', color: 'text-green-500',  bg: 'bg-green-500/10' },
+  poor:      { label: 'Poor',      color: 'text-error',    bg: 'bg-error-muted' },
+  fair:      { label: 'Fair',      color: 'text-warning',  bg: 'bg-warning-muted' },
+  good:      { label: 'Good',      color: 'text-warning',  bg: 'bg-warning-muted' },
+  excellent: { label: 'Excellent', color: 'text-success',  bg: 'bg-success-muted' },
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ interface LandsSectionProps {
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <span className="text-section-label text-2xs">
       {title}
     </span>
   )
@@ -79,12 +79,12 @@ function LandCountBar({ total, target }: { total: number; target: number }) {
           </span>
           <span className="text-2xs text-muted-foreground">/ {target} target</span>
           {overTarget && (
-            <span className="text-2xs px-1 py-0.5 rounded font-medium text-blue-500 bg-blue-500/10">
+            <span className="text-2xs px-1 py-0.5 rounded font-medium text-info bg-info-muted">
               +{total - target}
             </span>
           )}
           {total < target && (
-            <span className="text-2xs px-1 py-0.5 rounded font-medium text-orange-500 bg-orange-500/10">
+            <span className="text-2xs px-1 py-0.5 rounded font-medium text-warning bg-warning-muted">
               -{target - total}
             </span>
           )}
@@ -92,7 +92,7 @@ function LandCountBar({ total, target }: { total: number; target: number }) {
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${overTarget ? 'bg-blue-500/60' : 'bg-green-500/60'}`}
+          className={`h-full rounded-full transition-all duration-500 ${overTarget ? 'bg-info/60' : 'bg-success/60'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -145,11 +145,11 @@ function ColorProductionBars({
                 {req > 0 && (
                   <>
                     <span className="text-border">·</span>
-                    <span className={sufficient ? 'text-green-500' : 'text-orange-500'}>
+                    <span className={sufficient ? 'text-success' : 'text-warning'}>
                       {req} pip{req !== 1 ? 's' : ''}
                     </span>
                     {!sufficient && (
-                      <span className="text-orange-500 font-semibold">!</span>
+                      <span className="text-warning font-semibold">!</span>
                     )}
                   </>
                 )}
@@ -166,7 +166,7 @@ function ColorProductionBars({
             {req > 0 && (
               <div className="h-0.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 opacity-50 ${sufficient ? 'bg-green-500' : 'bg-orange-500'}`}
+                  className={`h-full rounded-full transition-all duration-500 opacity-50 ${sufficient ? 'bg-success' : 'bg-warning'}`}
                   style={{ width: `${reqPct}%` }}
                 />
               </div>
@@ -177,11 +177,11 @@ function ColorProductionBars({
       {requirements && Object.keys(requirements).length > 0 && (
         <div className="flex items-center gap-3 text-2xs text-muted-foreground pt-0.5">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-1 rounded-full bg-blue-500/60" />
+            <span className="inline-block w-3 h-1 rounded-full bg-info/60" />
             Sources
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-0.5 rounded-full bg-green-500/50" />
+            <span className="inline-block w-3 h-0.5 rounded-full bg-success/50" />
             Pips required
           </span>
         </div>
@@ -267,9 +267,9 @@ export function LandsSection({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="size-5 rounded bg-green-500/10 flex items-center justify-center">
+          <div className="size-5 rounded bg-success-muted flex items-center justify-center">
             <svg
-              className="size-3 text-green-500"
+              className="size-3 text-success"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -325,7 +325,7 @@ export function LandsSection({
             <div className="space-y-2">
               {mana_curve_notes && (
                 <div className="space-y-0.5">
-                  <span className="text-2xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <span className="text-section-label text-2xs">
                     Mana Curve
                   </span>
                   <p className="text-xs-plus text-muted-foreground leading-relaxed">
@@ -335,7 +335,7 @@ export function LandsSection({
               )}
               {color_balance_notes && (
                 <div className="space-y-0.5">
-                  <span className="text-2xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <span className="text-section-label text-2xs">
                     Color Balance
                   </span>
                   <p className="text-xs-plus text-muted-foreground leading-relaxed">
@@ -353,7 +353,7 @@ export function LandsSection({
             <ul className="space-y-1.5">
               {recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-xs-plus text-muted-foreground leading-relaxed">
-                  <span className="mt-1 size-1.5 rounded-full bg-green-500/50 shrink-0" />
+                  <span className="mt-1 size-1.5 rounded-full bg-success/50 shrink-0" />
                   {rec}
                 </li>
               ))}
@@ -368,7 +368,7 @@ export function LandsSection({
               <button
                 type="button"
                 onClick={onRecommendDualLands}
-                className="flex-1 rounded bg-green-600 hover:bg-green-700 active:bg-green-800 text-white text-xs-plus font-medium px-3 py-1.5 transition-colors"
+                className="flex-1 rounded bg-success hover:bg-success/90 active:bg-success/80 text-success-foreground text-xs-plus font-medium px-3 py-1.5 transition-colors"
               >
                 Recommend Dual Lands
               </button>
