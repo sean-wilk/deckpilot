@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { TIER_CONFIG, TAG_LABELS } from '@/components/ai/recommendation-card'
 import type { RecommendationTier, RecommendationTag } from '@/components/ai/recommendation-card'
 import { usePollAnalysis } from '@/hooks/use-poll-analysis'
+import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
+import { CardHoverPreview } from '@/components/ui/card-hover-preview'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -97,7 +99,7 @@ function SummaryBanner({
 }) {
   return (
     <div className="rounded-lg border bg-muted/50 p-3 space-y-1.5">
-      {summary && <p className="text-sm text-foreground leading-relaxed">{summary}</p>}
+      {summary && <p className="text-sm text-foreground leading-relaxed"><AnalysisTextWithCards text={summary} cardNames={[]} /></p>}
       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
         {estimatedBracketAfter != null && (
           <span>
@@ -210,25 +212,41 @@ function PersistedRecCard({
         {isCut ? (
           <>
             {rec.cardOutName && (
-              <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
+              <CardHoverPreview cardName={rec.cardOutName}>
+                <div className="cursor-pointer">
+                  <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
+                </div>
+              </CardHoverPreview>
             )}
             {rec.cardOutName && rec.cardInName && (
               <span className="text-muted-foreground text-sm font-light">→</span>
             )}
             {rec.cardInName && (
-              <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
+              <CardHoverPreview cardName={rec.cardInName}>
+                <div className="cursor-pointer">
+                  <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
+                </div>
+              </CardHoverPreview>
             )}
           </>
         ) : (
           <>
             {rec.cardInName && (
-              <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
+              <CardHoverPreview cardName={rec.cardInName}>
+                <div className="cursor-pointer">
+                  <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
+                </div>
+              </CardHoverPreview>
             )}
             {rec.cardOutName && rec.cardInName && (
               <span className="text-muted-foreground text-sm font-light">→</span>
             )}
             {rec.cardOutName && (
-              <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
+              <CardHoverPreview cardName={rec.cardOutName}>
+                <div className="cursor-pointer">
+                  <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
+                </div>
+              </CardHoverPreview>
             )}
           </>
         )}
@@ -253,10 +271,10 @@ function PersistedRecCard({
       </div>
 
       {/* Impact summary */}
-      <p className="text-xs font-medium text-foreground">{rec.impactSummary}</p>
+      <p className="text-xs font-medium text-foreground"><AnalysisTextWithCards text={rec.impactSummary} cardNames={[]} /></p>
 
       {/* Reasoning */}
-      <p className="text-xs text-muted-foreground leading-relaxed">{rec.reasoning}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed"><AnalysisTextWithCards text={rec.reasoning} cardNames={[]} /></p>
 
       {/* Tags */}
       {Array.isArray(rec.tags) && rec.tags.length > 0 && (
