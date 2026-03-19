@@ -3,10 +3,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { decks, deckCards, deckVersions, cards } from '@/lib/db/schema'
-import { eq, and, max } from 'drizzle-orm'
+import { eq, and, max, sql } from 'drizzle-orm'
 import { deriveCardType } from '@/lib/utils/card-type'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+
+const UNLIMITED_COPIES_CARDS = new Set([
+  'Plains', 'Island', 'Swamp', 'Mountain', 'Forest',
+  'Snow-Covered Plains', 'Snow-Covered Island', 'Snow-Covered Swamp',
+  'Snow-Covered Mountain', 'Snow-Covered Forest',
+  'Wastes',
+  'Relentless Rats', 'Rat Colony', 'Shadowborn Apostle',
+  "Dragon's Approach", 'Persistent Petitioners', 'Seven Dwarves',
+  'Slime Against Humanity', 'Hare Apparent',
+])
 
 async function requireUser() {
   const supabase = await createClient()
@@ -95,19 +105,36 @@ export async function addCardToDeck(deckId: string, cardId: string, isSideboard?
     }
   }
 
-  // Get next sort order
-  const maxOrder = await db.select({ max: max(deckCards.sortOrder) })
+  // Check if card already exists in this deck
+  const existing = await db.select({ id: deckCards.id, quantity: deckCards.quantity })
     .from(deckCards)
-    .where(eq(deckCards.deckId, deckId))
-  const nextOrder = (maxOrder[0]?.max ?? 0) + 1
+    .where(and(eq(deckCards.deckId, deckId), eq(deckCards.cardId, cardId)))
+    .limit(1)
 
-  await db.insert(deckCards).values({
-    deckId,
-    cardId,
-    cardType: deriveCardType(card[0].typeLine),
-    sortOrder: nextOrder,
-    isSideboard: isSideboard ?? false,
-  }).onConflictDoNothing()
+  if (existing[0]) {
+    // Card already in deck — check if unlimited copies allowed
+    if (!UNLIMITED_COPIES_CARDS.has(card[0].name)) {
+      return { error: 'Card already in deck' }
+    }
+    // Increment quantity
+    await db.update(deckCards)
+      .set({ quantity: sql`${deckCards.quantity} + 1` })
+      .where(eq(deckCards.id, existing[0].id))
+  } else {
+    // New card — insert
+    const maxOrder = await db.select({ max: max(deckCards.sortOrder) })
+      .from(deckCards)
+      .where(eq(deckCards.deckId, deckId))
+    const nextOrder = (maxOrder[0]?.max ?? 0) + 1
+
+    await db.insert(deckCards).values({
+      deckId,
+      cardId,
+      cardType: deriveCardType(card[0].typeLine),
+      sortOrder: nextOrder,
+      isSideboard: isSideboard ?? false,
+    })
+  }
 
   await db.update(decks).set({ updatedAt: new Date() }).where(eq(decks.id, deckId))
 
@@ -272,5 +299,47 @@ export async function updateDeckSpiciness(deckId: string, spiciness: number) {
     .where(eq(decks.id, deckId))
 
   revalidatePath(`/decks/${deckId}`)
+  return { success: true }
+}
+
+export async function updateCardQuantity(deckCardId: string, quantity: number) {
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return { error: 'Quantity must be a positive integer' }
+  }
+
+  const user = await requireUser()
+
+  // Fetch the deck card with its card name and deck ownership info
+  const rows = await db
+    .select({
+      deckCardId: deckCards.id,
+      deckId: deckCards.deckId,
+      cardName: cards.name,
+      ownerId: decks.ownerId,
+    })
+    .from(deckCards)
+    .innerJoin(cards, eq(deckCards.cardId, cards.id))
+    .innerJoin(decks, eq(deckCards.deckId, decks.id))
+    .where(eq(deckCards.id, deckCardId))
+    .limit(1)
+
+  if (!rows[0] || rows[0].ownerId !== user.id) {
+    return { error: 'Not found or not authorized' }
+  }
+
+  // Only allow quantity > 1 for unlimited-copies cards
+  if (quantity > 1 && !UNLIMITED_COPIES_CARDS.has(rows[0].cardName)) {
+    return { error: 'Only basic lands and special cards can have multiple copies' }
+  }
+
+  await db.update(deckCards)
+    .set({ quantity })
+    .where(eq(deckCards.id, deckCardId))
+
+  await db.update(decks)
+    .set({ updatedAt: new Date() })
+    .where(eq(decks.id, rows[0].deckId))
+
+  revalidatePath(`/decks/${rows[0].deckId}`)
   return { success: true }
 }

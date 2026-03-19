@@ -48,6 +48,7 @@ export default function ImportPage() {
   const [isImporting, setIsImporting] = useState(false)
   const [importDone, setImportDone] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
+  const [importSummary, setImportSummary] = useState<{ added: number; unique: number; errors: string[] } | null>(null)
 
   async function handleParse() {
     if (!text.trim()) return
@@ -75,11 +76,22 @@ export default function ImportPage() {
     if (!result?.matched.length) return
     setIsImporting(true)
     setImportError(null)
+    setImportSummary(null)
+    const cardErrors: string[] = []
+    let totalAdded = 0
     try {
       for (const match of result.matched) {
-        await addCardToDeck(deckId, match.card.id)
+        for (let i = 0; i < match.quantity; i++) {
+          try {
+            await addCardToDeck(deckId, match.card.id)
+            totalAdded++
+          } catch (err) {
+            cardErrors.push(`${match.card.name}: ${err instanceof Error ? err.message : 'failed'}`)
+          }
+        }
       }
-      await createDeckSnapshot(deckId, `Imported ${result.matched.length} cards from text list`)
+      await createDeckSnapshot(deckId, `Imported ${totalAdded} cards (${result.matched.length} unique) from text list`)
+      setImportSummary({ added: totalAdded, unique: result.matched.length, errors: cardErrors })
       setImportDone(true)
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import failed')
@@ -185,11 +197,21 @@ export default function ImportPage() {
           )}
 
           {importDone ? (
-            <div className="rounded-md bg-success-muted border border-success/30 px-4 py-3 text-sm text-success">
-              {result.matched.length} card{result.matched.length !== 1 ? 's' : ''} imported successfully.{' '}
-              <Link href={`/decks/${deckId}`} className="underline font-medium">
-                View deck
-              </Link>
+            <div className="space-y-2">
+              <div className="rounded-md bg-success-muted border border-success/30 px-4 py-3 text-sm text-success">
+                Added {importSummary?.added ?? 0} card{(importSummary?.added ?? 0) !== 1 ? 's' : ''} ({importSummary?.unique ?? 0} unique) successfully.{' '}
+                <Link href={`/decks/${deckId}`} className="underline font-medium">
+                  View deck
+                </Link>
+              </div>
+              {importSummary && importSummary.errors.length > 0 && (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 space-y-1">
+                  <p className="text-sm font-medium text-destructive">{importSummary.errors.length} error{importSummary.errors.length !== 1 ? 's' : ''} during import</p>
+                  {importSummary.errors.map((e, i) => (
+                    <p key={i} className="text-xs text-destructive/80 font-mono">{e}</p>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <button

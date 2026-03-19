@@ -17,6 +17,7 @@ export interface DeckCardEntry {
   cardType: string
   isCommander: boolean
   isSideboard: boolean
+  quantity?: number
   imageUris: CardImageUris | null
   cardFaces: CardFace[] | null
   manaCost: string | null
@@ -32,6 +33,14 @@ export interface DeckCardEntry {
   prices?: Record<string, string | null> | null
 }
 
+export interface LegalityIssue {
+  cardId: string
+  cardName: string
+  deckCardId: string
+  type: 'color_identity' | 'banned' | 'not_legal' | 'over_limit'
+  message: string
+}
+
 export interface DeckCardGridProps {
   deckId: string
   cards: DeckCardEntry[]
@@ -39,6 +48,7 @@ export interface DeckCardGridProps {
   cardRoles?: Record<string, string[]>
   groupBy?: 'type' | 'role' | 'cmc'
   cardSize?: number
+  legalityIssues?: LegalityIssue[]
 }
 
 // ─── Type ordering & display ──────────────────────────────────────────────────
@@ -109,9 +119,10 @@ interface CardThumbProps {
   onCardClick: (card: DeckCardEntry) => void
   roles?: string[]
   cardSize?: number
+  legalityIssue?: LegalityIssue
 }
 
-function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: CardThumbProps) {
+function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legalityIssue }: CardThumbProps) {
   const [hovered, setHovered] = useState(false)
   const [removing, startRemove] = useTransition()
   const [toggling, startToggle] = useTransition()
@@ -231,6 +242,32 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize }: Card
             SB
           </div>
         )}
+
+        {/* Quantity badge — shown when quantity > 1 */}
+        {(card.quantity ?? 1) > 1 && (
+          <div className="absolute bottom-1 right-1 z-20 bg-foreground text-background rounded-full text-2xs font-bold px-1.5 py-0.5 leading-none shadow">
+            ×{card.quantity}
+          </div>
+        )}
+
+        {/* Legality warning indicator */}
+        {legalityIssue && (
+          <div
+            title={legalityIssue.message}
+            className={cn(
+              'absolute top-1 left-1 z-20',
+              'size-5 rounded-full',
+              'bg-warning text-warning-foreground',
+              'flex items-center justify-center',
+              'shadow-md border border-background',
+              'text-xs leading-none select-none',
+              'cursor-help',
+            )}
+            aria-label={`Legality issue: ${legalityIssue.message}`}
+          >
+            ⚠
+          </div>
+        )}
       </div>
 
       {/* Card name */}
@@ -273,9 +310,10 @@ interface CardGroupProps {
   onCardClick: (card: DeckCardEntry) => void
   cardRoles?: Record<string, string[]>
   cardSize?: number
+  legalityIssues?: LegalityIssue[]
 }
 
-function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize }: CardGroupProps) {
+function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize, legalityIssues }: CardGroupProps) {
   return (
     <section>
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-divider">
@@ -297,6 +335,7 @@ function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, card
             onCardClick={onCardClick}
             roles={cardRoles?.[card.name]}
             cardSize={cardSize}
+            legalityIssue={legalityIssues?.find((issue) => issue.cardId === card.cardId)}
           />
         ))}
       </div>
@@ -377,7 +416,7 @@ function groupByCmc(cards: DeckCardEntry[]): { key: string; label: string; cards
 
 // ─── DeckCardGrid ─────────────────────────────────────────────────────────────
 
-export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'type', cardSize }: DeckCardGridProps) {
+export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'type', cardSize, legalityIssues }: DeckCardGridProps) {
   const [selectedCard, setSelectedCard] = useState<DeckCardEntry | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -425,6 +464,7 @@ export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'typ
             onCardClick={handleCardClick}
             cardRoles={cardRoles}
             cardSize={cardSize}
+            legalityIssues={legalityIssues}
           />
         ))}
       </div>

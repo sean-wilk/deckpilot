@@ -7,6 +7,7 @@ import { DeckCardGrid } from '@/components/deck/deck-card-grid'
 import { DeckDisplayControls } from '@/components/deck/deck-display-controls'
 import { AddCardBar } from '@/components/deck/add-card-bar'
 import { DeckHeroBanner } from '@/components/deck/deck-hero-banner'
+import { DeckLegalityBanner } from '@/components/deck/deck-legality-banner'
 import type { CardImageUris, CardFace } from '@/types/card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -17,6 +18,7 @@ interface DeckCardEntry {
   cardType: string
   isCommander: boolean
   isSideboard: boolean
+  quantity?: number
   name: string
   manaCost: string | null
   cmc: number
@@ -162,6 +164,9 @@ export function DeckPageClient({
             cardCount={cardCount}
           />
         )}
+
+        {/* Legality banner */}
+        <DeckLegalityBanner deckId={deckId} />
 
         {/* Tabs with deck content */}
         <DeckContentTabs

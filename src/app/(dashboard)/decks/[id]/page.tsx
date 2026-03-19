@@ -101,6 +101,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
     cardType:    row.cardType,
     isCommander: row.isCommander,
     isSideboard: row.isSideboard,
+    quantity:    row.quantity,
     name:        row.name,
     manaCost:    row.manaCost,
     cmc:         parseFloat(row.cmc),
@@ -138,6 +139,9 @@ export default async function DeckPage({ params }: DeckPageProps) {
     isSideboard: row.isSideboard,
   }))
 
+  // Sum quantities for accurate card count
+  const cardCount = rows.reduce((sum, r) => sum + (r.quantity ?? 1), 0)
+
   return (
     <div className="min-h-screen bg-background -mx-4 -mt-8">
       {/* Stats bar — sticky at top */}
@@ -154,7 +158,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
         <DeckPageHeader
           deck={deck}
           isOwner={isOwner}
-          cardCount={rows.length}
+          cardCount={cardCount}
         >
           <ExportDropdown cards={exportCards} />
           <DeckSettingsButton deck={deck} />
@@ -190,7 +194,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
             } : null}
             isOwner={isOwner}
             statsCards={statsCards}
-            cardCount={rows.length}
+            cardCount={cardCount}
           />
         </div>
       </div>

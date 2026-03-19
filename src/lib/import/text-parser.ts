@@ -34,7 +34,8 @@ export function parseTextList(text: string): ParseResult {
 
     // MTGO format: "1 Card Name"
     // Arena format: "1 Card Name (SET) #123"
-    const mtgoMatch = cleanLine.match(/^(\d+)\s+(.+?)(?:\s+\(([A-Z0-9]+)\)\s*(\d+)?)?$/)
+    // Also handles: "4x Card Name" and "4X Card Name"
+    const mtgoMatch = cleanLine.match(/^(\d+)[xX]?\s+(.+?)(?:\s+\(([A-Z0-9]+)\)\s*(\d+)?)?$/)
 
     if (mtgoMatch) {
       cards.push({
@@ -47,11 +48,16 @@ export function parseTextList(text: string): ParseResult {
       })
     } else {
       // Try without quantity (assume 1)
-      const name = cleanLine.replace(/^\d+x?\s*/, '').trim()
-      if (name) {
-        cards.push({ quantity: 1, name, isCommander, isSideboard })
+      const fallbackMatch = cleanLine.match(/^(\d+)[xX]?\s+(.+)$/)
+      if (fallbackMatch) {
+        cards.push({ quantity: parseInt(fallbackMatch[1], 10), name: fallbackMatch[2].trim(), isCommander, isSideboard })
       } else {
-        errors.push(`Could not parse line: "${rawLine}"`)
+        const name = cleanLine.replace(/^\d+[xX]?\s*/, '').trim()
+        if (name) {
+          cards.push({ quantity: 1, name, isCommander, isSideboard })
+        } else {
+          errors.push(`Could not parse line: "${rawLine}"`)
+        }
       }
     }
   }
