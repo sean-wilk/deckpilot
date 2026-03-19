@@ -186,7 +186,7 @@ export function DeckPageClient({
         )}
 
         {/* Legality banner */}
-        <DeckLegalityBanner deckId={deckId} />
+        <DeckLegalityBanner deckId={deckId} refreshKey={cardCount} />
 
         {/* Tabs with deck content */}
         <DeckContentTabs

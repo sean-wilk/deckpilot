@@ -241,6 +241,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
           className={cn(
             'transition-all duration-200 shadow-sm',
             hovered && 'ring-1 ring-border shadow-md',
+            legalityIssue && 'ring-2 ring-warning ring-offset-1 ring-offset-background',
           )}
         >
           <CardImage
