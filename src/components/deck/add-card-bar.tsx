@@ -90,6 +90,7 @@ export function AddCardBar({ deckId, className }: AddCardBarProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
+  const [pendingCard, setPendingCard] = useState<{ card: CardData; error: string } | null>(null)
   const [, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -141,7 +142,27 @@ export function AddCardBar({ deckId, className }: AddCardBarProps) {
     setAddingId(card.id)
     startTransition(async () => {
       try {
-        await addCardToDeck(deckId, card.id)
+        const result = await addCardToDeck(deckId, card.id)
+        if (result?.error) {
+          setPendingCard({ card, error: result.error })
+          return
+        }
+        setQuery('')
+        setResults([])
+        setOpen(false)
+      } finally {
+        setAddingId(null)
+      }
+    })
+  }
+
+  function handleForceAdd() {
+    if (!pendingCard) return
+    setAddingId(pendingCard.card.id)
+    startTransition(async () => {
+      try {
+        await addCardToDeck(deckId, pendingCard.card.id, true)
+        setPendingCard(null)
         setQuery('')
         setResults([])
         setOpen(false)
@@ -224,6 +245,40 @@ export function AddCardBar({ deckId, className }: AddCardBarProps) {
       {open && query.trim().length >= 2 && !loading && results.length === 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-xl px-3 py-4 text-center">
           <p className="text-sm text-muted-foreground">No cards found for &ldquo;{query}&rdquo;</p>
+        </div>
+      )}
+
+      {pendingCard && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-popover border border-border rounded-lg shadow-xl p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="size-5 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+              <span className="text-amber-600 text-xs font-bold">!</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Illegal Card</p>
+              <p className="text-xs text-muted-foreground mt-1">{pendingCard.error}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                The card will be flagged as illegal in your deck.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setPendingCard(null)}
+              className="rounded-md border border-border bg-background hover:bg-muted px-3 py-1.5 text-xs font-medium transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleForceAdd}
+              disabled={addingId !== null}
+              className="rounded-md bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 px-3 py-1.5 text-xs font-medium transition-colors"
+            >
+              Add Anyway
+            </button>
+          </div>
         </div>
       )}
     </div>
