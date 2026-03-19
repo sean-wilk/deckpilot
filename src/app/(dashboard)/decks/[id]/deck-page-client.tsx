@@ -69,18 +69,31 @@ interface DeckPageClientProps {
 
 // ─── Card size store (useSyncExternalStore for hydration safety) ──────────────
 
-const _subscribe = () => () => {}
+const CARD_SIZE_DEFAULT = 200
+const CARD_SIZE_KEY = 'deckpilot:card-size'
+
+const _cardSizeListeners = new Set<() => void>()
+const _subscribe = (cb: () => void) => {
+  _cardSizeListeners.add(cb)
+  // Listen for storage changes (from slider or other tabs)
+  const handler = (e: StorageEvent) => { if (e.key === CARD_SIZE_KEY) cb() }
+  window.addEventListener('storage', handler)
+  return () => {
+    _cardSizeListeners.delete(cb)
+    window.removeEventListener('storage', handler)
+  }
+}
 const _getCardSizeSnapshot = () => {
   try {
-    const stored = localStorage.getItem('deckpilot:card-size')
+    const stored = localStorage.getItem(CARD_SIZE_KEY)
     if (stored) {
       const parsed = parseInt(stored, 10)
       if (!isNaN(parsed) && parsed >= 72 && parsed <= 350) return parsed
     }
   } catch {}
-  return 100
+  return CARD_SIZE_DEFAULT
 }
-const _getServerSnapshot = () => 100
+const _getServerSnapshot = () => CARD_SIZE_DEFAULT
 
 // ─── DeckPageClient ───────────────────────────────────────────────────────────
 
@@ -133,8 +146,11 @@ export function DeckPageClient({
   const [groupBy, setGroupBy] = useState<'type' | 'role' | 'cmc'>('type')
   // useSyncExternalStore ensures server snapshot (100) matches SSR output, while
   // client snapshot reads localStorage — eliminating the hydration mismatch.
-  const cardSizeFromStore = useSyncExternalStore(_subscribe, _getCardSizeSnapshot, _getServerSnapshot)
-  const [cardSize, setCardSize] = useState(cardSizeFromStore)
+  const cardSize = useSyncExternalStore(_subscribe, _getCardSizeSnapshot, _getServerSnapshot)
+  const setCardSize = (size: number) => {
+    try { localStorage.setItem(CARD_SIZE_KEY, String(size)) } catch {}
+    _cardSizeListeners.forEach(cb => cb())
+  }
 
   // Use the deck_cards commander entry if available; fall back to the
   // authoritative card fetched directly from decks.commanderId
