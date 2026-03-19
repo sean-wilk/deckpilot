@@ -12,6 +12,7 @@ import { CardHoverPreview } from '@/components/ui/card-hover-preview'
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type RecStatus = 'accepted' | 'skipped' | 'dismissed' | null
+type StatusFilter = 'open' | 'skipped' | 'accepted'
 
 interface PersistedRecommendation {
   id: string
@@ -119,11 +120,13 @@ function PersistedRecCard({
   deckId,
   localStatus,
   onStatusChange,
+  statusFilter,
 }: {
   rec: PersistedRecommendation
   deckId: string
   localStatus: RecStatus
   onStatusChange: (id: string, status: RecStatus) => void
+  statusFilter: StatusFilter
 }) {
   const [isPending, setIsPending] = useState(false)
   const tierCfg = TIER_CONFIG[rec.tier]
@@ -178,8 +181,8 @@ function PersistedRecCard({
           )}
         </div>
 
-        {/* Action buttons */}
-        {effectiveStatus === null && (
+        {/* Action buttons — vary by status filter view */}
+        {statusFilter === 'open' && effectiveStatus === null && (
           <div className="flex gap-1.5 shrink-0">
             <button
               onClick={() => handleStatus('dismissed')}
@@ -201,7 +204,29 @@ function PersistedRecCard({
               disabled={isPending}
               className="text-xs px-2.5 py-1 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 font-medium"
             >
-              {isPending ? 'Applying…' : 'Accept'}
+              {isPending ? 'Applying...' : 'Accept'}
+            </button>
+          </div>
+        )}
+        {statusFilter === 'skipped' && effectiveStatus === 'skipped' && (
+          <div className="flex gap-1.5 shrink-0">
+            <button
+              onClick={() => handleStatus('accepted')}
+              disabled={isPending}
+              className="text-xs px-2.5 py-1 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 font-medium"
+            >
+              {isPending ? 'Applying...' : 'Accept'}
+            </button>
+          </div>
+        )}
+        {statusFilter === 'accepted' && effectiveStatus === 'accepted' && (
+          <div className="flex gap-1.5 shrink-0">
+            <button
+              onClick={() => handleStatus('skipped')}
+              disabled={isPending}
+              className="text-xs px-2.5 py-1 rounded-lg border bg-background hover:bg-muted transition-colors disabled:opacity-50 text-warning"
+            >
+              {isPending ? 'Reversing...' : 'Undo'}
             </button>
           </div>
         )}
@@ -326,6 +351,9 @@ export function RecommendationsTabContent({
   // Sub-tab
   const [activeTab, setActiveTab] = useState<ActiveTab>('cuts')
 
+  // Status filter
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
+
   // Track previous complete status to fire toast once
   const [toastedAnalysisId, setToastedAnalysisId] = useState<string | null>(null)
 
@@ -335,6 +363,7 @@ export function RecommendationsTabContent({
   if (data?.status === 'complete' && analysisId && analysisId !== toastedAnalysisId) {
     toast.success('Recommendations ready!')
     setToastedAnalysisId(analysisId)
+    setStatusFilter('open')
   }
 
   // ── Status change handler ────────────────────────────────────────────────────
@@ -347,6 +376,7 @@ export function RecommendationsTabContent({
 
   async function handleGenerate() {
     setLocalStatuses({})
+    setStatusFilter('open')
     const body: Record<string, unknown> = { deckId, spiciness }
     if (focus) body.focus = focus
     await trigger(body)
@@ -361,6 +391,12 @@ export function RecommendationsTabContent({
   const recommendations = results?.recommendations ?? []
   const hasRecs = recommendations.length > 0
 
+  // Helper to get effective status for a recommendation
+  function getEffectiveStatus(r: PersistedRecommendation): RecStatus {
+    return localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r)
+  }
+
+  // Categorize into cuts / adds (excluding dismissed)
   const cuts = recommendations.filter(
     (r) => r.tier === 'must_cut' || r.tier === 'consider_cutting'
   )
@@ -368,14 +404,32 @@ export function RecommendationsTabContent({
     (r) => r.tier === 'must_add' || r.tier === 'consider_adding'
   )
 
-  const visibleCuts = cuts.filter((r) => {
-    const status = localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r)
-    return status !== 'dismissed'
-  })
-  const visibleAdds = adds.filter((r) => {
-    const status = localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r)
-    return status !== 'dismissed'
-  })
+  // Filter by status (dismissed are always hidden)
+  function filterByStatus(recs: PersistedRecommendation[]): PersistedRecommendation[] {
+    return recs.filter((r) => {
+      const s = getEffectiveStatus(r)
+      if (s === 'dismissed') return false
+      if (statusFilter === 'open') return s === null
+      if (statusFilter === 'skipped') return s === 'skipped'
+      if (statusFilter === 'accepted') return s === 'accepted'
+      return true
+    })
+  }
+
+  const visibleCuts = filterByStatus(cuts)
+  const visibleAdds = filterByStatus(adds)
+
+  // Counts per status for the active Cuts/Adds tab
+  const activeRecs = activeTab === 'cuts' ? cuts : adds
+  const statusCounts = {
+    open: activeRecs.filter((r) => { const s = getEffectiveStatus(r); return s === null }).length,
+    skipped: activeRecs.filter((r) => { const s = getEffectiveStatus(r); return s === 'skipped' }).length,
+    accepted: activeRecs.filter((r) => { const s = getEffectiveStatus(r); return s === 'accepted' }).length,
+  }
+
+  // Total non-dismissed counts for the Cuts/Adds tab badges
+  const totalVisibleCuts = cuts.filter((r) => getEffectiveStatus(r) !== 'dismissed').length
+  const totalVisibleAdds = adds.filter((r) => getEffectiveStatus(r) !== 'dismissed').length
 
   return (
     <div className="space-y-4">
@@ -457,9 +511,9 @@ export function RecommendationsTabContent({
               }`}
             >
               Cuts
-              {visibleCuts.length > 0 && (
+              {totalVisibleCuts > 0 && (
                 <span className="ml-1.5 text-2xs bg-error-muted text-error rounded-full px-1.5 py-0.5">
-                  {visibleCuts.length}
+                  {totalVisibleCuts}
                 </span>
               )}
             </button>
@@ -472,21 +526,54 @@ export function RecommendationsTabContent({
               }`}
             >
               Adds
-              {visibleAdds.length > 0 && (
+              {totalVisibleAdds > 0 && (
                 <span className="ml-1.5 text-2xs bg-success-muted text-success rounded-full px-1.5 py-0.5">
-                  {visibleAdds.length}
+                  {totalVisibleAdds}
                 </span>
               )}
             </button>
+          </div>
+
+          {/* Status filter pills */}
+          <div className="flex items-center gap-1">
+            {(['open', 'skipped', 'accepted'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  statusFilter === status
+                    ? 'bg-muted text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {statusCounts[status] > 0 && (
+                  <span className="ml-1 text-2xs opacity-70">{statusCounts[status]}</span>
+                )}
+              </button>
+            ))}
           </div>
 
           {/* Cuts tab */}
           {activeTab === 'cuts' && (
             <div className="space-y-2">
               {visibleCuts.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  No cut suggestions — your deck looks solid!
-                </p>
+                <div className="text-xs text-muted-foreground text-center py-4 space-y-1">
+                  {statusFilter === 'open' && (
+                    <>
+                      <p>No pending cut suggestions</p>
+                      {(statusCounts.accepted > 0 || statusCounts.skipped > 0) && (
+                        <p className="text-2xs opacity-70">
+                          {statusCounts.accepted > 0 && `${statusCounts.accepted} accepted`}
+                          {statusCounts.accepted > 0 && statusCounts.skipped > 0 && ' · '}
+                          {statusCounts.skipped > 0 && `${statusCounts.skipped} skipped`}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {statusFilter === 'skipped' && <p>No skipped cut suggestions</p>}
+                  {statusFilter === 'accepted' && <p>No accepted cut suggestions yet</p>}
+                </div>
               )}
               {visibleCuts.map((rec) => (
                 <PersistedRecCard
@@ -495,6 +582,7 @@ export function RecommendationsTabContent({
                   deckId={deckId}
                   localStatus={localStatuses[rec.id] ?? null}
                   onStatusChange={handleStatusChange}
+                  statusFilter={statusFilter}
                 />
               ))}
             </div>
@@ -504,9 +592,22 @@ export function RecommendationsTabContent({
           {activeTab === 'adds' && (
             <div className="space-y-2">
               {visibleAdds.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  No add suggestions at this time.
-                </p>
+                <div className="text-xs text-muted-foreground text-center py-4 space-y-1">
+                  {statusFilter === 'open' && (
+                    <>
+                      <p>No pending add suggestions</p>
+                      {(statusCounts.accepted > 0 || statusCounts.skipped > 0) && (
+                        <p className="text-2xs opacity-70">
+                          {statusCounts.accepted > 0 && `${statusCounts.accepted} accepted`}
+                          {statusCounts.accepted > 0 && statusCounts.skipped > 0 && ' · '}
+                          {statusCounts.skipped > 0 && `${statusCounts.skipped} skipped`}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {statusFilter === 'skipped' && <p>No skipped add suggestions</p>}
+                  {statusFilter === 'accepted' && <p>No accepted add suggestions yet</p>}
+                </div>
               )}
               {visibleAdds.map((rec) => (
                 <PersistedRecCard
@@ -515,6 +616,7 @@ export function RecommendationsTabContent({
                   deckId={deckId}
                   localStatus={localStatuses[rec.id] ?? null}
                   onStatusChange={handleStatusChange}
+                  statusFilter={statusFilter}
                 />
               ))}
             </div>
