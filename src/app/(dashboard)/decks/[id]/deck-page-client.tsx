@@ -4,6 +4,7 @@ import { useState, useEffect, useSyncExternalStore } from 'react'
 import { DeckContentTabs } from '@/components/deck/deck-content-tabs'
 import { DeckPageSidebar } from '@/components/deck/deck-page-sidebar'
 import { DeckCardGrid } from '@/components/deck/deck-card-grid'
+import type { LegalityIssue } from '@/components/deck/deck-card-grid'
 import { DeckDisplayControls } from '@/components/deck/deck-display-controls'
 import { AddCardBar } from '@/components/deck/add-card-bar'
 import { DeckHeroBanner } from '@/components/deck/deck-hero-banner'
@@ -114,6 +115,9 @@ export function DeckPageClient({
   // ── Undo stack (single instance for both mainboard + sideboard grids) ─────
   const { pushUndo } = useDeckUndo()
 
+  // ── Shared legality issues (lifted from banner so grids can show warning rings) ──
+  const [legalityIssues, setLegalityIssues] = useState<LegalityIssue[]>([])
+
   // ── Card roles (Task 4.4) ──────────────────────────────────────────────────
   const [cardRoles, setCardRoles] = useState<Record<string, string[]>>({})
 
@@ -186,7 +190,7 @@ export function DeckPageClient({
         )}
 
         {/* Legality banner */}
-        <DeckLegalityBanner deckId={deckId} refreshKey={cardCount} />
+        <DeckLegalityBanner deckId={deckId} refreshKey={cardCount} onIssuesLoaded={setLegalityIssues} />
 
         {/* Tabs with deck content */}
         <DeckContentTabs
@@ -225,6 +229,7 @@ export function DeckPageClient({
             cardRoles={cardRoles}
             groupBy={groupBy}
             cardSize={cardSize}
+            legalityIssues={legalityIssues}
             pushUndo={pushUndo}
           />
 
@@ -244,6 +249,7 @@ export function DeckPageClient({
                 cardRoles={cardRoles}
                 groupBy={groupBy}
                 cardSize={cardSize}
+                legalityIssues={legalityIssues}
                 pushUndo={pushUndo}
               />
             ) : (

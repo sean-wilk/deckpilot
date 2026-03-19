@@ -18,6 +18,7 @@ export interface LegalityIssue {
 interface DeckLegalityBannerProps {
   deckId: string
   refreshKey?: number
+  onIssuesLoaded?: (issues: LegalityIssue[]) => void
 }
 
 // ─── Issue type labels ─────────────────────────────────────────────────────
@@ -31,7 +32,7 @@ const ISSUE_TYPE_LABELS: Record<LegalityIssue['type'], string> = {
 
 // ─── DeckLegalityBanner ───────────────────────────────────────────────────────
 
-export function DeckLegalityBanner({ deckId, refreshKey }: DeckLegalityBannerProps) {
+export function DeckLegalityBanner({ deckId, refreshKey, onIssuesLoaded }: DeckLegalityBannerProps) {
   const [issues, setIssues] = useState<LegalityIssue[]>([])
   const [expanded, setExpanded] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -44,13 +45,14 @@ export function DeckLegalityBanner({ deckId, refreshKey }: DeckLegalityBannerPro
       const data = await res.json()
       if (Array.isArray(data.issues)) {
         setIssues(data.issues)
+        onIssuesLoaded?.(data.issues)
       }
     } catch {
       // Silently ignore — legality check is advisory
     } finally {
       setLoaded(true)
     }
-  }, [deckId])
+  }, [deckId, onIssuesLoaded])
 
   useEffect(() => {
     void fetchLegality()
