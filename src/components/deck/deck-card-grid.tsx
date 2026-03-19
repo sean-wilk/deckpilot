@@ -6,7 +6,19 @@ import { CardImage } from '@/components/cards/card-image'
 import { CardDetailModal } from '@/components/cards/card-detail-modal'
 import { cn } from '@/lib/utils'
 import type { CardImageUris, CardFace } from '@/types/card'
-import { removeCardFromDeck, toggleSideboard } from '@/app/(dashboard)/decks/actions'
+import { removeCardFromDeck, toggleSideboard, updateCardQuantity } from '@/app/(dashboard)/decks/actions'
+
+// ─── Unlimited-copy cards (mirrors server-side list) ─────────────────────────
+
+const UNLIMITED_COPIES = new Set([
+  'Plains', 'Island', 'Swamp', 'Mountain', 'Forest',
+  'Snow-Covered Plains', 'Snow-Covered Island', 'Snow-Covered Swamp',
+  'Snow-Covered Mountain', 'Snow-Covered Forest',
+  'Wastes',
+  'Relentless Rats', 'Rat Colony', 'Shadowborn Apostle',
+  "Dragon's Approach", 'Persistent Petitioners', 'Seven Dwarves',
+  'Slime Against Humanity', 'Hare Apparent',
+])
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -126,6 +138,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
   const [hovered, setHovered] = useState(false)
   const [removing, startRemove] = useTransition()
   const [toggling, startToggle] = useTransition()
+  const [updatingQty, startUpdateQty] = useTransition()
 
   const width = cardSize ?? 146
 
@@ -143,6 +156,25 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
     startToggle(async () => {
       await toggleSideboard(deckId, card.deckCardId)
     })
+  }
+
+  function handleIncrease() {
+    startUpdateQty(async () => {
+      await updateCardQuantity(card.deckCardId, (card.quantity ?? 1) + 1)
+    })
+  }
+
+  function handleDecrease() {
+    const current = card.quantity ?? 1
+    if (current <= 1) {
+      startRemove(async () => {
+        await removeCardFromDeck(deckId, card.deckCardId)
+      })
+    } else {
+      startUpdateQty(async () => {
+        await updateCardQuantity(card.deckCardId, current - 1)
+      })
+    }
   }
 
   const visibleRoles = roles?.slice(0, 2) ?? []
@@ -243,10 +275,51 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
           </div>
         )}
 
-        {/* Quantity badge — shown when quantity > 1 */}
-        {(card.quantity ?? 1) > 1 && (
+        {/* Quantity badge — shown when quantity > 1 and not hovered (hovered shows the controls instead) */}
+        {(card.quantity ?? 1) > 1 && !hovered && (
           <div className="absolute bottom-1 right-1 z-20 bg-foreground text-background rounded-full text-2xs font-bold px-1.5 py-0.5 leading-none shadow">
             ×{card.quantity}
+          </div>
+        )}
+
+        {/* Quantity controls — shown on hover for owner non-commander cards */}
+        {isOwner && hovered && !card.isCommander && (
+          <div className="absolute bottom-0 inset-x-0 z-20 bg-black/70 backdrop-blur-sm flex items-center justify-center gap-2 py-1.5 rounded-b-[4.75%]">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleDecrease() }}
+              disabled={removing || updatingQty}
+              className={cn(
+                'size-6 rounded-full flex items-center justify-center',
+                'bg-white/20 hover:bg-red-500/70 text-white',
+                'text-sm font-bold leading-none',
+                'transition-colors duration-150',
+                'disabled:opacity-40',
+              )}
+              aria-label={`Decrease quantity of ${card.name}`}
+            >
+              −
+            </button>
+            <span className="text-white text-sm font-bold tabular-nums min-w-[1.5ch] text-center select-none">
+              {card.quantity ?? 1}
+            </span>
+            {UNLIMITED_COPIES.has(card.name) && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleIncrease() }}
+                disabled={updatingQty}
+                className={cn(
+                  'size-6 rounded-full flex items-center justify-center',
+                  'bg-white/20 hover:bg-green-500/70 text-white',
+                  'text-sm font-bold leading-none',
+                  'transition-colors duration-150',
+                  'disabled:opacity-40',
+                )}
+                aria-label={`Increase quantity of ${card.name}`}
+              >
+                +
+              </button>
+            )}
           </div>
         )}
 
