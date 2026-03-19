@@ -10,6 +10,7 @@ interface StatsCard {
   cmc: number | string | null
   colors: string[]
   prices: Record<string, string | null> | null
+  quantity?: number
 }
 
 export interface StatsBarProps {
@@ -110,7 +111,7 @@ function ColorPip({
 // ─── StatsBar ─────────────────────────────────────────────────────────────────
 
 export function StatsBar({ cards, targetBracket, className }: StatsBarProps) {
-  const cardCount = cards.length
+  const cardCount = cards.reduce((sum, c) => sum + (c.quantity ?? 1), 0)
   const avgCmc = computeAvgCmc(cards)
   const colorCounts = computeColorCounts(cards)
   const totalPrice = computeTotalPrice(cards)

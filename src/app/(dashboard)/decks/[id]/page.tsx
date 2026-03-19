@@ -120,9 +120,10 @@ export default async function DeckPage({ params }: DeckPageProps) {
   // Stats only count mainboard cards (exclude sideboard)
   const mainboardRows = rows.filter((r) => !r.isSideboard)
   const statsCards = mainboardRows.map((row) => ({
-    cmc:    parseFloat(row.cmc),
-    colors: row.colors,
-    prices: row.prices as Record<string, string | null> | null,
+    cmc:      parseFloat(row.cmc),
+    colors:   row.colors,
+    prices:   row.prices as Record<string, string | null> | null,
+    quantity: row.quantity,
   }))
 
   // Non-commander cards for the grid

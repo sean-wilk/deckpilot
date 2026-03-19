@@ -436,7 +436,7 @@ function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, card
           {label}
         </h3>
         <span className="text-xs text-muted-foreground tabular-nums">
-          ({cards.length})
+          ({cards.reduce((sum, c) => sum + (c.quantity ?? 1), 0)})
         </span>
       </div>
 

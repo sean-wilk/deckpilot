@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ManaSymbol } from '@/components/ui/mana-symbol'
+import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
 
 // ─── MTG color constants ───────────────────────────────────────────────────────
 
@@ -215,7 +216,7 @@ function CollapsibleSection({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between py-2 text-left"
+        className="flex w-full items-center justify-between px-4 py-2.5 text-left bg-muted/30 hover:bg-muted/50 transition-colors"
       >
         <SectionHeader title={title} />
         <svg
@@ -228,7 +229,7 @@ function CollapsibleSection({
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && <div className="pb-3 space-y-2">{children}</div>}
+      {open && <div className="px-4 py-3 space-y-2">{children}</div>}
     </div>
   )
 }
@@ -282,7 +283,7 @@ export function LandsSection({
               />
             </svg>
           </div>
-          <span className="text-xs font-semibold">Lands Analysis</span>
+          <span className="text-section-heading">Lands Analysis</span>
         </div>
         {fixingCfg && (
           <span
@@ -329,7 +330,7 @@ export function LandsSection({
                     Mana Curve
                   </span>
                   <p className="text-xs-plus text-muted-foreground leading-relaxed">
-                    {mana_curve_notes}
+                    <AnalysisTextWithCards text={mana_curve_notes} cardNames={[]} />
                   </p>
                 </div>
               )}
@@ -339,7 +340,7 @@ export function LandsSection({
                     Color Balance
                   </span>
                   <p className="text-xs-plus text-muted-foreground leading-relaxed">
-                    {color_balance_notes}
+                    <AnalysisTextWithCards text={color_balance_notes} cardNames={[]} />
                   </p>
                 </div>
               )}
@@ -354,7 +355,7 @@ export function LandsSection({
               {recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-1.5 text-xs-plus text-muted-foreground leading-relaxed">
                   <span className="mt-1 size-1.5 rounded-full bg-success/50 shrink-0" />
-                  {rec}
+                  <AnalysisTextWithCards text={rec} cardNames={[]} />
                 </li>
               ))}
             </ul>
