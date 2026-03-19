@@ -8,6 +8,7 @@ import { DeckDisplayControls } from '@/components/deck/deck-display-controls'
 import { AddCardBar } from '@/components/deck/add-card-bar'
 import { DeckHeroBanner } from '@/components/deck/deck-hero-banner'
 import { DeckLegalityBanner } from '@/components/deck/deck-legality-banner'
+import { useDeckUndo } from '@/hooks/use-deck-undo'
 import type { CardImageUris, CardFace } from '@/types/card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -96,6 +97,9 @@ export function DeckPageClient({
   cardCount,
 }: DeckPageClientProps) {
   const [activeTab, setActiveTab] = useState('deck')
+
+  // ── Undo stack (single instance for both mainboard + sideboard grids) ─────
+  const { pushUndo } = useDeckUndo()
 
   // ── Card roles (Task 4.4) ──────────────────────────────────────────────────
   const [cardRoles, setCardRoles] = useState<Record<string, string[]>>({})
@@ -205,6 +209,7 @@ export function DeckPageClient({
             cardRoles={cardRoles}
             groupBy={groupBy}
             cardSize={cardSize}
+            pushUndo={pushUndo}
           />
 
           {/* Sideboard section */}
@@ -223,6 +228,7 @@ export function DeckPageClient({
                 cardRoles={cardRoles}
                 groupBy={groupBy}
                 cardSize={cardSize}
+                pushUndo={pushUndo}
               />
             ) : (
               <p className="text-sm text-muted-foreground py-4 text-center">

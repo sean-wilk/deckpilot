@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useRef, useTransition } from 'react'
 import { ArrowUpDown } from 'lucide-react'
 import { CardImage } from '@/components/cards/card-image'
 import { CardDetailModal } from '@/components/cards/card-detail-modal'
 import { cn } from '@/lib/utils'
 import type { CardImageUris, CardFace } from '@/types/card'
 import { removeCardFromDeck, toggleSideboard, updateCardQuantity } from '@/app/(dashboard)/decks/actions'
+import type { UndoAction } from '@/hooks/use-deck-undo'
 
 // ─── Unlimited-copy cards (mirrors server-side list) ─────────────────────────
 
@@ -61,6 +62,7 @@ export interface DeckCardGridProps {
   groupBy?: 'type' | 'role' | 'cmc'
   cardSize?: number
   legalityIssues?: LegalityIssue[]
+  pushUndo?: (action: UndoAction) => void
 }
 
 // ─── Type ordering & display ──────────────────────────────────────────────────
@@ -132,13 +134,41 @@ interface CardThumbProps {
   roles?: string[]
   cardSize?: number
   legalityIssue?: LegalityIssue
+  pushUndo?: (action: UndoAction) => void
 }
 
-function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legalityIssue }: CardThumbProps) {
+function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legalityIssue, pushUndo }: CardThumbProps) {
   const [hovered, setHovered] = useState(false)
   const [removing, startRemove] = useTransition()
   const [toggling, startToggle] = useTransition()
   const [updatingQty, startUpdateQty] = useTransition()
+
+  // ── Debounced quantity ────────────────────────────────────────────────────
+  const serverQty = card.quantity ?? 1
+  const [localQty, setLocalQty] = useState(serverQty)
+  const [prevServerQty, setPrevServerQty] = useState(serverQty)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const preDebounceQtyRef = useRef<number | null>(null)
+
+  // React-recommended pattern: sync state from props during render (no useEffect)
+  if (serverQty !== prevServerQty) {
+    setPrevServerQty(serverQty)
+    setLocalQty(serverQty)
+  }
+
+  function debouncedUpdate(qty: number) {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    debounceTimerRef.current = setTimeout(() => {
+      // Push undo for the entire batch (from pre-debounce to final qty)
+      if (pushUndo && preDebounceQtyRef.current !== null) {
+        pushUndo({ type: 'quantity', deckCardId: card.deckCardId, previousQuantity: preDebounceQtyRef.current })
+        preDebounceQtyRef.current = null
+      }
+      startUpdateQty(() => {
+        updateCardQuantity(card.deckCardId, qty)
+      })
+    }, 600)
+  }
 
   const width = cardSize ?? 146
 
@@ -147,6 +177,8 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
     width >= 300 ? 'large' : width >= 200 ? 'normal' : 'small'
 
   function handleRemove() {
+    // Push undo before removing
+    pushUndo?.({ type: 'remove', deckId, cardId: card.cardId, cardName: card.name, quantity: card.quantity ?? 1 })
     startRemove(async () => {
       await removeCardFromDeck(deckId, card.deckCardId)
     })
@@ -159,22 +191,31 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
   }
 
   function handleIncrease() {
-    startUpdateQty(async () => {
-      await updateCardQuantity(card.deckCardId, (card.quantity ?? 1) + 1)
-    })
+    // Track the quantity before the first click in a debounce batch
+    if (preDebounceQtyRef.current === null) {
+      preDebounceQtyRef.current = localQty
+    }
+    const next = localQty + 1
+    setLocalQty(next)
+    debouncedUpdate(next)
   }
 
   function handleDecrease() {
-    const current = card.quantity ?? 1
-    if (current <= 1) {
+    if (localQty <= 1) {
+      // Remove card immediately (no debounce)
+      pushUndo?.({ type: 'remove', deckId, cardId: card.cardId, cardName: card.name, quantity: card.quantity ?? 1 })
       startRemove(async () => {
         await removeCardFromDeck(deckId, card.deckCardId)
       })
-    } else {
-      startUpdateQty(async () => {
-        await updateCardQuantity(card.deckCardId, current - 1)
-      })
+      return
     }
+    // Track the quantity before the first click in a debounce batch
+    if (preDebounceQtyRef.current === null) {
+      preDebounceQtyRef.current = localQty
+    }
+    const next = localQty - 1
+    setLocalQty(next)
+    debouncedUpdate(next)
   }
 
   const visibleRoles = roles?.slice(0, 2) ?? []
@@ -276,9 +317,9 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
         )}
 
         {/* Quantity badge — shown when quantity > 1 and not hovered (hovered shows the controls instead) */}
-        {(card.quantity ?? 1) > 1 && !hovered && (
+        {localQty > 1 && !hovered && (
           <div className="absolute bottom-1 right-1 z-20 bg-foreground text-background rounded-full text-2xs font-bold px-1.5 py-0.5 leading-none shadow">
-            ×{card.quantity}
+            ×{localQty}
           </div>
         )}
 
@@ -301,7 +342,7 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
               −
             </button>
             <span className="text-white text-sm font-bold tabular-nums min-w-[1.5ch] text-center select-none">
-              {card.quantity ?? 1}
+              {localQty}
             </span>
             {UNLIMITED_COPIES.has(card.name) && (
               <button
@@ -384,9 +425,10 @@ interface CardGroupProps {
   cardRoles?: Record<string, string[]>
   cardSize?: number
   legalityIssues?: LegalityIssue[]
+  pushUndo?: (action: UndoAction) => void
 }
 
-function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize, legalityIssues }: CardGroupProps) {
+function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize, legalityIssues, pushUndo }: CardGroupProps) {
   return (
     <section>
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-divider">
@@ -409,6 +451,7 @@ function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, card
             roles={cardRoles?.[card.name]}
             cardSize={cardSize}
             legalityIssue={legalityIssues?.find((issue) => issue.cardId === card.cardId)}
+            pushUndo={pushUndo}
           />
         ))}
       </div>
@@ -489,7 +532,7 @@ function groupByCmc(cards: DeckCardEntry[]): { key: string; label: string; cards
 
 // ─── DeckCardGrid ─────────────────────────────────────────────────────────────
 
-export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'type', cardSize, legalityIssues }: DeckCardGridProps) {
+export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'type', cardSize, legalityIssues, pushUndo }: DeckCardGridProps) {
   const [selectedCard, setSelectedCard] = useState<DeckCardEntry | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -538,6 +581,7 @@ export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'typ
             cardRoles={cardRoles}
             cardSize={cardSize}
             legalityIssues={legalityIssues}
+            pushUndo={pushUndo}
           />
         ))}
       </div>
@@ -566,6 +610,9 @@ export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'typ
           isOwner={isOwner}
           isCommander={selectedCard.isCommander}
           onRemove={(id) => {
+            if (selectedCard && pushUndo) {
+              pushUndo({ type: 'remove', deckId, cardId: selectedCard.cardId, cardName: selectedCard.name, quantity: selectedCard.quantity ?? 1 })
+            }
             startTransition(() => removeCardFromDeck(deckId, id))
             setSelectedCard(null)
             setModalOpen(false)
