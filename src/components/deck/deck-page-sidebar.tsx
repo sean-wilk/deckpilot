@@ -3,6 +3,7 @@
 import { ManaCurveChart } from '@/components/deck/mana-curve-chart'
 import { ColorChart } from '@/components/deck/color-chart'
 import { CardDropZone } from '@/components/deck/card-drop-zone'
+import { Sparkles, Search } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,14 +95,16 @@ function AiPanel({
       <div className="flex flex-col gap-2">
         <button
           onClick={onAnalyze}
-          className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="w-full rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5"
         >
+          <Search className="size-3.5" />
           Analyze Deck
         </button>
         <button
           onClick={onRecommend}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted hover:border-border transition-colors"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-muted hover:border-border transition-colors flex items-center justify-center gap-1.5"
         >
+          <Sparkles className="size-3.5" />
           Get Recommendations
         </button>
       </div>

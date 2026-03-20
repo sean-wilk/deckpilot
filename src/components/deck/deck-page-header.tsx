@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Upload, Sparkles, Trophy } from 'lucide-react'
+import { Upload, Trophy } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button-variants'
@@ -100,17 +100,6 @@ export function DeckPageHeader({
             >
               <Upload className="size-3.5" />
               <span className="hidden lg:inline">Import Cards</span>
-            </Link>
-
-            {/* Get Recommendations */}
-            <Link
-              href={`/decks/${deck.id}/recommendations`}
-              className={cn(
-                buttonVariants({ variant: 'outline', size: 'sm' }),
-              )}
-            >
-              <Sparkles className="size-3.5" />
-              <span className="hidden lg:inline">Get Recommendations</span>
             </Link>
 
             {/* Settings gear — slot from children */}
