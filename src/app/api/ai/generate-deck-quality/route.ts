@@ -194,8 +194,28 @@ RULES:
           }
 
           // === PARSE PASS 1 ===
+          console.log('[quality] Collected text length:', collectedText.length)
+          console.log('[quality] First 500 chars:', collectedText.substring(0, 500))
+          console.log('[quality] Has BRACKET_REASONING:', collectedText.includes('===BRACKET_REASONING==='))
+          console.log('[quality] Has CARDS:', collectedText.includes('===CARDS==='))
+          console.log('[quality] Has LANDS:', collectedText.includes('===LANDS==='))
+
           const parser = new StreamParser()
-          const allEvents = parser.processChunk(collectedText)
+          // In Quality Mode, disable parser card limits — let ALL cards through
+          // Validation happens after parsing, not during
+          parser.disableLimits()
+          let allEvents: Array<{ type: string; data: Record<string, unknown> }> = []
+          try {
+            console.log('[quality] Starting parser...')
+            allEvents = parser.processChunk(collectedText)
+            console.log('[quality] Parsed events:', allEvents.length, 'types:', allEvents.map(e => e.type))
+          } catch (parseErr) {
+            console.error('[quality] Parser crashed:', parseErr)
+            controller.enqueue(encoder.encode(formatSSE('error', { message: 'Failed to parse AI response. Please try again.' })))
+            clearInterval(heartbeatInterval)
+            controller.close()
+            return
+          }
 
           // Extract bracket reasoning, cards, strategy summary
           let bracketReasoning: Record<string, unknown> | null = null
@@ -215,6 +235,13 @@ RULES:
           }
 
           // === PHASE 2: Validate ===
+          if (cardEvents.length === 0) {
+            controller.enqueue(encoder.encode(formatSSE('error', { message: 'AI generated no parseable cards. Please try again.' })))
+            clearInterval(heartbeatInterval)
+            controller.close()
+            return
+          }
+
           controller.enqueue(encoder.encode(formatSSE('phase', { phase: 'validating', message: 'Validating card selections...' })))
 
           const cardNames = cardEvents.map(c => c.name)
@@ -226,7 +253,10 @@ RULES:
           for (const card of cardEvents) {
             const result = validationResults.get(card.name)
             if (result?.valid) {
-              validCards.push(card)
+              validCards.push({
+                ...card,
+                name: result.correctedName ?? card.name,
+              })
             } else {
               invalidCards.push({
                 name: card.name,
@@ -236,17 +266,31 @@ RULES:
             }
           }
 
-          // === PHASE 3: Fix invalid cards (if any) ===
-          let fixedCards: typeof cardEvents = []
+          // === PHASE 3: Fix invalid cards with retry loop ===
+          const MAX_FIX_ATTEMPTS = 3
+          let remainingInvalid = [...invalidCards]
+          let allFixedCards: typeof cardEvents = []
 
-          if (invalidCards.length > 0) {
+          // Build cumulative set of valid card IDs (grows across fix attempts)
+          const validCardIds = new Set<string>()
+          for (const card of validCards) {
+            const result = validationResults.get(cardEvents.find(c => (validationResults.get(c.name)?.correctedName ?? c.name) === card.name)?.name ?? card.name)
+            if (result?.cardId) validCardIds.add(result.cardId)
+          }
+
+          const FIX_SYSTEM_PROMPT = 'You are a Magic: The Gathering card replacement assistant. Output ONLY valid JSON lines, one per card. Each line must be: {"name": "<exact official card name>", "category": "<category>", "reasoning": "<reason>"}. Output nothing else — no markdown, no explanations, no numbering, no code fences.'
+
+          for (let attempt = 0; attempt < MAX_FIX_ATTEMPTS && remainingInvalid.length > 0; attempt++) {
+            if (request.signal.aborted) break
+
             controller.enqueue(encoder.encode(formatSSE('phase', {
               phase: 'fixing',
-              message: `Replacing ${invalidCards.length} invalid cards...`,
-              invalidCount: invalidCards.length,
+              message: `Replacing ${remainingInvalid.length} invalid cards (attempt ${attempt + 1}/${MAX_FIX_ATTEMPTS})...`,
+              invalidCount: remainingInvalid.length,
+              attempt: attempt + 1,
+              maxAttempts: MAX_FIX_ATTEMPTS,
             })))
 
-            // Build fix-up prompt
             const fixPrompt = `You are a Magic: The Gathering deck builder. Some cards in a Commander deck were invalid and need replacement.
 
 Commander: ${commanderName}
@@ -260,7 +304,7 @@ The following cards were invalid and need 1:1 replacements. Each replacement mus
 - Be legal in Commander format
 
 Invalid cards to replace:
-${invalidCards.map(c => `- ${c.name} (${c.category}) — reason: ${c.reason}`).join('\n')}
+${remainingInvalid.map(c => `- ${c.name} (${c.category}) — reason: ${c.reason}`).join('\n')}
 
 Output ONLY replacement cards, one JSON object per line. No other text, no markers, no explanations outside the JSON:
 {"name": "<exact card name>", "category": "<category>", "reasoning": "<why this replaces the invalid card>"}
@@ -273,6 +317,7 @@ Output ONLY replacement cards, one JSON object per line. No other text, no marke
               const fixStream = anthropicClient.messages.stream({
                 model: streamingClient.model,
                 max_tokens: 4096,
+                system: FIX_SYSTEM_PROMPT,
                 messages: [{ role: 'user', content: fixPrompt }],
               })
               for await (const event of fixStream) {
@@ -289,6 +334,7 @@ Output ONLY replacement cards, one JSON object per line. No other text, no marke
                 max_tokens: 4096,
                 stream: true,
                 messages: [
+                  { role: 'system', content: FIX_SYSTEM_PROMPT },
                   { role: 'user', content: fixPrompt },
                 ],
               })
@@ -299,13 +345,14 @@ Output ONLY replacement cards, one JSON object per line. No other text, no marke
               }
             }
 
-            // Parse fix-up response (simple JSON lines, no StreamParser)
+            // Parse fix-up response
+            const attemptFixedCards: typeof cardEvents = []
             const fixLines = fixCollectedText.split('\n').filter(l => l.trim().startsWith('{'))
             for (const line of fixLines) {
               try {
                 const parsed = JSON.parse(line.trim())
                 if (parsed.name && parsed.category) {
-                  fixedCards.push({
+                  attemptFixedCards.push({
                     name: parsed.name,
                     category: parsed.category,
                     reasoning: parsed.reasoning ?? '',
@@ -314,30 +361,41 @@ Output ONLY replacement cards, one JSON object per line. No other text, no marke
               } catch { /* skip unparseable lines */ }
             }
 
-            // Re-validate fixed cards
-            if (fixedCards.length > 0) {
-              // Build set of valid card IDs from Pass 1
-              const validCardIds = new Set<string>()
-              for (const card of validCards) {
-                const result = validationResults.get(card.name)
-                if (result?.cardId) validCardIds.add(result.cardId)
+            // Re-validate this attempt's cards
+            if (attemptFixedCards.length > 0) {
+              const fixValidation = await validateCardBatch(
+                attemptFixedCards.map(c => c.name),
+                colorIdentity,
+                validCardIds
+              )
+
+              const newlyValid: typeof cardEvents = []
+
+              for (const card of attemptFixedCards) {
+                const result = fixValidation.get(card.name)
+                if (result?.valid) {
+                  newlyValid.push({
+                    ...card,
+                    name: result.correctedName ?? card.name,
+                  })
+                  if (result.cardId) validCardIds.add(result.cardId)
+                }
               }
 
-              const fixValidation = await validateCardBatch(
-                fixedCards.map(c => c.name),
-                colorIdentity,
-                validCardIds  // prevents duplicates against Pass 1 valid cards
-              )
-              fixedCards = fixedCards.filter(c => {
-                const result = fixValidation.get(c.name)
-                return result?.valid
-              })
+              allFixedCards = [...allFixedCards, ...newlyValid]
+
+              // Remove entries from remainingInvalid equal to the number we successfully replaced
+              // The exact positions don't matter since the next fix prompt lists all remaining invalid cards
+              remainingInvalid = remainingInvalid.slice(0, Math.max(0, remainingInvalid.length - newlyValid.length))
+            } else {
+              // Fix pass returned nothing parseable, stop retrying
+              break
             }
           }
 
           // === MINIMUM THRESHOLD CHECK ===
-          const totalValid = validCards.length + fixedCards.length
-          if (totalValid < 80) {
+          const totalValid = validCards.length + allFixedCards.length
+          if (totalValid < 50) {
             controller.enqueue(encoder.encode(formatSSE('error', {
               message: `Generation produced too few valid cards (${totalValid}/99). Try again.`,
             })))
@@ -355,7 +413,7 @@ Output ONLY replacement cards, one JSON object per line. No other text, no marke
           }
 
           // Send all valid cards (original + fixed)
-          const allCards = [...validCards, ...fixedCards]
+          const allCards = [...validCards, ...allFixedCards]
           for (let i = 0; i < allCards.length; i++) {
             controller.enqueue(encoder.encode(formatSSE('card', {
               index: i,
@@ -374,17 +432,18 @@ Output ONLY replacement cards, one JSON object per line. No other text, no marke
           // Send quality report
           controller.enqueue(encoder.encode(formatSSE('quality_report', {
             originalInvalid: invalidCards.length,
-            fixed: fixedCards.length,
-            dropped: invalidCards.length - fixedCards.length,
+            fixed: allFixedCards.length,
+            dropped: invalidCards.length - allFixedCards.length,
             totalCards: allCards.length,
+            fixAttempts: invalidCards.length > 0 ? Math.min(MAX_FIX_ATTEMPTS, invalidCards.length) : 0,
           })))
 
           // Done
           controller.enqueue(encoder.encode(formatSSE('done', {})))
 
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Quality generation failed'
-          controller.enqueue(encoder.encode(formatSSE('error', { message })))
+          console.error('Quality generation error:', err)
+          controller.enqueue(encoder.encode(formatSSE('error', { message: 'Quality generation failed. Please try again.' })))
         } finally {
           clearInterval(heartbeatInterval)
           controller.close()

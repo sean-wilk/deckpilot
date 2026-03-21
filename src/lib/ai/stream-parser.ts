@@ -41,11 +41,19 @@ export class StreamParser {
     this.maxNonLands = 99 - this.maxLands
   }
 
+  /** Disable card limits — used by Quality Mode where validation happens after parsing */
+  disableLimits() {
+    this.maxNonLands = 9999
+    this.maxLands = 9999
+  }
+
   processChunk(chunk: string): Array<{ type: string; data: Record<string, unknown> }> {
     this.buffer += chunk
     const events: Array<{ type: string; data: Record<string, unknown> }> = []
+    let loopGuard = 0
+    const MAX_ITERATIONS = 5000
 
-    while (true) {
+    while (++loopGuard < MAX_ITERATIONS) {
       if (this.state === 'INIT' && this.buffer.includes('===BRACKET_REASONING===')) {
         this.buffer = this.buffer.split('===BRACKET_REASONING===')[1]
         this.state = 'BRACKET_REASONING'
@@ -98,11 +106,13 @@ export class StreamParser {
             this.state = 'BETWEEN_CARDS_LANDS'
             continue
           }
-          // Discard buffer content while waiting for marker (keep last 100 chars for partial marker detection)
-          if (this.buffer.length > 100) {
-            this.buffer = this.buffer.slice(-100)
-          }
-          break
+          // In streaming mode: discard and wait for next chunk
+          // In single-call mode (Quality): no more chunks coming, so consume lines until we find the marker
+          const newlineIdx = this.buffer.indexOf('\n')
+          if (newlineIdx === -1) break  // truly need more data
+          // Consume and discard lines until ===END_CARDS=== appears
+          this.buffer = this.buffer.substring(newlineIdx + 1)
+          continue
         }
         const newlineIdx = this.buffer.indexOf('\n')
         if (newlineIdx === -1) break
@@ -150,10 +160,11 @@ export class StreamParser {
             this.state = 'STRATEGY_SUMMARY'
             continue
           }
-          if (this.buffer.length > 100) {
-            this.buffer = this.buffer.slice(-100)
-          }
-          break
+          // Consume and discard lines until ===END_LANDS=== appears
+          const newlineIdx = this.buffer.indexOf('\n')
+          if (newlineIdx === -1) break
+          this.buffer = this.buffer.substring(newlineIdx + 1)
+          continue
         }
         const newlineIdx = this.buffer.indexOf('\n')
         if (newlineIdx === -1) break
