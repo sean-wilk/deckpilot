@@ -186,6 +186,7 @@ export async function POST(request: Request) {
           targetBracket,
           budgetLimitCents: budgetLimitCents ?? null,
           spiciness,
+          philosophy: strategySummary ?? null,
         })
         .returning({ id: decks.id })
 
