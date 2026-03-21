@@ -7,6 +7,22 @@ export interface StreamedCard {
   name: string
   category: string
   reasoning: string
+  phase?: number
+  validated?: boolean
+  validationReason?: string | null
+  cardId?: string | null
+}
+
+export interface ValidationSummary {
+  valid: number
+  invalid: number
+}
+
+export interface QualityReport {
+  originalInvalid: number
+  fixed: number
+  dropped: number
+  totalCards: number
 }
 
 export interface BracketReasoning {
@@ -20,6 +36,7 @@ export interface GenerateParams {
   targetBracket: number
   budgetLimitCents?: number
   spiciness?: number
+  generationMode?: 'fast' | 'quality' | 'enhanced'
 }
 
 interface UseDeckGenerationReturn {
@@ -31,6 +48,9 @@ interface UseDeckGenerationReturn {
   totalCards: number
   phase: number
   phaseMax: { nonLands: number; lands: number }
+  validationSummary: ValidationSummary | null
+  currentPhase: string | null
+  qualityReport: QualityReport | null
   generate: (params: GenerateParams) => Promise<void>
   abort: () => void
 }
@@ -43,6 +63,9 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<number>(0)
   const [phaseMax, setPhaseMax] = useState<{ nonLands: number; lands: number }>({ nonLands: 63, lands: 36 })
+  const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null)
+  const [currentPhase, setCurrentPhase] = useState<string | null>(null)
+  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const generate = useCallback(async (params: GenerateParams) => {
@@ -53,13 +76,19 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
     setError(null)
     setPhase(0)
     setPhaseMax({ nonLands: 63, lands: 36 })
+    setValidationSummary(null)
+    setCurrentPhase(null)
+    setQualityReport(null)
     setIsGenerating(true)
 
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
-      const res = await fetch('/api/ai/generate-deck-stream', {
+      const endpoint = (params.generationMode === 'quality' || params.generationMode === 'enhanced')
+        ? '/api/ai/generate-deck-quality'
+        : '/api/ai/generate-deck-stream'
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params),
@@ -119,6 +148,20 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
               case 'strategy_summary':
                 setStrategySummary(parsed.summary || '')
                 break
+              case 'validation_summary':
+                setValidationSummary({ valid: parsed.valid, invalid: parsed.invalid })
+                break
+              case 'phase':
+                setCurrentPhase(parsed.phase)
+                break
+              case 'quality_report':
+                setQualityReport({
+                  originalInvalid: parsed.originalInvalid,
+                  fixed: parsed.fixed,
+                  dropped: parsed.dropped,
+                  totalCards: parsed.totalCards,
+                })
+                break
               case 'error':
                 setError(parsed.message || 'Generation failed')
                 break
@@ -154,6 +197,9 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
     totalCards: cards.length,
     phase,
     phaseMax,
+    validationSummary,
+    currentPhase,
+    qualityReport,
     generate,
     abort,
   }

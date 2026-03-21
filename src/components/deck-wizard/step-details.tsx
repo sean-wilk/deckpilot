@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Wand2, DollarSign, ChevronLeft } from 'lucide-react'
+import { Wand2, DollarSign, ChevronLeft, Zap, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,7 @@ interface WizardState {
   bracket: number | null
   budget: string
   spiciness: number
+  generationMode: 'fast' | 'quality' | 'enhanced'
 }
 
 interface StepDetailsProps {
@@ -26,6 +27,32 @@ interface StepDetailsProps {
   onNext: (updates: Partial<WizardState>) => void
   onBack: () => void
 }
+
+// ─── Generation Modes ─────────────────────────────────────────────────────────
+
+const GENERATION_MODES = [
+  {
+    value: 'fast' as const,
+    label: 'Fast',
+    description: 'Stream cards in real-time with instant validation. Some cards may need manual review.',
+    time: '~60-90s',
+    icon: Zap,
+  },
+  {
+    value: 'quality' as const,
+    label: 'Quality',
+    description: 'AI generates, validates, and fixes invalid cards automatically. Better results, slightly longer.',
+    time: '~90-120s',
+    icon: Shield,
+  },
+  {
+    value: 'enhanced' as const,
+    label: 'Enhanced',
+    description: 'Full quality pass plus AI analysis with swap recommendations. Best results.',
+    time: '~2-4 min',
+    icon: Sparkles,
+  },
+]
 
 // ─── BracketSelector ─────────────────────────────────────────────────────────
 
@@ -111,13 +138,14 @@ export function StepDetails({ state, onNext, onBack }: StepDetailsProps) {
   const [bracket, setBracket] = useState<number | null>(state.bracket)
   const [budget, setBudget] = useState(state.budget || '')
   const [spiciness, setSpiciness] = useState(state.spiciness ?? 30)
+  const [generationMode, setGenerationMode] = useState<'fast' | 'quality' | 'enhanced'>(state.generationMode ?? 'fast')
 
   const currentTier = getCurrentTier(spiciness)
   const canGenerate = name.trim().length > 0 && bracket !== null
 
   function handleGenerate() {
     if (!canGenerate) return
-    onNext({ name: name.trim(), description, bracket, budget, spiciness })
+    onNext({ name: name.trim(), description, bracket, budget, spiciness, generationMode })
   }
 
   return (
@@ -183,6 +211,39 @@ export function StepDetails({ state, onNext, onBack }: StepDetailsProps) {
         <p className="text-xs text-muted-foreground">
           Lower values favor proven staples, higher values embrace creative and unexpected choices.
         </p>
+      </div>
+
+      {/* Generation Mode */}
+      <div className="space-y-2">
+        <Label>Generation Mode</Label>
+        <div className="grid grid-cols-1 gap-2">
+          {GENERATION_MODES.map((mode) => {
+            const Icon = mode.icon
+            const isSelected = generationMode === mode.value
+            return (
+              <button
+                key={mode.value}
+                type="button"
+                onClick={() => setGenerationMode(mode.value)}
+                className={cn(
+                  'flex items-start gap-3 rounded-xl border-2 px-4 py-3 text-left transition-all duration-150',
+                  isSelected
+                    ? 'border-primary ring-2 ring-primary bg-primary/5'
+                    : 'border-border hover:border-foreground/20'
+                )}
+              >
+                <Icon className={cn('size-5 shrink-0 mt-0.5', isSelected ? 'text-primary' : 'text-muted-foreground')} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-semibold leading-none">{mode.label}</span>
+                    <span className="text-xs text-muted-foreground">{mode.time}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{mode.description}</p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Budget */}

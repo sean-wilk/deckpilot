@@ -19,6 +19,7 @@ export interface WizardState {
   bracket: number | null
   budget: string
   spiciness: number
+  generationMode: 'fast' | 'quality' | 'enhanced'
 }
 
 export interface StepCommanderProps {

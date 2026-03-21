@@ -59,6 +59,7 @@ const initialState: WizardState = {
   bracket: null,
   budget: '',
   spiciness: 30,
+  generationMode: 'fast',
 }
 
 export default function WizardPage() {

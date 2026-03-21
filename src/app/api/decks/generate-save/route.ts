@@ -43,6 +43,15 @@ export async function POST(request: Request) {
     if (!generatedCards || generatedCards.length === 0) {
       return NextResponse.json({ error: 'cards array is required and must not be empty' }, { status: 400 })
     }
+    if (generatedCards.length > 110) {
+      return NextResponse.json({ error: 'Too many cards' }, { status: 400 })
+    }
+    if (typeof name !== 'string' || name.length > 200) {
+      return NextResponse.json({ error: 'Invalid deck name' }, { status: 400 })
+    }
+    if (description && typeof description === 'string' && description.length > 10000) {
+      return NextResponse.json({ error: 'Description too long' }, { status: 400 })
+    }
 
     // Look up commander to get color identity
     const commanderRows = await db
@@ -56,7 +65,6 @@ export async function POST(request: Request) {
     }
 
     const commanderColorIdentity = commanderRows[0].colorIdentity ?? []
-    console.log('[generate-save] Commander color identity:', commanderColorIdentity)
 
     // Batch-lookup all card IDs + typeLines + colorIdentity by name (case-insensitive)
     const cardNames = generatedCards.map((c) => c.name.toLowerCase())
@@ -81,6 +89,8 @@ export async function POST(request: Request) {
         dbCardMap.set(key, dbCard)
       }
     }
+
+    const VALID_ROLES = new Set(['ramp', 'card_draw', 'removal', 'board_wipe', 'win_condition', 'protection', 'synergy', 'utility', 'creature', 'land'])
 
     // Process each generated card
     const missingCards: string[] = []
@@ -118,7 +128,6 @@ export async function POST(request: Request) {
           (c) => !commanderColorIdentity.includes(c)
         )
         if (violatesColorIdentity) {
-          console.log(`[generate-save] Color violation: ${gen.name} (card colors: ${dbCard.colorIdentity}, commander colors: ${commanderColorIdentity})`)
           colorViolations.push(gen.name)
           continue
         }
@@ -140,7 +149,7 @@ export async function POST(request: Request) {
       deckCardValues.push({
         cardId: dbCard.id,
         cardType: deriveCardType(dbCard.typeLine),
-        functionalRole: gen.category,
+        functionalRole: VALID_ROLES.has(gen.category) ? gen.category : 'utility',
         quantity: 1,
         isCommander: false,
         isCompanion: false,
@@ -219,9 +228,9 @@ export async function POST(request: Request) {
       colorViolations,
     })
   } catch (err) {
-    console.error('Save deck error:', err instanceof Error ? err.message : err)
+    console.error('Save deck error:', err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Failed to save generated deck' },
+      { error: 'Failed to save generated deck' },
       { status: 500 }
     )
   }

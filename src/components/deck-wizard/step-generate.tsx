@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   Info,
   Loader2,
   Save,
+  Shield,
   X,
+  XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,6 +35,7 @@ interface WizardState {
   bracket: number | null
   budget: string
   spiciness: number
+  generationMode: 'fast' | 'quality' | 'enhanced'
 }
 
 interface StepGenerateProps {
@@ -78,7 +82,7 @@ function CategoryBadge({ category }: { category: string }) {
 // ─── ProgressBar ─────────────────────────────────────────────────────────────
 
 function ProgressBar({ value, max }: { value: number; max: number }) {
-  const pct = Math.min(100, Math.round((value / max) * 100))
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
   return (
     <div className="w-full rounded-full bg-muted h-2 overflow-hidden">
       <div
@@ -122,20 +126,37 @@ function CardGridItem({
   name,
   category,
   reasoning,
+  validated,
+  validationReason,
 }: {
   name: string
   category: string
   reasoning: string
+  validated?: boolean
+  validationReason?: string | null
 }) {
+  const tooltip = validationReason
+    ? `${reasoning} [${validationReason}]`
+    : reasoning
+
   return (
     <div
-      title={reasoning}
+      title={tooltip}
       className={cn(
-        'flex flex-col gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5',
-        'animate-in fade-in duration-300 hover:border-foreground/20 transition-colors cursor-pointer'
+        'flex flex-col gap-1.5 rounded-xl border bg-card px-3 py-2.5',
+        'animate-in fade-in duration-300 hover:border-foreground/20 transition-colors cursor-pointer',
+        validated === false ? 'border-destructive/30' : 'border-border'
       )}
     >
-      <p className="text-sm font-medium leading-snug line-clamp-2">{name}</p>
+      <div className="flex items-start justify-between gap-1">
+        <p className="text-sm font-medium leading-snug line-clamp-2 min-w-0">{name}</p>
+        {validated === true && (
+          <CheckCircle2 className="size-3.5 text-green-500 shrink-0 mt-0.5" />
+        )}
+        {validated === false && (
+          <XCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />
+        )}
+      </div>
       <CategoryBadge category={category} />
     </div>
   )
@@ -156,6 +177,9 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
     totalCards,
     phase,
     phaseMax,
+    validationSummary,
+    currentPhase,
+    qualityReport,
     generate,
     abort,
   } = useDeckGeneration()
@@ -182,6 +206,7 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
           })()
         : undefined,
       spiciness: state.spiciness ?? 30,
+      generationMode: state.generationMode,
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -224,6 +249,9 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
       }
 
       const result = await res.json()
+      if (!result.deckId) {
+        throw new Error(result.error || 'Save succeeded but returned no deck ID')
+      }
       // Show warnings if cards were dropped
       const warnings: string[] = []
       if (result.missingCards?.length > 0) {
@@ -232,7 +260,20 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
       if (result.colorViolations?.length > 0) {
         warnings.push(`${result.colorViolations.length} cards removed for color identity: ${result.colorViolations.slice(0, 5).join(', ')}${result.colorViolations.length > 5 ? '...' : ''}`)
       }
-      if (warnings.length > 0) {
+      if (state.generationMode === 'enhanced') {
+        setSaveWarning('Running deck analysis and generating recommendations...')
+        fetch('/api/ai/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deckId: result.deckId }),
+        }).catch(() => {})
+        fetch('/api/ai/recommendations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deckId: result.deckId, spiciness: state.spiciness ?? 30 }),
+        }).catch(() => {})
+        setTimeout(() => router.push(`/decks/${result.deckId}`), 2000)
+      } else if (warnings.length > 0) {
         setSaveWarning(warnings.join('. '))
         setTimeout(() => router.push(`/decks/${result.deckId}`), 3000)
       } else {
@@ -257,6 +298,7 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
           })()
         : undefined,
       spiciness: state.spiciness ?? 30,
+      generationMode: state.generationMode,
     })
   }
 
@@ -287,13 +329,21 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
       {/* Progress header */}
       {(isGenerating || totalCards > 0) && (
         <div className="space-y-2">
+          {/* Mode label */}
           {isGenerating && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                {phase <= 1
-                  ? `Generating non-land cards... ${Math.min(totalCards, phaseMax.nonLands)}/${phaseMax.nonLands}`
-                  : `Generating land base... ${Math.max(0, totalCards - phaseMax.nonLands)}/${phaseMax.lands}`
-                }
+                {state.generationMode !== 'fast' && currentPhase ? (
+                  <span className="flex items-center gap-2">
+                    <span>
+                      {state.generationMode === 'quality' ? 'Quality' : 'Enhanced'} Mode
+                    </span>
+                  </span>
+                ) : (
+                  phase <= 1
+                    ? `Generating non-land cards... ${Math.min(totalCards, phaseMax.nonLands)}/${phaseMax.nonLands}`
+                    : `Generating land base... ${Math.max(0, totalCards - phaseMax.nonLands)}/${phaseMax.lands}`
+                )}
               </span>
               <span className="text-muted-foreground">
                 {totalCards}/99
@@ -302,11 +352,52 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
           )}
           {!isGenerating && totalCards > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{totalCards}/99 cards generated</span>
+              <span className="text-muted-foreground">
+                {totalCards}/99 cards generated{' '}
+                <span className="text-xs">
+                  ({state.generationMode === 'fast' ? 'Fast' : state.generationMode === 'quality' ? 'Quality' : 'Enhanced'} Mode)
+                </span>
+              </span>
               <span className="text-muted-foreground">100%</span>
             </div>
           )}
-          <ProgressBar value={totalCards} max={99} />
+
+          {/* Quality/Enhanced Mode: Phase-based progress */}
+          {state.generationMode !== 'fast' && isGenerating && currentPhase && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                <span className="text-sm font-medium">{currentPhase}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {['Planning', 'Validating', 'Fixing', 'Finalizing'].map((step, i) => {
+                  const phases = ['generating', 'validating', 'fixing', 'streaming']
+                  const currentIdx = phases.indexOf(currentPhase)
+                  const isComplete = i < currentIdx
+                  const isActive = i === currentIdx
+                  return (
+                    <div key={step} className="flex items-center gap-1">
+                      {i > 0 && <div className={cn('h-px w-4', isComplete ? 'bg-primary' : 'bg-muted')} />}
+                      <div className={cn(
+                        'size-5 rounded-full flex items-center justify-center text-[10px]',
+                        isComplete && 'bg-primary text-primary-foreground',
+                        isActive && 'bg-primary/20 text-primary border border-primary',
+                        !isComplete && !isActive && 'bg-muted text-muted-foreground'
+                      )}>
+                        {isComplete ? '✓' : i + 1}
+                      </div>
+                      <span className={cn(isActive && 'text-foreground font-medium')}>{step}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Fast mode: card count progress bar */}
+          {(state.generationMode === 'fast' || !currentPhase) && (
+            <ProgressBar value={totalCards} max={99} />
+          )}
         </div>
       )}
 
@@ -333,6 +424,8 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
                       name={card.name}
                       category={card.category}
                       reasoning={card.reasoning}
+                      validated={card.validated}
+                      validationReason={card.validationReason}
                     />
                   </CardHoverPreview>
                 ))}
@@ -357,6 +450,31 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
           <p className="text-sm text-amber-300 leading-snug">
             Generated {totalCards}/99 cards. Some cards may have been skipped.
           </p>
+        </div>
+      )}
+
+      {/* Validation summary */}
+      {validationSummary && !isGenerating && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CheckCircle2 className="size-3.5 text-green-500 shrink-0" />
+          <span>{validationSummary.valid} valid</span>
+          {validationSummary.invalid > 0 && (
+            <>
+              <span>·</span>
+              <XCircle className="size-3.5 text-destructive shrink-0" />
+              <span>{validationSummary.invalid} invalid</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Quality report */}
+      {qualityReport && !isGenerating && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Shield className="size-4 text-primary" />
+          <span>
+            Quality report: {qualityReport.fixed} cards fixed, {qualityReport.dropped} dropped, {qualityReport.totalCards} in final deck
+          </span>
         </div>
       )}
 
