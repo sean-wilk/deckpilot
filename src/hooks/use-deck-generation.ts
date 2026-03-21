@@ -48,7 +48,7 @@ export interface GenerateParams {
   targetBracket: number
   budgetLimitCents?: number
   spiciness?: number
-  generationMode?: 'fast' | 'quality' | 'enhanced' | 'guided'
+  generationMode?: 'fast' | 'standard' | 'precision'
 }
 
 interface UseDeckGenerationReturn {
@@ -103,9 +103,9 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
     abortRef.current = controller
 
     try {
-      const endpoint = params.generationMode === 'guided'
+      const endpoint = params.generationMode === 'precision'
         ? '/api/ai/generate-deck-guided'
-        : (params.generationMode === 'quality' || params.generationMode === 'enhanced')
+        : params.generationMode === 'standard'
           ? '/api/ai/generate-deck-quality'
           : '/api/ai/generate-deck-stream'
       const res = await fetch(endpoint, {

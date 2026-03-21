@@ -36,7 +36,7 @@ interface WizardState {
   bracket: number | null
   budget: string
   spiciness: number
-  generationMode: 'fast' | 'quality' | 'enhanced' | 'guided'
+  generationMode: 'fast' | 'standard' | 'precision'
 }
 
 interface StepGenerateProps {
@@ -267,20 +267,7 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
       if (result.colorViolations?.length > 0) {
         warnings.push(`${result.colorViolations.length} cards removed for color identity: ${result.colorViolations.slice(0, 5).join(', ')}${result.colorViolations.length > 5 ? '...' : ''}`)
       }
-      if (state.generationMode === 'enhanced') {
-        setSaveWarning('Running deck analysis and generating recommendations...')
-        fetch('/api/ai/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deckId: result.deckId }),
-        }).catch(() => {})
-        fetch('/api/ai/recommendations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deckId: result.deckId, spiciness: state.spiciness ?? 30 }),
-        }).catch(() => {})
-        setTimeout(() => router.push(`/decks/${result.deckId}`), 2000)
-      } else if (warnings.length > 0) {
+      if (warnings.length > 0) {
         setSaveWarning(warnings.join('. '))
         setTimeout(() => router.push(`/decks/${result.deckId}`), 3000)
       } else {
@@ -340,15 +327,13 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
           {isGenerating && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                {state.generationMode !== 'fast' && state.generationMode !== 'guided' && currentPhase ? (
+                {state.generationMode === 'standard' && currentPhase ? (
                   <span className="flex items-center gap-2">
-                    <span>
-                      {state.generationMode === 'quality' ? 'Quality' : 'Enhanced'} Mode
-                    </span>
+                    <span>Standard Mode</span>
                   </span>
-                ) : state.generationMode === 'guided' && currentPhase ? (
+                ) : state.generationMode === 'precision' && currentPhase ? (
                   <span className="flex items-center gap-2">
-                    <span>Guided Mode</span>
+                    <span>Precision Mode</span>
                   </span>
                 ) : (
                   phase <= 1
@@ -366,19 +351,19 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
               <span className="text-muted-foreground">
                 {totalCards}/99 cards generated{' '}
                 <span className="text-xs">
-                  ({state.generationMode === 'fast' ? 'Fast' : state.generationMode === 'quality' ? 'Quality' : state.generationMode === 'guided' ? 'Guided' : 'Enhanced'} Mode)
+                  ({state.generationMode === 'fast' ? 'Fast' : state.generationMode === 'standard' ? 'Standard' : 'Precision'} Mode)
                 </span>
               </span>
               <span className="text-muted-foreground">100%</span>
             </div>
           )}
 
-          {/* Guided Mode: Category-by-category progress */}
-          {state.generationMode === 'guided' && isGenerating && currentPhase && (
+          {/* Precision Mode: Category-by-category progress */}
+          {state.generationMode === 'precision' && isGenerating && currentPhase && (
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Target className="size-4 text-primary" />
-                Guided Generation
+                Precision Generation
               </div>
 
               {/* Show generation plan categories */}
@@ -410,8 +395,8 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
             </div>
           )}
 
-          {/* Quality/Enhanced Mode: Phase-based progress */}
-          {state.generationMode !== 'fast' && state.generationMode !== 'guided' && isGenerating && currentPhase && (
+          {/* Standard Mode: Phase-based progress */}
+          {state.generationMode === 'standard' && isGenerating && currentPhase && (
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Loader2 className="size-4 animate-spin text-primary" />
