@@ -3,10 +3,10 @@ import { z } from 'zod'
 // ─── Mini Zod schemas for SSE event validation ──────────────────────────────
 
 export const CardEventSchema = z.object({
-  index: z.number(),
+  index: z.union([z.number(), z.string().transform(Number)]).optional().default(0),
   name: z.string().min(1),
   category: z.string(),
-  reasoning: z.string(),
+  reasoning: z.string().optional().default(''),
   phase: z.number().optional(),
 })
 
