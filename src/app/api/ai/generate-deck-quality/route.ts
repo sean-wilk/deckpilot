@@ -236,7 +236,20 @@ RULES:
 
           // === PHASE 2: Validate ===
           if (cardEvents.length === 0) {
-            controller.enqueue(encoder.encode(formatSSE('error', { message: 'AI generated no parseable cards. Please try again.' })))
+            const debugInfo = {
+              textLength: collectedText.length,
+              hasBracketReasoning: collectedText.includes('===BRACKET_REASONING==='),
+              hasCards: collectedText.includes('===CARDS==='),
+              hasEndCards: collectedText.includes('===END_CARDS==='),
+              hasLands: collectedText.includes('===LANDS==='),
+              parsedEventCount: allEvents.length,
+              parsedEventTypes: allEvents.map(e => e.type),
+              first200: collectedText.substring(0, 200),
+            }
+            console.error('[quality] No cards parsed. Debug:', JSON.stringify(debugInfo))
+            controller.enqueue(encoder.encode(formatSSE('error', {
+              message: `AI generated no parseable cards. Text length: ${collectedText.length}, has ===CARDS===: ${collectedText.includes('===CARDS===')}, parsed events: ${allEvents.length} (${allEvents.map(e => e.type).join(', ')}). First 200 chars: ${collectedText.substring(0, 200)}`,
+            })))
             clearInterval(heartbeatInterval)
             controller.close()
             return
