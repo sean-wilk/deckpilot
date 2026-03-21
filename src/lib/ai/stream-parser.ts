@@ -84,20 +84,6 @@ export class StreamParser {
         continue
       }
 
-      if (this.state === 'CARDS' && this.buffer.includes('===END_CARDS===')) {
-        const remaining = this.buffer.split('===END_CARDS===')[0]
-        this.buffer = this.buffer.split('===END_CARDS===')[1]
-        if (this.nonLandCount < this.maxNonLands) {
-          const lastCard = this.extractAndValidateCard(remaining, 1)
-          if (lastCard) {
-            this.nonLandCount++
-            events.push({ type: 'card', data: lastCard })
-          }
-        }
-        this.state = 'BETWEEN_CARDS_LANDS'
-        continue
-      }
-
       if (this.state === 'CARDS') {
         // If we've hit the non-land limit, skip ahead to ===END_CARDS=== marker
         if (this.nonLandCount >= this.maxNonLands) {
@@ -106,25 +92,35 @@ export class StreamParser {
             this.state = 'BETWEEN_CARDS_LANDS'
             continue
           }
-          // In streaming mode: discard and wait for next chunk
-          // In single-call mode (Quality): no more chunks coming, so consume lines until we find the marker
           const newlineIdx = this.buffer.indexOf('\n')
-          if (newlineIdx === -1) break  // truly need more data
-          // Consume and discard lines until ===END_CARDS=== appears
+          if (newlineIdx === -1) break
           this.buffer = this.buffer.substring(newlineIdx + 1)
           continue
         }
+        // Try to process a card line BEFORE checking for ===END_CARDS===
         const newlineIdx = this.buffer.indexOf('\n')
-        if (newlineIdx === -1) break
-        const line = this.buffer.substring(0, newlineIdx).trim()
-        this.buffer = this.buffer.substring(newlineIdx + 1)
-        if (line.length === 0) continue
-        const card = this.extractAndValidateCard(line, 1)
-        if (card) {
-          this.nonLandCount++
-          events.push({ type: 'card', data: card })
+        if (newlineIdx !== -1) {
+          const line = this.buffer.substring(0, newlineIdx).trim()
+          this.buffer = this.buffer.substring(newlineIdx + 1)
+          if (line === '===END_CARDS===') {
+            this.state = 'BETWEEN_CARDS_LANDS'
+            continue
+          }
+          if (line.length === 0) continue
+          const card = this.extractAndValidateCard(line, 1)
+          if (card) {
+            this.nonLandCount++
+            events.push({ type: 'card', data: card })
+          }
+          continue
         }
-        continue
+        // No newline — check if the remaining buffer IS the end marker
+        if (this.buffer.trim() === '===END_CARDS===') {
+          this.buffer = ''
+          this.state = 'BETWEEN_CARDS_LANDS'
+          continue
+        }
+        break // need more data
       }
 
       if (this.state === 'BETWEEN_CARDS_LANDS' && this.buffer.includes('===LANDS===')) {
@@ -138,20 +134,6 @@ export class StreamParser {
         break
       }
 
-      if (this.state === 'LANDS' && this.buffer.includes('===END_LANDS===')) {
-        const remaining = this.buffer.split('===END_LANDS===')[0]
-        this.buffer = this.buffer.split('===END_LANDS===')[1]
-        if (this.landCount < this.maxLands) {
-          const lastCard = this.extractAndValidateCard(remaining, 2)
-          if (lastCard) {
-            this.landCount++
-            events.push({ type: 'card', data: lastCard })
-          }
-        }
-        this.state = 'STRATEGY_SUMMARY'
-        continue
-      }
-
       if (this.state === 'LANDS') {
         // If we've hit the land limit, skip ahead to ===END_LANDS=== marker
         if (this.landCount >= this.maxLands) {
@@ -160,23 +142,35 @@ export class StreamParser {
             this.state = 'STRATEGY_SUMMARY'
             continue
           }
-          // Consume and discard lines until ===END_LANDS=== appears
           const newlineIdx = this.buffer.indexOf('\n')
           if (newlineIdx === -1) break
           this.buffer = this.buffer.substring(newlineIdx + 1)
           continue
         }
+        // Try to process a land line BEFORE checking for ===END_LANDS===
         const newlineIdx = this.buffer.indexOf('\n')
-        if (newlineIdx === -1) break
-        const line = this.buffer.substring(0, newlineIdx).trim()
-        this.buffer = this.buffer.substring(newlineIdx + 1)
-        if (line.length === 0) continue
-        const card = this.extractAndValidateCard(line, 2)
-        if (card) {
-          this.landCount++
-          events.push({ type: 'card', data: card })
+        if (newlineIdx !== -1) {
+          const line = this.buffer.substring(0, newlineIdx).trim()
+          this.buffer = this.buffer.substring(newlineIdx + 1)
+          if (line === '===END_LANDS===') {
+            this.state = 'STRATEGY_SUMMARY'
+            continue
+          }
+          if (line.length === 0) continue
+          const card = this.extractAndValidateCard(line, 2)
+          if (card) {
+            this.landCount++
+            events.push({ type: 'card', data: card })
+          }
+          continue
         }
-        continue
+        // No newline — check if the remaining buffer IS the end marker
+        if (this.buffer.trim() === '===END_LANDS===') {
+          this.buffer = ''
+          this.state = 'STRATEGY_SUMMARY'
+          continue
+        }
+        break // need more data
       }
 
       if (this.state === 'STRATEGY_SUMMARY' && this.buffer.includes('===END_STRATEGY_SUMMARY===')) {
