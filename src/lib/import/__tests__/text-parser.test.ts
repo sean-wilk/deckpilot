@@ -32,7 +32,7 @@ describe('parseTextList', () => {
 
   it('handles quantity without space', () => {
     const result = parseTextList('4x Lightning Bolt')
-    expect(result.cards[0].quantity).toBe(1) // Falls through to name-only parsing
+    expect(result.cards[0].quantity).toBe(4)
     expect(result.cards[0].name).toBe('Lightning Bolt')
   })
 })

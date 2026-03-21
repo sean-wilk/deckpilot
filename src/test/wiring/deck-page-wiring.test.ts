@@ -34,9 +34,10 @@ describe('Deck page wiring', () => {
     expect(source).toContain('DeckPageHeader')
   })
 
-  it('deck page header links to recommendations', () => {
+  it('deck page header does not link to removed recommendations', () => {
     const source = readSource('src/components/deck/deck-page-header.tsx')
-    expect(source).toMatch(/href.*recommendations/)
+    // Recommendations link was intentionally removed (was 404)
+    expect(source).not.toMatch(/href.*recommendations/)
   })
 
   it('deck page header links to import', () => {

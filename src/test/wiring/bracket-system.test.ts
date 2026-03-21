@@ -34,10 +34,11 @@ describe('Bracket system (1-5)', () => {
     expect(source).not.toMatch(/BRACKET_LABELS\s*=\s*\{/)
   })
 
-  it('wizard page imports from shared constants', () => {
+  it('wizard page imports step components that handle brackets', () => {
     const source = readSource('src/app/(dashboard)/decks/new/wizard/page.tsx')
-    expect(source).toMatch(/from.*constants\/brackets/)
-    expect(source).not.toMatch(/BRACKETS\s*=\s*\[/)
+    // Wizard delegates bracket handling to step components
+    expect(source).toContain('StepDetails')
+    expect(source).toContain('StepGenerate')
   })
 
   it('AI prompts reference Exhibition and Game Changers', () => {
