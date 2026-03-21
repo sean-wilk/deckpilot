@@ -2,478 +2,73 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ChevronLeft, Wand2, Swords, DollarSign, Loader2, Check } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { CommanderSearch } from '@/components/deck/commander-search'
-import { ManaSymbolRow } from '@/components/ui/mana-symbol'
+import { ChevronLeft } from 'lucide-react'
+import { StepCommander, type WizardState } from '@/components/deck-wizard/step-commander'
+import { StepDetails } from '@/components/deck-wizard/step-details'
+import { StepGenerate } from '@/components/deck-wizard/step-generate'
 import { cn } from '@/lib/utils'
-import { createDeck, addCardToDeck } from '@/app/(dashboard)/decks/actions'
-import { BRACKETS, BRACKET_ACCENT_COLORS } from '@/lib/constants/brackets'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── StepIndicator ────────────────────────────────────────────────────────────
 
-type Mode = 'commander' | 'theme'
-
-type WizardPhase =
-  | 'form'
-  | 'suggesting'
-  | 'pick-commander'
-  | 'generating'
-  | 'saving'
-  | 'done'
-
-interface SearchCard {
-  id: string
-  name: string
-  typeLine: string
-  colorIdentity: string[]
-}
-
-interface CommanderSuggestion {
-  name: string
-  color_identity: string[]
-  play_style: string
-  synergy_notes: string
-  why_this_commander: string
-}
-
-interface GeneratedCard {
-  name: string
-  category: string
-  reasoning: string
-}
-
-const BRACKET_UNSELECTED =
-  'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:bg-muted/40'
-
-// ─── BracketSelector ─────────────────────────────────────────────────────────
-
-function BracketSelector({
-  value,
-  onChange,
-}: {
-  value: number
-  onChange: (v: number) => void
-}) {
+function StepIndicator({ current, steps }: { current: number; steps: string[] }) {
   return (
-    <div className="space-y-1.5">
-      <Label>
-        Target Bracket <span className="text-destructive">*</span>
-      </Label>
-      <div className="grid grid-cols-5 gap-2">
-        {BRACKETS.map((b) => (
-          <button
-            key={b.value}
-            type="button"
-            onClick={() => onChange(b.value)}
-            className={cn(
-              'flex flex-col items-center gap-0.5 rounded-xl border-2 px-2 py-3 transition-all duration-150 cursor-pointer select-none',
-              value === b.value ? BRACKET_ACCENT_COLORS[b.value] : BRACKET_UNSELECTED
+    <div className="flex items-center justify-center gap-2 mb-8">
+      {steps.map((label, i) => {
+        const stepNum = i + 1
+        const isActive = stepNum === current
+        const isComplete = stepNum < current
+        return (
+          <div key={label} className="flex items-center gap-2">
+            {i > 0 && (
+              <div className={cn('h-px w-8', isComplete ? 'bg-primary' : 'bg-muted')} />
             )}
-          >
-            <span className="text-sm font-bold leading-none">{b.label}</span>
-            <span className="text-xs-plus font-medium leading-none">{b.sublabel}</span>
-            <span className="text-2xs leading-snug text-center opacity-70 mt-0.5 hidden sm:block">
-              {b.description}
-            </span>
-          </button>
-        ))}
-      </div>
+            <div
+              className={cn(
+                'flex items-center gap-1.5',
+                isActive && 'text-primary font-medium',
+                isComplete && 'text-primary',
+                !isActive && !isComplete && 'text-muted-foreground'
+              )}
+            >
+              <div
+                className={cn(
+                  'size-6 rounded-full flex items-center justify-center text-xs',
+                  isActive && 'bg-primary text-primary-foreground',
+                  isComplete && 'bg-primary text-primary-foreground',
+                  !isActive && !isComplete && 'bg-muted text-muted-foreground'
+                )}
+              >
+                {isComplete ? '✓' : stepNum}
+              </div>
+              <span className="text-sm">{label}</span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
-}
-
-// ─── Mode toggle ──────────────────────────────────────────────────────────────
-
-function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  return (
-    <div className="flex rounded-xl border border-border bg-muted/40 p-1 gap-1">
-      <button
-        type="button"
-        onClick={() => onChange('commander')}
-        className={cn(
-          'flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150',
-          mode === 'commander'
-            ? 'bg-card text-foreground shadow-sm border border-border'
-            : 'text-muted-foreground hover:text-foreground'
-        )}
-      >
-        <Swords className="size-4 shrink-0" />
-        Start from a Commander
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('theme')}
-        className={cn(
-          'flex-1 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150',
-          mode === 'theme'
-            ? 'bg-card text-foreground shadow-sm border border-border'
-            : 'text-muted-foreground hover:text-foreground'
-        )}
-      >
-        <Wand2 className="size-4 shrink-0" />
-        Start from a Theme
-      </button>
-    </div>
-  )
-}
-
-// ─── Step indicator ───────────────────────────────────────────────────────────
-
-function StepDot({ active, done }: { active: boolean; done: boolean }) {
-  return (
-    <div
-      className={cn(
-        'size-2 rounded-full transition-all duration-200',
-        done
-          ? 'bg-primary'
-          : active
-          ? 'bg-primary/60 scale-125'
-          : 'bg-border'
-      )}
-    />
-  )
-}
-
-// ─── Color identity badge ─────────────────────────────────────────────────────
-
-function ColorBadges({ colors }: { colors: string[] }) {
-  if (colors.length === 0) return <span className="text-xs text-muted-foreground">Colorless</span>
-  return <ManaSymbolRow colors={colors} size="sm" />
 }
 
 // ─── WizardPage ───────────────────────────────────────────────────────────────
 
+const initialState: WizardState = {
+  commander: null,
+  theme: '',
+  name: '',
+  description: '',
+  bracket: null,
+  budget: '',
+  spiciness: 30,
+}
+
 export default function WizardPage() {
-  const router = useRouter()
+  const [step, setStep] = useState(1)
+  const [wizardState, setWizardState] = useState<WizardState>(initialState)
 
-  // Form state
-  const [mode, setMode] = useState<Mode>('commander')
-  const [commander, setCommander] = useState<SearchCard | null>(null)
-  const [strategy, setStrategy] = useState('')
-  const [bracket, setBracket] = useState(2)
-  const [budget, setBudget] = useState('')
-
-  // Flow state
-  const [phase, setPhase] = useState<WizardPhase>('form')
-  const [error, setError] = useState<string | null>(null)
-
-  // Theme-first: suggested commanders
-  const [suggestions, setSuggestions] = useState<CommanderSuggestion[]>([])
-  const [selectedSuggestion, setSelectedSuggestion] = useState<CommanderSuggestion | null>(null)
-
-  // Generation state
-  const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([])
-  const [strategySummary, setStrategySummary] = useState('')
-
-  // Saving progress
-  const [saveProgress, setSaveProgress] = useState<{ current: number; total: number } | null>(null)
-
-  const isGenerating = phase === 'suggesting' || phase === 'generating' || phase === 'saving'
-
-  // Step completion tracking
-  const step1Done = mode === 'commander' ? commander !== null : strategy.trim().length > 0
-  const step2Done = bracket >= 1 && bracket <= 5
-
-  function handleModeChange(m: Mode) {
-    setMode(m)
-    setError(null)
+  function handleStepUpdate(updates: Partial<WizardState>) {
+    setWizardState((prev) => ({ ...prev, ...updates }))
   }
 
-  // ─── Theme-first: fetch commander suggestions ────────────────────────────────
-
-  async function suggestCommanders() {
-    setError(null)
-    setPhase('suggesting')
-
-    try {
-      const res = await fetch('/api/ai/suggest-commanders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: strategy, description: strategy }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error((data as { error?: string }).error ?? `Request failed (${res.status})`)
-      }
-
-      const data = await res.json() as { suggestions: CommanderSuggestion[] }
-      setSuggestions(data.suggestions ?? [])
-      setPhase('pick-commander')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to suggest commanders.')
-      setPhase('form')
-    }
-  }
-
-  // ─── Look up a card ID by exact name ────────────────────────────────────────
-
-  async function lookupCardId(name: string): Promise<string | null> {
-    try {
-      const res = await fetch(`/api/cards/search?q=${encodeURIComponent(name)}&limit=5`)
-      if (!res.ok) return null
-      const data = await res.json() as { cards: Array<{ id: string; name: string }> }
-      const exact = data.cards.find(
-        (c) => c.name.toLowerCase() === name.toLowerCase()
-      )
-      return exact?.id ?? data.cards[0]?.id ?? null
-    } catch {
-      return null
-    }
-  }
-
-  // ─── Generate deck (streaming) ───────────────────────────────────────────────
-
-  async function generateDeck(commanderId: string) {
-    setError(null)
-    setPhase('generating')
-    setGeneratedCards([])
-    setStrategySummary('')
-
-    const budgetCents = budget ? Math.round(Number(budget) * 100) : undefined
-
-    try {
-      const res = await fetch('/api/ai/generate-deck', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          commanderId,
-          description: strategy || undefined,
-          targetBracket: bracket,
-          budgetLimitCents: budgetCents,
-        }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error((data as { error?: string }).error ?? `Request failed (${res.status})`)
-      }
-
-      // Server returns plain JSON (not a stream) — parse directly
-      const parsed = await res.json() as {
-        cards?: GeneratedCard[]
-        strategy_summary?: string
-        estimated_bracket?: number
-      }
-
-      const finalCards = parsed.cards ?? []
-      const finalSummary = parsed.strategy_summary ?? ''
-
-      setGeneratedCards(finalCards)
-      setStrategySummary(finalSummary)
-
-      // Now save to DB
-      await saveDeck(commanderId, finalCards)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate deck.')
-      setPhase('form')
-    }
-  }
-
-  // ─── Save deck to DB ─────────────────────────────────────────────────────────
-
-  async function saveDeck(commanderId: string, deckCards: GeneratedCard[]) {
-    setPhase('saving')
-    setSaveProgress({ current: 0, total: deckCards.length })
-
-    try {
-      // Build FormData for createDeck
-      const fd = new FormData()
-      fd.append('name', `New Deck`)
-      fd.append('commanderId', commanderId)
-      fd.append('targetBracket', String(bracket))
-      if (budget) fd.append('budgetLimitCents', String(Math.round(Number(budget) * 100)))
-
-      const { id: deckId } = await createDeck(fd)
-
-      // Add each card sequentially, looking up by name
-      let added = 0
-      for (const card of deckCards) {
-        const cardId = await lookupCardId(card.name)
-        if (cardId) {
-          await addCardToDeck(deckId, cardId)
-        }
-        added++
-        setSaveProgress({ current: added, total: deckCards.length })
-      }
-
-      setPhase('done')
-      router.push(`/decks/${deckId}`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save deck.')
-      setPhase('form')
-      setSaveProgress(null)
-    }
-  }
-
-  // ─── Main generate handler ───────────────────────────────────────────────────
-
-  async function handleGenerate() {
-    setError(null)
-
-    if (mode === 'commander') {
-      if (!commander) {
-        setError('Please select a commander to continue.')
-        return
-      }
-      await generateDeck(commander.id)
-    } else {
-      // theme mode
-      if (!strategy.trim()) {
-        setError('Please describe a theme or strategy to continue.')
-        return
-      }
-      if (commander) {
-        // Commander already chosen in theme mode — skip suggestion step
-        await generateDeck(commander.id)
-      } else {
-        await suggestCommanders()
-      }
-    }
-  }
-
-  // ─── After picking a suggested commander ────────────────────────────────────
-
-  async function handlePickSuggestion(suggestion: CommanderSuggestion) {
-    setSelectedSuggestion(suggestion)
-    // Need the DB ID for this commander
-    const cardId = await lookupCardId(suggestion.name)
-    if (!cardId) {
-      setError(`Commander "${suggestion.name}" not found in the card database.`)
-      setPhase('pick-commander')
-      return
-    }
-    await generateDeck(cardId)
-  }
-
-  // ─── Rendering ───────────────────────────────────────────────────────────────
-
-  // Phase: pick commander from suggestions
-  if (phase === 'pick-commander') {
-    return (
-      <div className="max-w-xl mx-auto">
-        <button
-          type="button"
-          onClick={() => { setPhase('form'); setError(null) }}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-        >
-          <ChevronLeft className="size-4" />
-          Back
-        </button>
-
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">Choose a Commander</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Based on your theme, we suggest these commanders.
-          </p>
-        </div>
-
-        {error && (
-          <p className="mb-4 rounded-lg bg-destructive/10 border border-destructive/30 px-4 py-2.5 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
-        <div className="space-y-3">
-          {suggestions.map((s) => (
-            <button
-              key={s.name}
-              type="button"
-              onClick={() => handlePickSuggestion(s)}
-              className={cn(
-                'w-full text-left rounded-2xl border border-border bg-card p-5 shadow-sm',
-                'hover:border-primary/50 hover:bg-muted/30 transition-all duration-150',
-                selectedSuggestion?.name === s.name && 'border-primary ring-1 ring-primary'
-              )}
-            >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <span className="font-semibold text-base">{s.name}</span>
-                <ColorBadges colors={s.color_identity} />
-              </div>
-              <p className="text-sm text-muted-foreground mb-1">
-                <span className="font-medium text-foreground">Play style:</span> {s.play_style}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {s.why_this_commander}
-              </p>
-            </button>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  // Phase: generating / saving
-  if (phase === 'generating' || phase === 'saving') {
-    return (
-      <div className="max-w-xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {phase === 'generating' ? 'Generating Deck…' : 'Saving Deck…'}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {phase === 'generating'
-              ? 'Hang tight while the AI builds your deck.'
-              : saveProgress
-              ? `Adding card ${saveProgress.current} of ${saveProgress.total}…`
-              : 'Saving your deck…'}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
-          <div className="flex items-center gap-3">
-            <Loader2 className="size-5 animate-spin text-primary shrink-0" />
-            <span className="text-sm font-medium">
-              {phase === 'generating'
-                ? `${generatedCards.length} card${generatedCards.length !== 1 ? 's' : ''} generated so far…`
-                : saveProgress
-                ? `${saveProgress.current} / ${saveProgress.total} cards added`
-                : 'Creating deck…'}
-            </span>
-          </div>
-
-          {phase === 'saving' && saveProgress && (
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(saveProgress.current / saveProgress.total) * 100}%` }}
-              />
-            </div>
-          )}
-
-          {generatedCards.length > 0 && (
-            <div className="max-h-64 overflow-y-auto space-y-1">
-              {generatedCards.map((card, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  <Check className="size-3.5 text-success shrink-0" />
-                  <span className="font-medium">{card.name}</span>
-                  <span className="text-muted-foreground text-xs">{card.category}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {strategySummary && (
-            <p className="text-sm text-muted-foreground border-t border-border pt-3">
-              {strategySummary}
-            </p>
-          )}
-        </div>
-
-        {error && (
-          <p className="mt-4 rounded-lg bg-destructive/10 border border-destructive/30 px-4 py-2.5 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-      </div>
-    )
-  }
-
-  // Phase: form (default)
   return (
     <div className="max-w-xl mx-auto">
       {/* Back nav */}
@@ -493,150 +88,40 @@ export default function WizardPage() {
         </p>
       </div>
 
-      {/* Step progress */}
-      <div className="flex items-center gap-2 mb-6">
-        <StepDot active={!step1Done} done={step1Done} />
-        <div className={cn('h-px flex-1 transition-colors duration-300', step1Done ? 'bg-primary/40' : 'bg-border')} />
-        <StepDot active={step1Done && !step2Done} done={step2Done} />
-        <div className={cn('h-px flex-1 transition-colors duration-300', step2Done ? 'bg-primary/40' : 'bg-border')} />
-        <StepDot active={step1Done && step2Done} done={false} />
-      </div>
+      {/* Step indicator */}
+      <StepIndicator current={step} steps={['Commander', 'Details', 'Generate']} />
 
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6">
-        {/* Mode toggle */}
-        <ModeToggle mode={mode} onChange={handleModeChange} />
-
-        {/* Commander path */}
-        {mode === 'commander' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-top-1 duration-200">
-            <CommanderSearch
-              name="commanderId"
-              label="Commander"
-              placeholder="Search by name…"
-              required
-              onChange={(card) => setCommander(card)}
-            />
-
-            <div className="space-y-1.5">
-              <Label htmlFor="strategy-commander">
-                Strategy Description{' '}
-                <span className="text-muted-foreground font-normal">(optional)</span>
-              </Label>
-              <textarea
-                id="strategy-commander"
-                value={strategy}
-                onChange={(e) => setStrategy(e.target.value)}
-                placeholder="e.g. voltron, ramp into big creatures, stax…"
-                rows={3}
-                className={cn(
-                  'w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-                  'placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring',
-                  'resize-none transition-shadow'
-                )}
-              />
-              <p className="text-xs text-muted-foreground">
-                Optionally guide the deck toward a specific playstyle.
-              </p>
-            </div>
-          </div>
+      {/* Step content */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        {step === 1 && (
+          <StepCommander
+            state={wizardState}
+            onNext={(updates) => {
+              const merged = { ...updates }
+              if (updates.commander && !wizardState.name) {
+                merged.name = `${updates.commander.name} Deck`
+              }
+              handleStepUpdate(merged)
+              setStep(2)
+            }}
+          />
         )}
-
-        {/* Theme path */}
-        {mode === 'theme' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="space-y-1.5">
-              <Label htmlFor="strategy-theme">
-                Theme or Strategy <span className="text-destructive">*</span>
-              </Label>
-              <textarea
-                id="strategy-theme"
-                value={strategy}
-                onChange={(e) => setStrategy(e.target.value)}
-                placeholder="e.g. aristocrats, group hug, voltron, tokens, draw-go control…"
-                rows={3}
-                className={cn(
-                  'w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-                  'placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring',
-                  'resize-none transition-shadow'
-                )}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Describe the archetype or playstyle. We&apos;ll suggest a commander that fits.
-              </p>
-            </div>
-
-            <CommanderSearch
-              name="commanderId"
-              label="Commander (optional — we'll suggest one if left blank)"
-              placeholder="Or pick your own commander…"
-              onChange={(card) => setCommander(card)}
-            />
-          </div>
+        {step === 2 && (
+          <StepDetails
+            state={wizardState}
+            onNext={(updates) => {
+              handleStepUpdate(updates)
+              setStep(3)
+            }}
+            onBack={() => setStep(1)}
+          />
         )}
-
-        {/* Bracket selector */}
-        <BracketSelector value={bracket} onChange={setBracket} />
-
-        {/* Budget */}
-        <div className="space-y-1.5">
-          <Label htmlFor="budgetInput">
-            Budget Limit{' '}
-            <span className="text-muted-foreground font-normal">(optional)</span>
-          </Label>
-          <div className="relative">
-            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-            <Input
-              id="budgetInput"
-              name="budgetLimitCents"
-              type="number"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              placeholder="e.g. 500"
-              min={0}
-              step={1}
-              className="pl-9"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Enter the total budget in dollars. Leave blank for no limit.
-          </p>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <p className="rounded-lg bg-destructive/10 border border-destructive/30 px-4 py-2.5 text-sm text-destructive">
-            {error}
-          </p>
+        {step === 3 && (
+          <StepGenerate
+            state={wizardState}
+            onBack={() => setStep(2)}
+          />
         )}
-
-        {/* Actions */}
-        <div className="flex items-center gap-3 pt-2">
-          <Button
-            type="button"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="min-w-36"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="size-4 mr-2 animate-spin" />
-                {phase === 'suggesting' ? 'Finding Commanders…' : 'Generating…'}
-              </>
-            ) : (
-              <>
-                <Wand2 className="size-4 mr-2" />
-                Generate Deck
-              </>
-            )}
-          </Button>
-          <Link
-            href="/decks/new"
-            className={isGenerating ? 'pointer-events-none opacity-50' : 'text-sm text-muted-foreground hover:text-foreground transition-colors'}
-          >
-            Cancel
-          </Link>
-        </div>
       </div>
     </div>
   )

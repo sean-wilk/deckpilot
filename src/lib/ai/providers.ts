@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import type OpenAI from 'openai'
 import { anthropicText } from '@tanstack/ai-anthropic'
 import { openaiText } from '@tanstack/ai-openai'
 import { db } from '@/lib/db'
@@ -71,4 +72,45 @@ export async function getVisionClient(): Promise<{ client: Anthropic; model: str
   const model = config.modelGeneration
 
   return { client, model }
+}
+
+export async function getStreamingClient(): Promise<{
+  provider: 'anthropic' | 'openai'
+  client: Anthropic | OpenAI
+  model: string
+  maxTokens: number
+}> {
+  const configs = await db.select().from(adminAiConfig)
+    .where(eq(adminAiConfig.isActive, true))
+    .limit(1)
+
+  if (configs.length === 0) {
+    throw new Error('No active AI provider configured. Visit /admin to set up.')
+  }
+
+  const config = configs[0]
+  const apiKey = decrypt(config.apiKeyEncrypted)
+
+  if (config.provider === 'anthropic') {
+    const client = new Anthropic({ apiKey })
+    return {
+      provider: 'anthropic',
+      client,
+      model: config.modelGeneration,
+      maxTokens: config.maxTokensGeneration,
+    }
+  }
+
+  if (config.provider === 'openai') {
+    const { default: OpenAI } = await import('openai')
+    const client = new OpenAI({ apiKey })
+    return {
+      provider: 'openai',
+      client,
+      model: config.modelGeneration,
+      maxTokens: config.maxTokensGeneration,
+    }
+  }
+
+  throw new Error(`Unknown provider: ${config.provider}`)
 }

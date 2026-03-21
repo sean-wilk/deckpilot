@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser()
     if (!user) return new Response('Unauthorized', { status: 401 })
 
-    const { theme, description } = await request.json()
+    const { theme, description, tweak, preset, previousSuggestions } = await request.json()
 
     if (!theme && !description) {
       return new Response(
@@ -20,7 +20,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const prompt = `Suggest 3-5 Magic: The Gathering commanders that match the following theme and description.
+    const presetModifiers: Record<string, string> = {
+      more_budget: 'Prioritize commanders with lower-cost staples and budget-friendly strategies',
+      more_competitive: 'Prioritize commanders with proven competitive track records and powerful synergies',
+      more_casual: 'Prioritize commanders that create fun, interactive gameplay over raw power',
+    }
+
+    let prompt = `Suggest 5-8 Magic: The Gathering commanders that match the following theme and description.
 
 Theme: ${theme ?? 'Not specified'}
 Description: ${description ?? 'Not specified'}
@@ -28,9 +34,22 @@ Description: ${description ?? 'Not specified'}
 For each commander, provide:
 - The exact card name
 - Color identity (array of color letters: W, U, B, R, G)
+- Rate each commander's fit for the theme from 1-10 in the match_score field
 - Play style description
-- Synergy notes explaining how the commander fits the theme
+- Provide a detailed synergy_description explaining how the commander fits the theme
 - Why this commander is a good choice for this theme/description`
+
+    if (preset && presetModifiers[preset]) {
+      prompt += `\n${presetModifiers[preset]}`
+    }
+
+    if (tweak) {
+      prompt += `\nAdditional instruction: ${tweak}`
+    }
+
+    if (previousSuggestions && previousSuggestions.length > 0) {
+      prompt += `\nDo NOT suggest these commanders again: ${previousSuggestions.join(', ')}`
+    }
 
     const { model, maxTokens } = await getAiModel('recommendations')
 

@@ -122,7 +122,7 @@ function CommanderPreview({
         <div className="min-w-0">
           <p className="font-semibold text-sm leading-tight truncate">{card.name}</p>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">{card.typeLine}</p>
-          {card.colorIdentity.length > 0 && (
+          {card.colorIdentity && card.colorIdentity.length > 0 && (
             <div className="flex gap-0.5 mt-1.5">
               {card.colorIdentity.map((c) => (
                 <ColorPip key={c} color={c} />
@@ -318,7 +318,7 @@ export function CommanderSearch({
                         {card.typeLine}
                       </p>
                     </div>
-                    {card.colorIdentity.length > 0 && (
+                    {card.colorIdentity && card.colorIdentity.length > 0 && (
                       <div className="flex gap-0.5 shrink-0">
                         {card.colorIdentity.slice(0, 5).map((c) => (
                           <ColorPip key={c} color={c} />
