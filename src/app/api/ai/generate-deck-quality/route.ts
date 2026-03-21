@@ -236,19 +236,15 @@ RULES:
 
           // === PHASE 2: Validate ===
           if (cardEvents.length === 0) {
-            const debugInfo = {
-              textLength: collectedText.length,
-              hasBracketReasoning: collectedText.includes('===BRACKET_REASONING==='),
-              hasCards: collectedText.includes('===CARDS==='),
-              hasEndCards: collectedText.includes('===END_CARDS==='),
-              hasLands: collectedText.includes('===LANDS==='),
-              parsedEventCount: allEvents.length,
-              parsedEventTypes: allEvents.map(e => e.type),
-              first200: collectedText.substring(0, 200),
+            // Extract the CARDS section for debugging
+            let cardsSection = ''
+            if (collectedText.includes('===CARDS===') && collectedText.includes('===END_CARDS===')) {
+              cardsSection = collectedText.split('===CARDS===')[1].split('===END_CARDS===')[0]
             }
-            console.error('[quality] No cards parsed. Debug:', JSON.stringify(debugInfo))
+            const firstCardLines = cardsSection.split('\n').filter(l => l.trim().length > 0).slice(0, 5)
+            console.error('[quality] No cards parsed. Cards section first 5 lines:', firstCardLines)
             controller.enqueue(encoder.encode(formatSSE('error', {
-              message: `AI generated no parseable cards. Text length: ${collectedText.length}, has ===CARDS===: ${collectedText.includes('===CARDS===')}, parsed events: ${allEvents.length} (${allEvents.map(e => e.type).join(', ')}). First 200 chars: ${collectedText.substring(0, 200)}`,
+              message: `AI generated no parseable cards. Text: ${collectedText.length} chars, events: ${allEvents.length} (${allEvents.map(e => e.type).join(', ')}). First card lines: ${firstCardLines.map(l => l.substring(0, 100)).join(' | ')}`,
             })))
             clearInterval(heartbeatInterval)
             controller.close()
