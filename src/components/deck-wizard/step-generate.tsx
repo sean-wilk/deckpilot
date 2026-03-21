@@ -11,6 +11,7 @@ import {
   Loader2,
   Save,
   Shield,
+  Target,
   X,
   XCircle,
 } from 'lucide-react'
@@ -35,7 +36,7 @@ interface WizardState {
   bracket: number | null
   budget: string
   spiciness: number
-  generationMode: 'fast' | 'quality' | 'enhanced'
+  generationMode: 'fast' | 'quality' | 'enhanced' | 'guided'
 }
 
 interface StepGenerateProps {
@@ -180,9 +181,15 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
     validationSummary,
     currentPhase,
     qualityReport,
+    generationPlan,
+    currentCategory,
     generate,
     abort,
   } = useDeckGeneration()
+
+  const currentCategoryIndex = generationPlan?.categories.findIndex(
+    c => c.name === currentCategory?.name
+  ) ?? -1
 
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -333,11 +340,15 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
           {isGenerating && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                {state.generationMode !== 'fast' && currentPhase ? (
+                {state.generationMode !== 'fast' && state.generationMode !== 'guided' && currentPhase ? (
                   <span className="flex items-center gap-2">
                     <span>
                       {state.generationMode === 'quality' ? 'Quality' : 'Enhanced'} Mode
                     </span>
+                  </span>
+                ) : state.generationMode === 'guided' && currentPhase ? (
+                  <span className="flex items-center gap-2">
+                    <span>Guided Mode</span>
                   </span>
                 ) : (
                   phase <= 1
@@ -355,15 +366,52 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
               <span className="text-muted-foreground">
                 {totalCards}/99 cards generated{' '}
                 <span className="text-xs">
-                  ({state.generationMode === 'fast' ? 'Fast' : state.generationMode === 'quality' ? 'Quality' : 'Enhanced'} Mode)
+                  ({state.generationMode === 'fast' ? 'Fast' : state.generationMode === 'quality' ? 'Quality' : state.generationMode === 'guided' ? 'Guided' : 'Enhanced'} Mode)
                 </span>
               </span>
               <span className="text-muted-foreground">100%</span>
             </div>
           )}
 
+          {/* Guided Mode: Category-by-category progress */}
+          {state.generationMode === 'guided' && isGenerating && currentPhase && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Target className="size-4 text-primary" />
+                Guided Generation
+              </div>
+
+              {/* Show generation plan categories */}
+              {generationPlan && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
+                  {generationPlan.categories.map((cat, i) => (
+                    <div key={cat.name} className={cn(
+                      "rounded-lg border px-2.5 py-2 text-xs transition-colors",
+                      currentCategory?.name === cat.name
+                        ? "border-primary bg-primary/10 text-primary"
+                        : i < currentCategoryIndex
+                          ? "border-green-500/30 bg-green-500/10 text-green-400"
+                          : "border-border text-muted-foreground"
+                    )}>
+                      <div className="font-medium truncate">{cat.name}</div>
+                      <div className="opacity-70">{cat.count} cards</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Current phase/category status */}
+              {currentPhase && (
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                  <span>{currentPhase}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Quality/Enhanced Mode: Phase-based progress */}
-          {state.generationMode !== 'fast' && isGenerating && currentPhase && (
+          {state.generationMode !== 'fast' && state.generationMode !== 'guided' && isGenerating && currentPhase && (
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Loader2 className="size-4 animate-spin text-primary" />

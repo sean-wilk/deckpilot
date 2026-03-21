@@ -30,13 +30,25 @@ export interface BracketReasoning {
   reasoning: string
 }
 
+interface GenerationPlan {
+  planned_lands: number
+  categories: Array<{ name: string; count: number; description: string }>
+  reasoning: string
+}
+
+interface CategoryProgress {
+  name: string
+  current: number
+  total: number
+}
+
 export interface GenerateParams {
   commanderId: string
   description: string
   targetBracket: number
   budgetLimitCents?: number
   spiciness?: number
-  generationMode?: 'fast' | 'quality' | 'enhanced'
+  generationMode?: 'fast' | 'quality' | 'enhanced' | 'guided'
 }
 
 interface UseDeckGenerationReturn {
@@ -51,6 +63,8 @@ interface UseDeckGenerationReturn {
   validationSummary: ValidationSummary | null
   currentPhase: string | null
   qualityReport: QualityReport | null
+  generationPlan: GenerationPlan | null
+  currentCategory: CategoryProgress | null
   generate: (params: GenerateParams) => Promise<void>
   abort: () => void
 }
@@ -66,6 +80,8 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
   const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null)
   const [currentPhase, setCurrentPhase] = useState<string | null>(null)
   const [qualityReport, setQualityReport] = useState<QualityReport | null>(null)
+  const [generationPlan, setGenerationPlan] = useState<GenerationPlan | null>(null)
+  const [currentCategory, setCurrentCategory] = useState<CategoryProgress | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const generate = useCallback(async (params: GenerateParams) => {
@@ -79,15 +95,19 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
     setValidationSummary(null)
     setCurrentPhase(null)
     setQualityReport(null)
+    setGenerationPlan(null)
+    setCurrentCategory(null)
     setIsGenerating(true)
 
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
-      const endpoint = (params.generationMode === 'quality' || params.generationMode === 'enhanced')
-        ? '/api/ai/generate-deck-quality'
-        : '/api/ai/generate-deck-stream'
+      const endpoint = params.generationMode === 'guided'
+        ? '/api/ai/generate-deck-guided'
+        : (params.generationMode === 'quality' || params.generationMode === 'enhanced')
+          ? '/api/ai/generate-deck-quality'
+          : '/api/ai/generate-deck-stream'
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,7 +172,15 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
                 setValidationSummary({ valid: parsed.valid, invalid: parsed.invalid })
                 break
               case 'phase':
-                setCurrentPhase(parsed.phase)
+                if (parsed.phase === 'generating_category') {
+                  setCurrentCategory({
+                    name: parsed.category as string,
+                    current: parsed.current as number,
+                    total: parsed.total as number,
+                  })
+                } else {
+                  setCurrentPhase(parsed.phase)
+                }
                 break
               case 'quality_report':
                 setQualityReport({
@@ -162,11 +190,15 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
                   totalCards: parsed.totalCards,
                 })
                 break
+              case 'generation_plan':
+                setGenerationPlan(parsed as unknown as GenerationPlan)
+                break
               case 'error':
                 setError(parsed.message || 'Generation failed')
                 break
               case 'done':
                 // Generation complete
+                setCurrentCategory(null)
                 break
             }
           } catch {
@@ -180,6 +212,7 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
       }
     } finally {
       setIsGenerating(false)
+      setCurrentCategory(null)
       abortRef.current = null
     }
   }, [])
@@ -200,6 +233,8 @@ export function useDeckGeneration(): UseDeckGenerationReturn {
     validationSummary,
     currentPhase,
     qualityReport,
+    generationPlan,
+    currentCategory,
     generate,
     abort,
   }

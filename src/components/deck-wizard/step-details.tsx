@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Wand2, DollarSign, ChevronLeft, Zap, Shield, Sparkles } from 'lucide-react'
+import { Wand2, DollarSign, ChevronLeft, Zap, Shield, Sparkles, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,7 +19,7 @@ interface WizardState {
   bracket: number | null
   budget: string
   spiciness: number
-  generationMode: 'fast' | 'quality' | 'enhanced'
+  generationMode: 'fast' | 'quality' | 'enhanced' | 'guided'
 }
 
 interface StepDetailsProps {
@@ -51,6 +51,13 @@ const GENERATION_MODES = [
     description: 'Full quality pass plus AI analysis with swap recommendations. Best results.',
     time: '~2-4 min',
     icon: Sparkles,
+  },
+  {
+    value: 'guided' as const,
+    label: 'Guided',
+    description: 'Category-by-category generation with per-batch validation. Most reliable results.',
+    time: '~3-5 min',
+    icon: Target,
   },
 ]
 
@@ -138,7 +145,7 @@ export function StepDetails({ state, onNext, onBack }: StepDetailsProps) {
   const [bracket, setBracket] = useState<number | null>(state.bracket)
   const [budget, setBudget] = useState(state.budget || '')
   const [spiciness, setSpiciness] = useState(state.spiciness ?? 30)
-  const [generationMode, setGenerationMode] = useState<'fast' | 'quality' | 'enhanced'>(state.generationMode ?? 'fast')
+  const [generationMode, setGenerationMode] = useState<'fast' | 'quality' | 'enhanced' | 'guided'>(state.generationMode ?? 'fast')
 
   const currentTier = getCurrentTier(spiciness)
   const canGenerate = name.trim().length > 0 && bracket !== null
