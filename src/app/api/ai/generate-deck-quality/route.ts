@@ -273,9 +273,8 @@ RULES:
 
           // Build cumulative set of valid card IDs (grows across fix attempts)
           const validCardIds = new Set<string>()
-          for (const card of validCards) {
-            const result = validationResults.get(cardEvents.find(c => (validationResults.get(c.name)?.correctedName ?? c.name) === card.name)?.name ?? card.name)
-            if (result?.cardId) validCardIds.add(result.cardId)
+          for (const [, result] of validationResults) {
+            if (result.valid && result.cardId) validCardIds.add(result.cardId)
           }
 
           const FIX_SYSTEM_PROMPT = 'You are a Magic: The Gathering card replacement assistant. Output ONLY valid JSON lines, one per card. Each line must be: {"name": "<exact official card name>", "category": "<category>", "reasoning": "<reason>"}. Output nothing else — no markdown, no explanations, no numbering, no code fences.'
@@ -443,7 +442,8 @@ Output ONLY replacement cards, one JSON object per line. No other text, no marke
 
         } catch (err) {
           console.error('Quality generation error:', err)
-          controller.enqueue(encoder.encode(formatSSE('error', { message: 'Quality generation failed. Please try again.' })))
+          const errMsg = err instanceof Error ? err.message : 'Quality generation failed'
+          controller.enqueue(encoder.encode(formatSSE('error', { message: `Quality generation failed: ${errMsg}` })))
         } finally {
           clearInterval(heartbeatInterval)
           controller.close()
