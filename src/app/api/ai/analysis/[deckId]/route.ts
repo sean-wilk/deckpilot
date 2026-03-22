@@ -57,19 +57,23 @@ export async function GET(
       results = null
     }
 
-    // History includes complete records with full results for client-side switching
+    // Only include full history when the current analysis is complete
+    // During polling (pending/processing), return lightweight metadata only
     const completeRows = allRows.filter((row) => row.status === 'complete')
-    const history = completeRows.map((row) => ({
-      id: row.id,
-      createdAt: row.createdAt,
-      results: row.results,
-      bracket:
+    const history = completeRows.map((row) => {
+      const bracket =
         row.results != null &&
         typeof row.results === 'object' &&
         !Array.isArray(row.results)
           ? (row.results as Record<string, unknown>).bracket ?? null
-          : null,
-    }))
+          : null
+
+      if (currentStatus === 'complete') {
+        return { id: row.id, createdAt: row.createdAt, results: row.results, bracket }
+      }
+      // Lightweight: just id, date, and bracket for polling responses
+      return { id: row.id, createdAt: row.createdAt, results: null, bracket }
+    })
 
     const response: Record<string, unknown> = {
       results,
