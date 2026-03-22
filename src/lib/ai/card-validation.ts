@@ -59,6 +59,7 @@ async function fuzzyMatchCardName(
     })
     .from(cards)
     .where(sql`LOWER(${cards.name}) LIKE LOWER(${escapedName}) || '%' ESCAPE '\\'`)
+    .orderBy(sql`length(${cards.name}) ASC`)
     .limit(1)
 
   if (startsWithResults.length > 0) {
@@ -76,6 +77,7 @@ async function fuzzyMatchCardName(
     })
     .from(cards)
     .where(sql`LOWER(${cards.name}) LIKE '%' || LOWER(${escapedName}) || '%' ESCAPE '\\'`)
+    .orderBy(sql`length(${cards.name}) ASC`)
     .limit(1)
 
   if (containsResults.length > 0) {

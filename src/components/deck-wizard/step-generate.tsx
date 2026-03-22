@@ -269,6 +269,7 @@ export function StepGenerate({ state, onBack }: StepGenerateProps) {
       }
       if (warnings.length > 0) {
         setSaveWarning(warnings.join('. '))
+        setIsSaving(false)
         setTimeout(() => router.push(`/decks/${result.deckId}`), 3000)
       } else {
         router.push(`/decks/${result.deckId}`)

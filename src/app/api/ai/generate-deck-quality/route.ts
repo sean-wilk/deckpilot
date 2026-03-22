@@ -7,18 +7,9 @@ import { getStreamingClient } from '@/lib/ai/providers'
 import { StreamParser } from '@/lib/ai/stream-parser'
 import { encoder, formatSSE } from '@/lib/ai/sse-utils'
 import { validateCardBatch } from '@/lib/ai/card-validation'
+import { getSpicyPrompt } from '@/lib/ai/deck-prompts'
 
 export const maxDuration = 300
-
-// ─── Spiciness helper ────────────────────────────────────────────────────────
-
-function getSpicyPrompt(spiciness: number): string {
-  if (spiciness <= 15) return 'Build a meta-optimal, competitive deck using the most powerful and efficient staples available.'
-  if (spiciness <= 35) return 'Build a tuned deck that is strong and consistent but not necessarily top-tier competitive.'
-  if (spiciness <= 65) return 'Build a balanced deck mixing strong cards with interesting and fun choices.'
-  if (spiciness <= 85) return 'Build a spicy deck favoring creative, unexpected, and underplayed card choices over raw power.'
-  return 'Build a jank deck prioritizing wild, weird, and hilarious card choices. Embrace chaos and fun over winning.'
-}
 
 // ─── POST handler ───────────────────────────────────────────────────────────
 
@@ -201,21 +192,13 @@ RULES:
           }
 
           // === PARSE PASS 1 ===
-          console.log('[quality] Collected text length:', collectedText.length)
-          console.log('[quality] First 500 chars:', collectedText.substring(0, 500))
-          console.log('[quality] Has BRACKET_REASONING:', collectedText.includes('===BRACKET_REASONING==='))
-          console.log('[quality] Has CARDS:', collectedText.includes('===CARDS==='))
-          console.log('[quality] Has LANDS:', collectedText.includes('===LANDS==='))
-
           const parser = new StreamParser()
           // In Quality Mode, disable parser card limits — let ALL cards through
           // Validation happens after parsing, not during
           parser.disableLimits()
           let allEvents: Array<{ type: string; data: Record<string, unknown> }> = []
           try {
-            console.log('[quality] Starting parser...')
             allEvents = parser.processChunk(collectedText)
-            console.log('[quality] Parsed events:', allEvents.length, 'types:', allEvents.map(e => e.type))
           } catch (parseErr) {
             console.error('[quality] Parser crashed:', parseErr)
             controller.enqueue(encoder.encode(formatSSE('error', { message: 'Failed to parse AI response. Please try again.' })))
