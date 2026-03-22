@@ -92,7 +92,9 @@ function closePartialJson(buffer: string): string {
     else if (ch === '}' || ch === ']') stack.pop()
   }
 
-  return buffer + stack.reverse().join('')
+  // Close open string first, then close brackets/braces
+  const closeString = inString ? '"' : ''
+  return buffer + closeString + stack.reverse().join('')
 }
 
 /**
@@ -108,7 +110,7 @@ export async function streamStructuredOutputWithProgress<T>(
   schema: { properties?: Record<string, unknown>; required?: string[] },
   maxTokensCap = 4096,
   onProgress: (partialFields: Record<string, unknown>, newKeys: string[]) => Promise<void>,
-  flushIntervalMs = 3000,
+  flushIntervalMs = 2000,
 ): Promise<T> {
   const configs = await db.select().from(adminAiConfig)
     .where(eq(adminAiConfig.isActive, true))
