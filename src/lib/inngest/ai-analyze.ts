@@ -43,7 +43,7 @@ export const analyzeDeck = inngest.createFunction(
           'analysis',
           prompt,
           jsonSchema,
-          4096,
+          6144,
         )
         return { object }
       })

@@ -25,7 +25,7 @@ export function CardHoverPreview({ cardName, children }: CardHoverPreviewProps) 
   const [position, setPosition] = useState<PopoverPosition>({ top: 0, left: 0 })
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [largeImageUrl, setLargeImageUrl] = useState<string | null>(null)
-  const triggerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLSpanElement>(null)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchCardImage = useCallback(async (name: string) => {
@@ -225,15 +225,15 @@ export function CardHoverPreview({ cardName, children }: CardHoverPreviewProps) 
 
   return (
     <>
-      <div
+      <span
         ref={triggerRef}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
-        className="cursor-pointer"
+        className="cursor-pointer inline"
       >
         {children}
-      </div>
+      </span>
       {typeof document !== 'undefined' && popover
         ? createPortal(popover, document.body)
         : null}

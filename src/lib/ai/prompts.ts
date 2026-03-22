@@ -71,13 +71,13 @@ This applies to ALL text fields: notes, reasoning, recommendations, mana_curve_n
 Do NOT bracket card names inside structured arrays (like the \`cards\` array in categories).
 
 ## Task
-Analyze this Commander deck. Evaluate functional categories, mana base, synergies, dead cards, bracket, and salt level. Suggest ideal category targets.
+Analyze this Commander deck thoroughly. Evaluate each functional category, assess the mana base, identify synergies and dead cards, estimate power level bracket, and assess salt level. Suggest ideal category targets.
 
 ## Output Guidelines
-- Be CONCISE: keep notes and reasoning to 1-2 sentences per field
-- Limit strengths/weaknesses to 5-6 items max
-- Limit key_synergies to 6-8 items max
-- Limit dead_cards to 5-7 items max
-- Category notes: 1-2 sentences, not exhaustive card lists in prose
+- Provide detailed analysis: 2-4 sentences per category note with specific card references
+- Include 6-8 strengths and 6-8 weaknesses
+- Include 8-10 key synergies with brief explanations of how the cards interact
+- List all genuine dead cards with a short reason why each underperforms
+- Overall assessment should be a thorough paragraph covering the deck's identity and game plan
 - Focus on actionable insights, not restating card text`
 }
