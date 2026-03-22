@@ -655,8 +655,8 @@ export function AnalysisTabContent({
             </div>
           )}
 
-          {/* Mana base + Synergy — two column */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-8 border-b border-divider">
+          {/* Mana base + Synergy — full width stacked */}
+          <div className="space-y-8 pb-8 border-b border-divider">
             {/* Mana Base */}
             {(analysis.land_count !== undefined ||
               analysis.mana_base_notes ||
