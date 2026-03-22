@@ -64,62 +64,13 @@ export async function streamStructuredOutput<T>(
   schema: { properties?: Record<string, unknown>; required?: string[] },
   maxTokensCap = 4096,
 ): Promise<T> {
-  const configs = await db.select().from(adminAiConfig)
-    .where(eq(adminAiConfig.isActive, true))
-    .limit(1)
-
-  if (configs.length === 0) {
-    throw new Error('No active AI provider configured. Visit /admin to set up.')
-  }
-
-  const config = configs[0]
-
-  if (config.provider !== 'anthropic') {
-    throw new Error('Streaming structured output requires Anthropic provider.')
-  }
-
-  const apiKey = decrypt(config.apiKeyEncrypted)
-  const client = new Anthropic({ apiKey, timeout: 15 * 60 * 1000 })
-
-  const modelId = {
-    analysis: config.modelAnalysis,
-    recommendations: config.modelRecommendations,
-    chat: config.modelChat,
-    generation: config.modelGeneration,
-  }[taskType]
-
-  const maxTokens = Math.min({
-    analysis: config.maxTokensAnalysis,
-    recommendations: config.maxTokensRecommendations,
-    chat: config.maxTokensChat,
-    generation: config.maxTokensGeneration,
-  }[taskType], maxTokensCap)
-
-  const stream = client.messages.stream({
-    model: modelId,
-    max_tokens: maxTokens,
-    tools: [{
-      name: 'structured_output',
-      description: 'Provide your response in the required structured format.',
-      input_schema: {
-        type: 'object' as const,
-        properties: schema.properties ?? {},
-        required: schema.required ?? [],
-      },
-    }],
-    tool_choice: { type: 'tool' as const, name: 'structured_output' },
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const message = await stream.finalMessage()
-
-  for (const block of message.content) {
-    if (block.type === 'tool_use' && block.name === 'structured_output') {
-      return block.input as T
-    }
-  }
-
-  throw new Error('No structured output found in AI response')
+  return streamStructuredOutputWithProgress<T>(
+    taskType,
+    prompt,
+    schema,
+    maxTokensCap,
+    async () => {}, // no-op progress callback
+  )
 }
 
 /**
