@@ -93,8 +93,18 @@ function closePartialJson(buffer: string): string {
   }
 
   // Close open string first, then close brackets/braces
-  const closeString = inString ? '"' : ''
-  return buffer + closeString + stack.reverse().join('')
+  let result = buffer + (inString ? '"' : '') + stack.reverse().join('')
+
+  // Clean up common partial JSON issues:
+  // 1. Remove trailing commas before } or ] (e.g., "value",} → "value"})
+  // 2. Remove incomplete key-value pairs (e.g., "partial_key"} → })
+  result = result.replace(/,\s*([}\]])/g, '$1')
+
+  // Remove incomplete key at end of object (key with no colon/value before closing brace)
+  // Pattern: ,"key_name"} or , "key_name"} where key has no : after it
+  result = result.replace(/,\s*"[^"]*"\s*}/g, '}')
+
+  return result
 }
 
 /**
@@ -110,7 +120,7 @@ export async function streamStructuredOutputWithProgress<T>(
   schema: { properties?: Record<string, unknown>; required?: string[] },
   maxTokensCap = 4096,
   onProgress: (partialFields: Record<string, unknown>, newKeys: string[]) => Promise<void>,
-  flushIntervalMs = 2000,
+  flushIntervalMs = 1500,
 ): Promise<T> {
   const configs = await db.select().from(adminAiConfig)
     .where(eq(adminAiConfig.isActive, true))
@@ -162,6 +172,10 @@ export async function streamStructuredOutputWithProgress<T>(
   let jsonBuffer = ''
   const reportedKeys = new Set<string>()
   let lastFlushTime = Date.now()
+  let deltaCount = 0
+  let flushCount = 0
+
+  console.log('[STREAM-DEBUG] Starting streaming iteration...')
 
   /**
    * Flush completed fields to onProgress callback.
@@ -169,10 +183,13 @@ export async function streamStructuredOutputWithProgress<T>(
    * (meaning the AI has moved past it). On final flush, all keys are complete.
    */
   async function flush(isFinal: boolean) {
+    flushCount++
     const closed = closePartialJson(jsonBuffer)
     try {
       const parsed = JSON.parse(closed) as Record<string, unknown>
       const keys = Object.keys(parsed)
+
+      console.log(`[STREAM-DEBUG] Flush #${flushCount} (final=${isFinal}): buffer=${jsonBuffer.length} chars, parsed ${keys.length} keys: ${keys.join(', ')}`)
 
       const completeFields: Record<string, unknown> = {}
       const newKeys: string[] = []
@@ -180,14 +197,10 @@ export async function streamStructuredOutputWithProgress<T>(
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i]
         if (reportedKeys.has(key)) {
-          // Already reported — include in partial for full DB write
           completeFields[key] = parsed[key]
           continue
         }
 
-        // A key is complete if:
-        // - There's a subsequent key (AI has moved past it), OR
-        // - This is the final flush (stream ended, all keys are final)
         const hasNextKey = i < keys.length - 1
         if (hasNextKey || isFinal) {
           completeFields[key] = parsed[key]
@@ -197,14 +210,18 @@ export async function streamStructuredOutputWithProgress<T>(
       }
 
       if (newKeys.length > 0) {
+        console.log(`[STREAM-DEBUG] Reporting ${newKeys.length} new keys: ${newKeys.join(', ')}`)
         try {
           await onProgress(completeFields, newKeys)
+          console.log(`[STREAM-DEBUG] onProgress DB write SUCCESS`)
         } catch (err) {
-          console.warn('[streaming] onProgress callback error:', err)
+          console.warn('[STREAM-DEBUG] onProgress callback ERROR:', err)
         }
+      } else {
+        console.log(`[STREAM-DEBUG] No new keys to report`)
       }
     } catch {
-      // Can't parse even with closing — skip this flush cycle
+      console.log(`[STREAM-DEBUG] Flush #${flushCount} PARSE FAILED (final=${isFinal}), buffer=${jsonBuffer.length} chars, last 50: ...${jsonBuffer.slice(-50)}`)
     }
   }
 
@@ -213,14 +230,22 @@ export async function streamStructuredOutputWithProgress<T>(
       event.type === 'content_block_delta' &&
       event.delta.type === 'input_json_delta'
     ) {
+      deltaCount++
       jsonBuffer += event.delta.partial_json
+
+      if (deltaCount === 1) {
+        console.log(`[STREAM-DEBUG] First input_json_delta received! Content: ${event.delta.partial_json.substring(0, 100)}`)
+      }
 
       if (Date.now() - lastFlushTime >= flushIntervalMs) {
         lastFlushTime = Date.now()
+        console.log(`[STREAM-DEBUG] Time-based flush triggered (delta #${deltaCount}, buffer ${jsonBuffer.length} chars)`)
         await flush(false)
       }
     }
   }
+
+  console.log(`[STREAM-DEBUG] Stream iteration complete. Total deltas: ${deltaCount}, buffer: ${jsonBuffer.length} chars, flushes: ${flushCount}`)
 
   // Final flush: report all remaining unreported fields
   await flush(true)
