@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
-import { anthropicText } from '@tanstack/ai-anthropic'
-import { openaiText } from '@tanstack/ai-openai'
+import { createAnthropicChat } from '@tanstack/ai-anthropic'
+import { createOpenaiChat } from '@tanstack/ai-openai'
 import { db } from '@/lib/db'
 import { adminAiConfig } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -35,16 +35,14 @@ export async function getAiModel(taskType: TaskType) {
     generation: config.maxTokensGeneration,
   }[taskType]
 
-  // TanStack AI adapters read API keys from env vars — set dynamically from DB
+  // Pass API key directly to avoid process.env mutation race condition
   if (config.provider === 'anthropic') {
-    process.env.ANTHROPIC_API_KEY = apiKey
-    const adapter = anthropicText(modelId as Parameters<typeof anthropicText>[0])
+    const adapter = createAnthropicChat(modelId as Parameters<typeof createAnthropicChat>[0], apiKey)
     return { model: adapter, provider: config.provider, modelId, maxTokens }
   }
 
   if (config.provider === 'openai') {
-    process.env.OPENAI_API_KEY = apiKey
-    const adapter = openaiText(modelId as Parameters<typeof openaiText>[0])
+    const adapter = createOpenaiChat(modelId as Parameters<typeof createOpenaiChat>[0], apiKey)
     return { model: adapter, provider: config.provider, modelId, maxTokens }
   }
 
