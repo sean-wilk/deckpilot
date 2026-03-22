@@ -20,6 +20,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No image provided' }, { status: 400 })
   }
 
+  // File size limit
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+  if (imageFile.size > MAX_FILE_SIZE) {
+    return NextResponse.json(
+      { error: 'Image too large. Maximum size is 10MB.' },
+      { status: 413 }
+    )
+  }
+
   // 3. Validate file type
   const validTypes = ['image/jpeg', 'image/png', 'image/webp']
   if (!validTypes.includes(imageFile.type)) {

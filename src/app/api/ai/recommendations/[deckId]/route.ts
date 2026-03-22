@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { deckAnalyses, swapRecommendations, cards } from '@/lib/db/schema'
+import { deckAnalyses, swapRecommendations, cards, decks } from '@/lib/db/schema'
 import { eq, and, desc, ne } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
@@ -17,6 +17,14 @@ export async function GET(
     if (!user) return new Response('Unauthorized', { status: 401 })
 
     const { deckId } = await params
+
+    // Check deck ownership
+    const deckRows = await db.select({ id: decks.id }).from(decks)
+      .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+      .limit(1)
+    if (deckRows.length === 0) {
+      return new Response('Deck not found', { status: 404 })
+    }
 
     // Find the most recent swap_suggestion analysis for this deck (any status)
     const analyses = await db

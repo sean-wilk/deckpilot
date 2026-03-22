@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { deckAnalyses } from '@/lib/db/schema'
+import { deckAnalyses, decks } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 
 export async function GET(
@@ -16,6 +16,13 @@ export async function GET(
     if (!user) return new Response('Unauthorized', { status: 401 })
 
     const { deckId } = await params
+
+    const deckRows = await db.select({ id: decks.id }).from(decks)
+      .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+      .limit(1)
+    if (deckRows.length === 0) {
+      return new Response('Deck not found', { status: 404 })
+    }
 
     // Fetch the most recent record regardless of status (for polling support)
     const allRows = await db
