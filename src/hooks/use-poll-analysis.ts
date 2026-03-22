@@ -2,11 +2,21 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 
+type ProgressInfo = {
+  currentStep: number
+  totalSteps: number
+  stepLabel: string
+  startedAt: string
+  updatedAt: string
+} | null
+
 type UsePollResult<T> = {
   data: {
     status: string
     results: T | null
     errorMessage: string | null
+    progress: ProgressInfo
+    isPartial: boolean
     history: { id: string; createdAt: string; results?: T | null }[]
   } | null
   isPolling: boolean
@@ -79,7 +89,7 @@ export function usePollAnalysis<T>(
         throw new Error(`Trigger failed: ${res.status} ${text}`)
       }
       await res.json()
-      setData({ status: 'pending', results: null, errorMessage: null, history: [] })
+      setData({ status: 'pending', results: null, errorMessage: null, progress: null, isPartial: false, history: [] })
 
       // Start polling
       intervalRef.current = setInterval(poll, POLL_INTERVAL)

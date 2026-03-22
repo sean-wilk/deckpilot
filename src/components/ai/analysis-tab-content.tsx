@@ -11,6 +11,7 @@ import { TargetApprovalBanner } from '@/components/ai/target-approval-banner'
 import { LandsSection } from '@/components/ai/lands-section'
 import { ManaSymbol } from '@/components/ui/mana-symbol'
 import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
+import { AnalysisProgressBar } from '@/components/ai/analysis-progress-bar'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -256,6 +257,7 @@ export function AnalysisTabContent({
   const [selectedHistoryAnalysis, setSelectedHistoryAnalysis] = useState<DeckAnalysis | null>(null)
 
   const isLoading = isPolling || data?.status === 'pending' || data?.status === 'processing'
+  const isPartial = data?.isPartial === true
   const displayedAnalysis = (selectedHistoryAnalysis ?? data?.results) as DeckAnalysis | undefined
 
   // Toast on completion — only fires when the user explicitly triggered analysis
@@ -317,6 +319,7 @@ export function AnalysisTabContent({
 
   const analysis = displayedAnalysis
   const hasResult = !!analysis && Object.keys(analysis).length > 0
+  const hasDisplayableContent = hasResult || isPartial
   const hasHistory = (data?.history ?? []).length > 0
 
   // Bracket suggestion logic
@@ -359,7 +362,14 @@ export function AnalysisTabContent({
                 Last analyzed: {formatDate(data.history[0].createdAt)}
               </p>
             )}
-            {isLoading && (
+            {isLoading && data?.progress && (
+              <AnalysisProgressBar
+                currentStep={data.progress.currentStep}
+                totalSteps={data.progress.totalSteps}
+                stepLabel={data.progress.stepLabel}
+              />
+            )}
+            {isLoading && !data?.progress && (
               <p className="text-xs-plus text-muted-foreground flex items-center gap-1">
                 Analyzing <LoadingDots />
               </p>
@@ -453,27 +463,39 @@ export function AnalysisTabContent({
         </div>
       )}
 
-      {/* ── Loading skeleton ── */}
-      {isLoading && !hasResult && (
+      {/* Loading: show progress bar or skeleton */}
+      {isLoading && !hasDisplayableContent && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {[75, 55, 85, 65].map((w, i) => (
-              <div
-                key={i}
-                className="h-24 rounded-lg bg-muted animate-pulse"
-                style={{ animationDelay: `${i * 80}ms` }}
+          {data?.progress ? (
+            <div className="rounded-lg border border-interactive/30 bg-interactive-muted/30 p-4">
+              <AnalysisProgressBar
+                currentStep={data.progress.currentStep}
+                totalSteps={data.progress.totalSteps}
+                stepLabel={data.progress.stepLabel}
               />
-            ))}
-          </div>
-          <div className="space-y-2.5">
-            {[80, 60, 90, 50].map((w, i) => (
-              <div
-                key={i}
-                className="h-2 rounded-full bg-muted animate-pulse"
-                style={{ width: `${w}%`, animationDelay: `${i * 100}ms` }}
-              />
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {[75, 55, 85, 65].map((w, i) => (
+                <div
+                  key={i}
+                  className="h-24 rounded-lg bg-muted animate-pulse"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Partial results: show progress bar between rendered and pending sections */}
+      {isPartial && data?.progress && (
+        <div className="rounded-lg border border-interactive/30 bg-interactive-muted/30 p-3">
+          <AnalysisProgressBar
+            currentStep={data.progress.currentStep}
+            totalSteps={data.progress.totalSteps}
+            stepLabel={data.progress.stepLabel}
+          />
         </div>
       )}
 
@@ -531,7 +553,7 @@ export function AnalysisTabContent({
       )}
 
       {/* ── Results ── */}
-      {hasResult && analysis && (() => {
+      {hasDisplayableContent && analysis && (() => {
         const normalized = normalizeCategories(analysis.categories)
         // Prefer the full deck card list passed as prop; fall back to cards extracted from categories
         const categoryCardNames = [...normalized.core, ...normalized.deck_specific].flatMap((c) => c.cards ?? [])

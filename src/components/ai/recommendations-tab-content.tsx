@@ -8,6 +8,7 @@ import type { RecommendationTier, RecommendationTag } from '@/components/ai/reco
 import { usePollAnalysis } from '@/hooks/use-poll-analysis'
 import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
 import { CardHoverPreview } from '@/components/ui/card-hover-preview'
+import { AnalysisProgressBar } from '@/components/ai/analysis-progress-bar'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -486,7 +487,16 @@ export function RecommendationsTabContent({
       )}
 
       {/* Loading skeleton */}
-      {isLoading && (
+      {isLoading && data?.progress && (
+        <div className="rounded-lg border bg-muted/50 p-4">
+          <AnalysisProgressBar
+            currentStep={data.progress.currentStep}
+            totalSteps={data.progress.totalSteps}
+            stepLabel={data.progress.stepLabel}
+          />
+        </div>
+      )}
+      {isLoading && !data?.progress && (
         <div className="rounded-lg border bg-muted/50 p-4 text-xs text-muted-foreground text-center animate-pulse">
           Generating recommendations…
         </div>
