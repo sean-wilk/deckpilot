@@ -50,9 +50,35 @@ export async function GET(
     const currentStatus = mostRecent.status as 'pending' | 'processing' | 'complete' | 'failed'
 
     // Build the results payload based on status
+    const rawResults = mostRecent.results as Record<string, unknown> | null
     let results: unknown
+    let progress: Record<string, unknown> | null = null
+    let isPartial = false
+
     if (currentStatus === 'complete') {
-      results = mostRecent.results
+      // Strip internal markers from final results
+      if (rawResults) {
+        const cleanResults = Object.fromEntries(
+          Object.entries(rawResults).filter(([k]) => !k.startsWith('_'))
+        )
+        results = cleanResults
+      } else {
+        results = rawResults
+      }
+    } else if (currentStatus === 'processing' || currentStatus === 'pending') {
+      // Extract progress info
+      progress = (rawResults?._progress as Record<string, unknown>) ?? null
+
+      // Check for partial results (headline fields available after step 4)
+      if (rawResults?._partial === true) {
+        const partialFields = Object.fromEntries(
+          Object.entries(rawResults).filter(([k]) => !k.startsWith('_'))
+        )
+        results = partialFields
+        isPartial = true
+      } else {
+        results = null
+      }
     } else {
       results = null
     }
@@ -80,6 +106,8 @@ export async function GET(
       status: currentStatus,
       history,
       errorMessage: currentStatus === 'failed' ? (mostRecent.errorMessage ?? null) : null,
+      progress,
+      isPartial,
     }
 
     return NextResponse.json(response)

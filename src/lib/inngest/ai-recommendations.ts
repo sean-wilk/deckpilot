@@ -24,17 +24,54 @@ export const recommendCards = inngest.createFunction(
       // Step 1: Mark as processing
       await step.run('mark-processing', async () => {
         await db.update(deckAnalyses)
-          .set({ status: 'processing' })
+          .set({
+            status: 'processing',
+            results: {
+              _progress: {
+                currentStep: 1,
+                totalSteps: 5,
+                stepLabel: 'Starting recommendations...',
+                startedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          })
           .where(eq(deckAnalyses.id, analysisId))
       })
 
       // Step 2: Build context
       const context = await step.run('build-context', async () => {
+        await db.update(deckAnalyses)
+          .set({
+            results: {
+              _progress: {
+                currentStep: 2,
+                totalSteps: 5,
+                stepLabel: 'Building deck context...',
+                startedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          })
+          .where(eq(deckAnalyses.id, analysisId))
         return await buildDeckContext(deckId)
       })
 
       // Step 3: Build prompt
       const prompt = await step.run('build-prompt', async () => {
+        await db.update(deckAnalyses)
+          .set({
+            results: {
+              _progress: {
+                currentStep: 3,
+                totalSteps: 5,
+                stepLabel: 'Preparing recommendation prompt...',
+                startedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          })
+          .where(eq(deckAnalyses.id, analysisId))
         let p = getRecommendationPrompt({ ...context, spiciness })
 
         if (focus === 'synergy') {
@@ -50,6 +87,19 @@ export const recommendCards = inngest.createFunction(
 
       // Step 4: Call AI with streaming to avoid connection timeout
       const result = await step.run('call-ai', async () => {
+        await db.update(deckAnalyses)
+          .set({
+            results: {
+              _progress: {
+                currentStep: 4,
+                totalSteps: 5,
+                stepLabel: 'AI is generating recommendations...',
+                startedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          })
+          .where(eq(deckAnalyses.id, analysisId))
         const jsonSchema = toJSONSchema(SwapRecommendationSchema) as {
           properties?: Record<string, unknown>
           required?: string[]
@@ -67,7 +117,7 @@ export const recommendCards = inngest.createFunction(
       await step.run('save-recommendations', async () => {
         await db.update(deckAnalyses)
           .set({
-            results: result.object,
+            results: { ...result.object, _completedAt: new Date().toISOString() },
             status: 'complete',
             promptTokens: 0,
             completionTokens: 0,
@@ -115,6 +165,7 @@ export const recommendCards = inngest.createFunction(
         .set({
           status: 'failed',
           errorMessage,
+          results: { _completedAt: new Date().toISOString(), _error: true },
         })
         .where(eq(deckAnalyses.id, analysisId))
 

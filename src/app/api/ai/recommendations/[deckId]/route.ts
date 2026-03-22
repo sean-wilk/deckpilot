@@ -74,11 +74,16 @@ export async function GET(
       .map((r) => ({ id: r.id, createdAt: r.createdAt }))
 
     if (status === 'pending' || status === 'processing') {
+      const rawResults = analysis.results as Record<string, unknown> | null
+      const progress = (rawResults?._progress as Record<string, unknown>) ?? null
+
       return NextResponse.json({
         status,
         results: null,
         errorMessage: null,
         history,
+        progress,
+        isPartial: false,
       })
     }
 
@@ -88,6 +93,8 @@ export async function GET(
         results: null,
         errorMessage: analysis.errorMessage ?? null,
         history,
+        progress: null,
+        isPartial: false,
       })
     }
 
@@ -123,6 +130,11 @@ export async function GET(
 
     const dbResults = analysis.results as Record<string, unknown> | null
 
+    // Strip internal metadata from results
+    const cleanDbResults = dbResults
+      ? Object.fromEntries(Object.entries(dbResults).filter(([k]) => !k.startsWith('_')))
+      : dbResults
+
     return NextResponse.json({
       status,
       results: {
@@ -141,15 +153,17 @@ export async function GET(
           dismissed: r.dismissed,
           sortOrder: r.sortOrder,
         })),
-        summary: dbResults != null && typeof dbResults === 'object' ? (dbResults.summary ?? null) : null,
+        summary: cleanDbResults != null && typeof cleanDbResults === 'object' ? (cleanDbResults.summary ?? null) : null,
         estimatedBracketAfter:
-          dbResults != null && typeof dbResults === 'object'
-            ? (dbResults.estimatedBracketAfter ?? null)
+          cleanDbResults != null && typeof cleanDbResults === 'object'
+            ? (cleanDbResults.estimatedBracketAfter ?? null)
             : null,
         createdAt: analysis.createdAt,
       },
       errorMessage: null,
       history,
+      progress: null,
+      isPartial: false,
     })
   } catch (error) {
     console.error('[Recommendations GET] error:', error)
