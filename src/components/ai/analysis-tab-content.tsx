@@ -252,7 +252,7 @@ export function AnalysisTabContent({
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [, startTransition] = useTransition()
 
-  const { data, isPolling, error, trigger } = usePollAnalysis<DeckAnalysis>(deckId, 'full')
+  const { data, isPolling, error, trigger, cancel } = usePollAnalysis<DeckAnalysis>(deckId, 'full')
   const [selectedHistoryAnalysis, setSelectedHistoryAnalysis] = useState<DeckAnalysis | null>(null)
 
   const isLoading = isPolling || data?.status === 'pending' || data?.status === 'processing'
@@ -273,6 +273,11 @@ export function AnalysisTabContent({
     userTriggeredRef.current = true
     trigger({ deckId })
     setSelectedHistoryId(null)
+  }
+
+  function handleCancel() {
+    cancel()
+    toast.info('Analysis cancelled')
   }
 
   async function handleAcceptBracket(bracket: number) {
@@ -420,14 +425,24 @@ export function AnalysisTabContent({
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={cardCount < 10 || isLoading}
-            className="rounded bg-interactive hover:bg-interactive-hover active:bg-interactive-hover disabled:opacity-40 disabled:cursor-not-allowed text-interactive-foreground text-xs font-medium px-3 py-1.5 transition-colors"
-          >
-            {isLoading ? 'Analyzing…' : hasResult ? 'Re-analyze' : 'Analyze Deck'}
-          </button>
+          {isLoading ? (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="rounded border border-error-border bg-error-muted hover:bg-error-muted/80 text-error text-xs font-medium px-3 py-1.5 transition-colors"
+            >
+              Cancel
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAnalyze}
+              disabled={cardCount < 10}
+              className="rounded bg-interactive hover:bg-interactive-hover active:bg-interactive-hover disabled:opacity-40 disabled:cursor-not-allowed text-interactive-foreground text-xs font-medium px-3 py-1.5 transition-colors"
+            >
+              {hasResult ? 'Re-analyze' : 'Analyze Deck'}
+            </button>
+          )}
         </div>
       </div>
 

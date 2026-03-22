@@ -343,7 +343,7 @@ export function RecommendationsTabContent({
   focus,
   spiciness = 30,
 }: RecommendationsTabContentProps) {
-  const { data, isPolling, error, trigger } = usePollAnalysis<RecommendationsResult>(deckId, 'swap_suggestion')
+  const { data, isPolling, error, trigger, cancel } = usePollAnalysis<RecommendationsResult>(deckId, 'swap_suggestion')
 
   // Local status overrides (from PATCH calls this session)
   const [localStatuses, setLocalStatuses] = useState<LocalStatusMap>({})
@@ -373,6 +373,11 @@ export function RecommendationsTabContent({
   }, [])
 
   // ── Trigger new recommendations ──────────────────────────────────────────────
+
+  function handleCancel() {
+    cancel()
+    toast.info('Recommendations cancelled')
+  }
 
   async function handleGenerate() {
     setLocalStatuses({})
@@ -448,13 +453,21 @@ export function RecommendationsTabContent({
           <span className="text-xs text-muted-foreground">
             Creativity: {getTierLabel(spiciness)} ({spiciness}/100)
           </span>
-          <button
-            onClick={handleGenerate}
-            disabled={isLoading}
-            className="text-xs px-3 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 font-medium"
-          >
-            {isLoading ? 'Thinking…' : hasRecs ? 'Refresh' : 'Get Recommendations'}
-          </button>
+          {isLoading ? (
+            <button
+              onClick={handleCancel}
+              className="text-xs px-3 py-1.5 rounded-lg border border-error-border bg-error-muted hover:bg-error-muted/80 text-error transition-colors font-medium"
+            >
+              Cancel
+            </button>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              className="text-xs px-3 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors font-medium"
+            >
+              {hasRecs ? 'Refresh' : 'Get Recommendations'}
+            </button>
+          )}
         </div>
       </div>
 
