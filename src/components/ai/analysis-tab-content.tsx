@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import type { DeckAnalysis } from '@/lib/ai/schemas'
 import { getBracketLabel } from '@/lib/constants/brackets'
 import { updateDeckBracket, updateCategoryTargets } from '@/app/(dashboard)/decks/actions'
@@ -260,19 +260,7 @@ export function AnalysisTabContent({
   const isPartial = data?.isPartial === true
   const displayedAnalysis = (selectedHistoryAnalysis ?? data?.results) as DeckAnalysis | undefined
 
-  // Toast on completion — only fires when the user explicitly triggered analysis
-  const prevStatusRef = useRef(data?.status)
-  const userTriggeredRef = useRef(false)
-  useEffect(() => {
-    if (userTriggeredRef.current && prevStatusRef.current !== 'complete' && data?.status === 'complete') {
-      toast.success('Deck analysis complete!')
-      userTriggeredRef.current = false
-    }
-    prevStatusRef.current = data?.status
-  }, [data?.status])
-
   function handleAnalyze() {
-    userTriggeredRef.current = true
     trigger({ deckId })
     setSelectedHistoryId(null)
   }

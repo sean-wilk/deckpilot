@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { GlobalJobToaster } from '@/components/global-job-toaster'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -35,6 +36,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>
+      <GlobalJobToaster />
     </div>
   )
 }

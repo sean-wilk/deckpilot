@@ -355,17 +355,7 @@ export function RecommendationsTabContent({
   // Status filter
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
 
-  // Track previous complete status to fire toast once
-  const [toastedAnalysisId, setToastedAnalysisId] = useState<string | null>(null)
-
-  // Fire toast when analysis completes
   const results = data?.results
-  const analysisId = results?.analysisId
-  if (data?.status === 'complete' && analysisId && analysisId !== toastedAnalysisId) {
-    toast.success('Recommendations ready!')
-    setToastedAnalysisId(analysisId)
-    setStatusFilter('open')
-  }
 
   // ── Status change handler ────────────────────────────────────────────────────
 
