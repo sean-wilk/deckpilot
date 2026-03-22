@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { deckAnalyses, decks } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
+import { stripInternalFields } from '@/lib/ai/utils'
 
 export async function GET(
   _request: Request,
@@ -58,10 +59,7 @@ export async function GET(
     if (currentStatus === 'complete') {
       // Strip internal markers from final results
       if (rawResults) {
-        const cleanResults = Object.fromEntries(
-          Object.entries(rawResults).filter(([k]) => !k.startsWith('_'))
-        )
-        results = cleanResults
+        results = stripInternalFields(rawResults)
       } else {
         results = rawResults
       }
@@ -71,10 +69,7 @@ export async function GET(
 
       // Check for partial results (headline fields available after step 4)
       if (rawResults?._partial === true) {
-        const partialFields = Object.fromEntries(
-          Object.entries(rawResults).filter(([k]) => !k.startsWith('_'))
-        )
-        results = partialFields
+        results = stripInternalFields(rawResults)
         isPartial = true
       } else {
         results = null

@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { deckAnalyses, swapRecommendations, cards, decks } from '@/lib/db/schema'
 import { eq, and, desc, ne } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
+import { stripInternalFields } from '@/lib/ai/utils'
 
 export async function GET(
   _request: Request,
@@ -132,7 +133,7 @@ export async function GET(
 
     // Strip internal metadata from results
     const cleanDbResults = dbResults
-      ? Object.fromEntries(Object.entries(dbResults).filter(([k]) => !k.startsWith('_')))
+      ? stripInternalFields(dbResults)
       : dbResults
 
     return NextResponse.json({

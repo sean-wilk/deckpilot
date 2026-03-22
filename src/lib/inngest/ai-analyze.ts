@@ -4,8 +4,8 @@ import { deckAnalyses } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { streamStructuredOutput } from '@/lib/ai/providers'
 import { buildDeckContext } from '@/lib/ai/context'
-import { getAnalysisPrompt } from '@/lib/ai/prompts'
-import { getAnalysisHeadlinePrompt } from '@/lib/ai/prompts'
+import { getAnalysisPrompt, getAnalysisHeadlinePrompt } from '@/lib/ai/prompts'
+import { setProgress, markFailed } from './helpers'
 import { DeckAnalysisSchema, DeckAnalysisHeadlineSchema } from '@/lib/ai/schemas'
 import type { DeckAnalysis, DeckAnalysisHeadline } from '@/lib/ai/schemas'
 import { toJSONSchema } from 'zod'
@@ -38,37 +38,13 @@ export const analyzeDeck = inngest.createFunction(
 
       // Step 2: Build context
       const context = await step.run('build-context', async () => {
-        await db.update(deckAnalyses)
-          .set({
-            results: {
-              _progress: {
-                currentStep: 2,
-                totalSteps: 6,
-                stepLabel: 'Building deck context...',
-                startedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          })
-          .where(eq(deckAnalyses.id, analysisId))
+        await setProgress(analysisId, 2, 6, 'Building deck context...')
         return await buildDeckContext(deckId)
       })
 
       // Step 3: Build prompts (both headline and full)
       const prompts = await step.run('build-prompt', async () => {
-        await db.update(deckAnalyses)
-          .set({
-            results: {
-              _progress: {
-                currentStep: 3,
-                totalSteps: 6,
-                stepLabel: 'Preparing AI prompts...',
-                startedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          })
-          .where(eq(deckAnalyses.id, analysisId))
+        await setProgress(analysisId, 3, 6, 'Preparing AI prompts...')
         const headlinePrompt = getAnalysisHeadlinePrompt(context)
         const fullPrompt = getAnalysisPrompt(context)
         return { headlinePrompt, fullPrompt }
@@ -76,19 +52,7 @@ export const analyzeDeck = inngest.createFunction(
 
       // Step 4: Quick AI call for headline fields (bracket, strengths, weaknesses)
       const headlines = await step.run('call-ai-headlines', async () => {
-        await db.update(deckAnalyses)
-          .set({
-            results: {
-              _progress: {
-                currentStep: 4,
-                totalSteps: 6,
-                stepLabel: 'AI analyzing deck overview...',
-                startedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          })
-          .where(eq(deckAnalyses.id, analysisId))
+        await setProgress(analysisId, 4, 6, 'AI analyzing deck overview...')
 
         const jsonSchema = toJSONSchema(DeckAnalysisHeadlineSchema) as {
           properties?: Record<string, unknown>
@@ -123,21 +87,7 @@ export const analyzeDeck = inngest.createFunction(
 
       // Step 5: Full AI call for complete analysis
       const result = await step.run('call-ai-full', async () => {
-        await db.update(deckAnalyses)
-          .set({
-            results: {
-              ...headlines.object,
-              _partial: true,
-              _progress: {
-                currentStep: 5,
-                totalSteps: 6,
-                stepLabel: 'AI completing full analysis...',
-                startedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          })
-          .where(eq(deckAnalyses.id, analysisId))
+        await setProgress(analysisId, 5, 6, 'AI completing full analysis...', { ...headlines.object, _partial: true })
 
         const jsonSchema = toJSONSchema(DeckAnalysisSchema) as {
           properties?: Record<string, unknown>
@@ -166,16 +116,7 @@ export const analyzeDeck = inngest.createFunction(
 
       return { success: true, analysisId }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-
-      await db.update(deckAnalyses)
-        .set({
-          status: 'failed',
-          errorMessage,
-          results: { _completedAt: new Date().toISOString(), _error: true },
-        })
-        .where(eq(deckAnalyses.id, analysisId))
-
+      await markFailed(analysisId, error)
       throw error
     }
   }

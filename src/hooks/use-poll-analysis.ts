@@ -88,7 +88,6 @@ export function usePollAnalysis<T>(
         const text = await res.text()
         throw new Error(`Trigger failed: ${res.status} ${text}`)
       }
-      await res.json()
       setData({ status: 'pending', results: null, errorMessage: null, progress: null, isPartial: false, history: [] })
 
       // Start polling
