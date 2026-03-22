@@ -15,6 +15,7 @@ type UsePollResult<T> = {
 }
 
 const POLL_INTERVAL = 3000
+const POLL_TIMEOUT = 5 * 60 * 1000 // 5 minutes
 
 export function usePollAnalysis<T>(
   deckId: string,
@@ -24,6 +25,7 @@ export function usePollAnalysis<T>(
   const [isPolling, setIsPolling] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const endpoint = analysisType === 'full'
     ? `/api/ai/analysis/${deckId}`
@@ -46,6 +48,10 @@ export function usePollAnalysis<T>(
         if (intervalRef.current) {
           clearInterval(intervalRef.current)
           intervalRef.current = null
+        }
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+          timeoutRef.current = null
         }
       }
     } catch (err) {
@@ -72,6 +78,16 @@ export function usePollAnalysis<T>(
 
       // Start polling
       intervalRef.current = setInterval(poll, POLL_INTERVAL)
+
+      // Add timeout to stop polling after 5 minutes
+      timeoutRef.current = setTimeout(() => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+        setIsPolling(false)
+        setError(new Error('Analysis timed out after 5 minutes. Please try again.'))
+      }, POLL_TIMEOUT)
     } catch (err) {
       setIsPolling(false)
       setError(err instanceof Error ? err : new Error(String(err)))
@@ -87,6 +103,7 @@ export function usePollAnalysis<T>(
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
   }, [])
 

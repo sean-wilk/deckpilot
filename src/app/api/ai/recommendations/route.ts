@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { deckAnalyses, decks } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, or, lt } from 'drizzle-orm'
 import { inngest } from '@/lib/inngest/client'
 
 export async function POST(request: Request) {
@@ -20,6 +20,21 @@ export async function POST(request: Request) {
       .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
       .limit(1)
     if (!deck[0]) return new Response('Deck not found', { status: 404 })
+
+    // Clean up stale pending/processing records older than 10 minutes
+    const staleThreshold = new Date(Date.now() - 10 * 60 * 1000)
+    await db.update(deckAnalyses)
+      .set({ status: 'failed', errorMessage: 'Timed out' })
+      .where(
+        and(
+          eq(deckAnalyses.deckId, deckId),
+          or(
+            eq(deckAnalyses.status, 'pending'),
+            eq(deckAnalyses.status, 'processing')
+          ),
+          lt(deckAnalyses.createdAt, staleThreshold)
+        )
+      )
 
     const [analysis] = await db.insert(deckAnalyses).values({
       deckId,
