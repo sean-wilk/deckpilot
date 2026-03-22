@@ -58,7 +58,7 @@ async function fuzzyMatchCardName(
       colorIdentity: cards.colorIdentity,
     })
     .from(cards)
-    .where(sql`LOWER(${cards.name}) LIKE LOWER(${escapedName}) || '%'`)
+    .where(sql`LOWER(${cards.name}) LIKE LOWER(${escapedName}) || '%' ESCAPE '\\'`)
     .limit(1)
 
   if (startsWithResults.length > 0) {
@@ -75,7 +75,7 @@ async function fuzzyMatchCardName(
       colorIdentity: cards.colorIdentity,
     })
     .from(cards)
-    .where(sql`LOWER(${cards.name}) LIKE '%' || LOWER(${escapedName}) || '%'`)
+    .where(sql`LOWER(${cards.name}) LIKE '%' || LOWER(${escapedName}) || '%' ESCAPE '\\'`)
     .limit(1)
 
   if (containsResults.length > 0) {
@@ -195,7 +195,6 @@ export async function validateCardBatch(
       results.set(name, { valid: false, cardId: dbCard.id, cardName: name, reason: 'duplicate', dbCard })
       continue
     }
-    if (!isBasicLand) seenCardIds.add(dbCard.id)
 
     const isColorless = !dbCard.colorIdentity || dbCard.colorIdentity.length === 0
     if (!isColorless) {
@@ -205,6 +204,8 @@ export async function validateCardBatch(
         continue
       }
     }
+
+    if (!isBasicLand) seenCardIds.add(dbCard.id)
 
     // Check if this was a fuzzy match (name differs from DB name)
     const wasFuzzyMatched = dbCard.name.toLowerCase() !== name.toLowerCase()

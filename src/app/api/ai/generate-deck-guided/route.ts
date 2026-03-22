@@ -57,11 +57,13 @@ function scaleCategories(
   categories: CategoryPlan[],
   targetNonLands: number
 ): CategoryPlan[] {
-  const currentTotal = categories.reduce((sum, c) => sum + c.count, 0)
-  if (currentTotal === targetNonLands) return categories
+  // Ensure no zero-count categories from AI
+  const safeCats = categories.map(c => ({ ...c, count: Math.max(1, c.count) }))
+  const currentTotal = safeCats.reduce((sum, c) => sum + c.count, 0)
+  if (currentTotal === targetNonLands) return safeCats
 
   const ratio = targetNonLands / currentTotal
-  const scaled = categories.map(c => ({
+  const scaled = safeCats.map(c => ({
     ...c,
     count: Math.max(1, Math.round(c.count * ratio)),
   }))

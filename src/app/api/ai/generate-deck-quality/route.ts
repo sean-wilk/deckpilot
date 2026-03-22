@@ -193,6 +193,13 @@ RULES:
             }
           }
 
+          // Check abort before expensive parsing
+          if (request.signal.aborted) {
+            clearInterval(heartbeatInterval)
+            controller.close()
+            return
+          }
+
           // === PARSE PASS 1 ===
           console.log('[quality] Collected text length:', collectedText.length)
           console.log('[quality] First 500 chars:', collectedText.substring(0, 500))
