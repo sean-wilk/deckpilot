@@ -14,6 +14,11 @@ const AnalysisTabContent = dynamic(
   { loading: () => <TabLoadingState label="Analysis" />, ssr: false }
 )
 
+const ManaFixingTabContent = dynamic(
+  () => import('@/components/ai/mana-fixing-tab-content').then((m) => ({ default: m.ManaFixingTabContent })),
+  { loading: () => <div className="animate-pulse h-48 bg-muted rounded-lg" />, ssr: false }
+)
+
 const RecommendationsTabContent = dynamic(
   () => import('@/components/ai/recommendations-tab-content').then((m) => ({ default: m.RecommendationsTabContent })),
   { loading: () => <TabLoadingState label="Recommendations" />, ssr: false }
@@ -37,7 +42,7 @@ export interface DeckContentTabsProps {
   children?: React.ReactNode // for DeckCardGrid and sideboard section
 }
 
-type TabId = 'deck' | 'analysis' | 'recommendations' | 'details'
+type TabId = 'deck' | 'analysis' | 'mana_fixing' | 'recommendations' | 'details'
 
 interface Tab {
   id: TabId
@@ -48,6 +53,7 @@ interface Tab {
 const TABS: Tab[] = [
   { id: 'deck', label: 'Deck', notificationKey: '' },
   { id: 'analysis', label: 'Analysis', notificationKey: 'analysis' },
+  { id: 'mana_fixing', label: 'Mana Fixing', notificationKey: 'mana_fixing' },
   { id: 'recommendations', label: 'Recommendations', notificationKey: 'recommendations' },
   { id: 'details', label: 'Details', notificationKey: '' },
 ]
@@ -135,6 +141,7 @@ export function DeckContentTabs({
   const [recommendationsFocus, setRecommendationsFocus] = useState<string | undefined>(undefined)
   const [notifications, setNotifications] = useState<Record<string, boolean>>({
     analysis: false,
+    mana_fixing: false,
     recommendations: false,
   })
 
@@ -151,13 +158,15 @@ export function DeckContentTabs({
 
     async function checkSavedData() {
       try {
-        const [analysisRes, recsRes] = await Promise.allSettled([
+        const [analysisRes, manaFixingRes, recsRes] = await Promise.allSettled([
           fetch(`/api/decks/${deckId}/analysis/saved`, { method: 'HEAD' }),
+          fetch(`/api/decks/${deckId}/mana-fixing/saved`, { method: 'HEAD' }),
           fetch(`/api/decks/${deckId}/recommendations/saved`, { method: 'HEAD' }),
         ])
 
         setNotifications({
           analysis: analysisRes.status === 'fulfilled' && analysisRes.value.ok,
+          mana_fixing: manaFixingRes.status === 'fulfilled' && manaFixingRes.value.ok,
           recommendations: recsRes.status === 'fulfilled' && recsRes.value.ok,
         })
       } catch {
@@ -210,10 +219,21 @@ export function DeckContentTabs({
               targetBracket={targetBracket}
               categoryTargets={categoryTargets}
               deckCardNames={deckCardNames}
+              onSwitchToManaFixing={() => handleTabChange('mana_fixing')}
               onSwitchToRecommendations={(focus) => {
                 handleTabChange('recommendations')
                 setRecommendationsFocus(focus)
               }}
+            />
+          </div>
+        )}
+
+        {/* Mana Fixing tab */}
+        {activeTabId === 'mana_fixing' && (
+          <div role="tabpanel" aria-label="Mana Fixing">
+            <ManaFixingTabContent
+              deckId={deckId}
+              deckCardNames={deckCardNames}
             />
           </div>
         )}
