@@ -82,18 +82,3 @@ Analyze this Commander deck thoroughly. Evaluate each functional category, asses
 - Focus on actionable insights, not restating card text`
 }
 
-/** Headline-only analysis prompt for progressive streaming (Call 1). */
-export function getAnalysisHeadlinePrompt(context: Parameters<typeof getAnalysisPrompt>[0]): string {
-  const basePrompt = getAnalysisPrompt(context)
-  return `${basePrompt}
-
-IMPORTANT: For this pass, ONLY provide these fields:
-- overall_assessment
-- bracket (1-5)
-- bracket_confidence (0-100)
-- bracket_reasoning
-- strengths (array of strings)
-- weaknesses (array of strings)
-
-Do NOT include categories, synergy, salt, lands, or any other fields. Be concise but thorough on these specific fields.`
-}

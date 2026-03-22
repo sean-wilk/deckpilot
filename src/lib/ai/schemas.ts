@@ -116,18 +116,6 @@ export const CommanderSuggestionsSchema = z.object({
   })),
 })
 
-/** Subset schema for progressive streaming — Call 1 (quick headline fields) */
-export const DeckAnalysisHeadlineSchema = z.object({
-  overall_assessment: z.string(),
-  bracket: z.number(),
-  bracket_confidence: z.number(),
-  bracket_reasoning: z.string(),
-  strengths: z.array(z.string()),
-  weaknesses: z.array(z.string()),
-})
-
-export type DeckAnalysisHeadline = z.infer<typeof DeckAnalysisHeadlineSchema>
-
 export type DeckAnalysis = z.infer<typeof DeckAnalysisSchema>
 export type SwapRecommendation = z.infer<typeof SwapRecommendationSchema>
 export type FindReplacement = z.infer<typeof FindReplacementSchema>

@@ -94,7 +94,7 @@ export function usePollAnalysis<T>(
         errorMessage: null,
         progress: {
           currentStep: 1,
-          totalSteps: analysisType === 'full' ? 6 : 5,
+          totalSteps: 5,
           stepLabel: analysisType === 'full' ? 'Starting analysis...' : 'Starting recommendations...',
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),

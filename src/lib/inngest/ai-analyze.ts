@@ -2,12 +2,12 @@ import { inngest } from './client'
 import { db } from '@/lib/db'
 import { deckAnalyses } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { streamStructuredOutput } from '@/lib/ai/providers'
+import { streamStructuredOutputWithProgress } from '@/lib/ai/providers'
 import { buildDeckContext } from '@/lib/ai/context'
-import { getAnalysisPrompt, getAnalysisHeadlinePrompt } from '@/lib/ai/prompts'
+import { getAnalysisPrompt } from '@/lib/ai/prompts'
 import { setProgress, markFailed } from './helpers'
-import { DeckAnalysisSchema, DeckAnalysisHeadlineSchema } from '@/lib/ai/schemas'
-import type { DeckAnalysis, DeckAnalysisHeadline } from '@/lib/ai/schemas'
+import { DeckAnalysisSchema } from '@/lib/ai/schemas'
+import type { DeckAnalysis } from '@/lib/ai/schemas'
 import { toJSONSchema } from 'zod'
 
 export const analyzeDeck = inngest.createFunction(
@@ -26,7 +26,7 @@ export const analyzeDeck = inngest.createFunction(
             results: {
               _progress: {
                 currentStep: 1,
-                totalSteps: 6,
+                totalSteps: 5,
                 stepLabel: 'Starting analysis...',
                 startedAt: now,
                 updatedAt: now,
@@ -38,71 +38,70 @@ export const analyzeDeck = inngest.createFunction(
 
       // Step 2: Build context
       const context = await step.run('build-context', async () => {
-        await setProgress(analysisId, 2, 6, 'Building deck context...')
+        await setProgress(analysisId, 2, 5, 'Building deck context...')
         return await buildDeckContext(deckId)
       })
 
-      // Step 3: Build prompts (both headline and full)
-      const prompts = await step.run('build-prompt', async () => {
-        await setProgress(analysisId, 3, 6, 'Preparing AI prompts...')
-        const headlinePrompt = getAnalysisHeadlinePrompt(context)
-        const fullPrompt = getAnalysisPrompt(context)
-        return { headlinePrompt, fullPrompt }
+      // Step 3: Build prompt
+      const prompt = await step.run('build-prompt', async () => {
+        await setProgress(analysisId, 3, 5, 'Preparing AI prompt...')
+        return getAnalysisPrompt(context)
       })
 
-      // Step 4: Quick AI call for headline fields (bracket, strengths, weaknesses)
-      const headlines = await step.run('call-ai-headlines', async () => {
-        await setProgress(analysisId, 4, 6, 'AI analyzing deck overview...')
-
-        const jsonSchema = toJSONSchema(DeckAnalysisHeadlineSchema) as {
-          properties?: Record<string, unknown>
-          required?: string[]
-        }
-        const object = await streamStructuredOutput<DeckAnalysisHeadline>(
-          'analysis',
-          prompts.headlinePrompt,
-          jsonSchema,
-          2048,
-        )
-
-        // Save partial results immediately — UI picks these up
-        await db.update(deckAnalyses)
-          .set({
-            results: {
-              ...object,
-              _partial: true,
-              _progress: {
-                currentStep: 4,
-                totalSteps: 6,
-                stepLabel: 'Headlines ready, completing full analysis...',
-                startedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          })
-          .where(eq(deckAnalyses.id, analysisId))
-
-        return { object }
-      })
-
-      // Step 5: Full AI call for complete analysis
-      const result = await step.run('call-ai-full', async () => {
-        await setProgress(analysisId, 5, 6, 'AI completing full analysis...', { ...headlines.object, _partial: true })
+      // Step 4: Call AI with progressive streaming
+      const result = await step.run('call-ai-streaming', async () => {
+        await setProgress(analysisId, 4, 5, 'AI analyzing deck...')
 
         const jsonSchema = toJSONSchema(DeckAnalysisSchema) as {
           properties?: Record<string, unknown>
           required?: string[]
         }
-        const object = await streamStructuredOutput<DeckAnalysis>(
+
+        const fieldLabels: Record<string, string> = {
+          overall_assessment: 'Reading overall assessment...',
+          bracket: 'Evaluating power level...',
+          bracket_reasoning: 'Evaluating power level...',
+          categories: 'Analyzing card categories...',
+          strengths: 'Identifying strengths...',
+          weaknesses: 'Finding weaknesses...',
+          synergy_score: 'Evaluating synergies...',
+          key_synergies: 'Evaluating synergies...',
+          salt_total: 'Calculating salt score...',
+          lands_analysis: 'Analyzing mana base...',
+          land_count: 'Analyzing mana base...',
+        }
+
+        const onProgress = async (partial: Record<string, unknown>, newKeys: string[]) => {
+          const label = newKeys.reduce((best, k) => fieldLabels[k] ?? best, 'AI analyzing deck...')
+
+          await db.update(deckAnalyses)
+            .set({
+              results: {
+                ...partial,
+                _partial: true,
+                _progress: {
+                  currentStep: 4,
+                  totalSteps: 5,
+                  stepLabel: label,
+                  startedAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+              },
+            })
+            .where(eq(deckAnalyses.id, analysisId))
+        }
+
+        const object = await streamStructuredOutputWithProgress<DeckAnalysis>(
           'analysis',
-          prompts.fullPrompt,
+          prompt,
           jsonSchema,
           6144,
+          onProgress,
         )
         return { object }
       })
 
-      // Step 6: Save final results
+      // Step 5: Save final results
       await step.run('save-results', async () => {
         await db.update(deckAnalyses)
           .set({
