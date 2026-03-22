@@ -88,8 +88,23 @@ export function usePollAnalysis<T>(
         const text = await res.text()
         throw new Error(`Trigger failed: ${res.status} ${text}`)
       }
-      setData({ status: 'pending', results: null, errorMessage: null, progress: null, isPartial: false, history: [] })
+      setData({
+        status: 'pending',
+        results: null,
+        errorMessage: null,
+        progress: {
+          currentStep: 1,
+          totalSteps: analysisType === 'full' ? 6 : 5,
+          stepLabel: analysisType === 'full' ? 'Starting analysis...' : 'Starting recommendations...',
+          startedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        isPartial: false,
+        history: [],
+      })
 
+      // Immediate first poll to catch fast-completing steps
+      setTimeout(poll, 500)
       // Start polling
       intervalRef.current = setInterval(poll, POLL_INTERVAL)
 
@@ -102,7 +117,7 @@ export function usePollAnalysis<T>(
       setIsPolling(false)
       setError(err instanceof Error ? err : new Error(String(err)))
     }
-  }, [postEndpoint, poll, stopPolling])
+  }, [postEndpoint, poll, stopPolling, analysisType])
 
   const cancel = useCallback(async () => {
     stopPolling()
