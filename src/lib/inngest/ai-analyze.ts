@@ -67,7 +67,6 @@ export const analyzeDeck = inngest.createFunction(
           synergy_score: 'Evaluating synergies...',
           key_synergies: 'Evaluating synergies...',
           salt_total: 'Calculating salt score...',
-          lands_analysis: 'Analyzing mana base...',
           land_count: 'Analyzing mana base...',
         }
 
