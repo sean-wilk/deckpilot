@@ -118,32 +118,36 @@ export function DeckPageClient({
   // ── Shared legality issues (lifted from banner so grids can show warning rings) ──
   const [legalityIssues, setLegalityIssues] = useState<LegalityIssue[]>([])
 
-  // ── Card roles (Task 4.4) ──────────────────────────────────────────────────
+  // ── Card roles derived from analysis categories ──────────────────────────
   const [cardRoles, setCardRoles] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
-    async function fetchCardRoles() {
+    async function deriveCardRoles() {
       try {
         const res = await fetch(`/api/ai/analysis/${deckId}`)
         if (!res.ok) return
         const data = await res.json()
-        const roles = data?.result?.card_roles
-        if (roles && typeof roles === 'object') {
-          const map: Record<string, string[]> = {}
-          for (const [cardId, roleValue] of Object.entries(roles)) {
-            if (Array.isArray(roleValue)) {
-              map[cardId] = roleValue as string[]
-            } else if (typeof roleValue === 'string') {
-              map[cardId] = [roleValue]
-            }
+        const results = data?.results
+        if (!results?.categories) return
+
+        const map: Record<string, string[]> = {}
+        const allCategories = [
+          ...(results.categories.core ?? []),
+          ...(results.categories.deck_specific ?? []),
+        ]
+        for (const cat of allCategories) {
+          const role = cat.name.toLowerCase().replace(/\s+/g, '-')
+          for (const cardName of cat.cards ?? []) {
+            if (!map[cardName]) map[cardName] = []
+            if (!map[cardName].includes(role)) map[cardName].push(role)
           }
-          setCardRoles(map)
         }
+        setCardRoles(map)
       } catch {
         // ignore fetch errors
       }
     }
-    void fetchCardRoles()
+    void deriveCardRoles()
   }, [deckId])
 
   // ── Display controls (Task 5.3) ────────────────────────────────────────────

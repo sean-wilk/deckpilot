@@ -2,14 +2,15 @@ import { inngest } from './client'
 import { db } from '@/lib/db'
 import { deckAnalyses, swapRecommendations, cards } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { chat } from '@tanstack/ai'
-import { getAiModel } from '@/lib/ai/providers'
+import { streamStructuredOutput } from '@/lib/ai/providers'
 import { buildDeckContext } from '@/lib/ai/context'
 import { getRecommendationPrompt } from '@/lib/ai/prompts-recommendations'
 import { SwapRecommendationSchema } from '@/lib/ai/schemas'
+import type { SwapRecommendation } from '@/lib/ai/schemas'
+import { toJSONSchema } from 'zod'
 
 export const recommendCards = inngest.createFunction(
-  { id: 'ai-deck-recommendations', retries: 2 },
+  { id: 'ai-deck-recommendations', retries: 1 },
   { event: 'ai/recommendations.requested' },
   async ({ event, step }) => {
     const { deckId, analysisId, focus, spiciness } = event.data as {
@@ -47,15 +48,18 @@ export const recommendCards = inngest.createFunction(
         return p
       })
 
-      // Step 4: Call AI
+      // Step 4: Call AI with streaming to avoid connection timeout
       const result = await step.run('call-ai', async () => {
-        const { model, maxTokens } = await getAiModel('recommendations')
-        const object = await chat({
-          adapter: model,
-          messages: [{ role: 'user', content: prompt }],
-          outputSchema: SwapRecommendationSchema,
-          maxTokens,
-        })
+        const jsonSchema = toJSONSchema(SwapRecommendationSchema) as {
+          properties?: Record<string, unknown>
+          required?: string[]
+        }
+        const object = await streamStructuredOutput<SwapRecommendation>(
+          'recommendations',
+          prompt,
+          jsonSchema,
+          4096,
+        )
         return { object }
       })
 

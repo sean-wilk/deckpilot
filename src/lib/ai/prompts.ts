@@ -68,14 +68,16 @@ Each category object should include: name, count, target, rating, cards (array o
 When mentioning any Magic card by name in your response text, ALWAYS wrap it in double brackets: [[Card Name]].
 Examples: [[Sol Ring]], [[Kodama's Reach]], [[Thassa, Deep-Dwelling]].
 This applies to ALL text fields: notes, reasoning, recommendations, mana_curve_notes, color_balance_notes, etc.
-Do NOT bracket card names inside structured arrays (like the \`cards\` array in categories or \`card_roles\`).
+Do NOT bracket card names inside structured arrays (like the \`cards\` array in categories).
 
 ## Task
-Analyze this Commander deck thoroughly. Evaluate each functional category, assess the mana base, identify synergies and dead cards, estimate power level bracket, and assess salt level.
+Analyze this Commander deck. Evaluate functional categories, mana base, synergies, dead cards, bracket, and salt level. Suggest ideal category targets.
 
-Suggest ideal category targets for this specific deck. Consider commander strategy, color identity, archetype, bracket. Populate suggested_targets in response.
-
-## Card Role Tagging
-For each non-land card in the deck, assign 1-3 functional roles. Populate the card_roles array.
-Roles should be lowercase, hyphenated. Examples: "ramp", "card-draw", "targeted-removal", "board-wipes", "win-con", "protection", "sac-outlet", "blink", "counter-magic", "burn", "tribal-synergy", "equipment", "token-generator", "damage-doubler"`
+## Output Guidelines
+- Be CONCISE: keep notes and reasoning to 1-2 sentences per field
+- Limit strengths/weaknesses to 5-6 items max
+- Limit key_synergies to 6-8 items max
+- Limit dead_cards to 5-7 items max
+- Category notes: 1-2 sentences, not exhaustive card lists in prose
+- Focus on actionable insights, not restating card text`
 }
