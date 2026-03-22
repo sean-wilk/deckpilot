@@ -6,7 +6,7 @@ import { chat } from '@tanstack/ai'
 import { getAiModel } from '@/lib/ai/providers'
 import { buildDeckContext } from '@/lib/ai/context'
 import { getManaFixingPrompt } from '@/lib/ai/prompts-mana-fixing'
-import { SwapRecommendationSchema } from '@/lib/ai/schemas'
+import { LandsAnalysisSchema } from '@/lib/ai/schemas'
 
 export const manaFixingAnalysis = inngest.createFunction(
   { id: 'ai-mana-fixing', retries: 2 },
@@ -38,7 +38,7 @@ export const manaFixingAnalysis = inngest.createFunction(
         const object = await chat({
           adapter: model,
           messages: [{ role: 'user', content: prompt }],
-          outputSchema: SwapRecommendationSchema,
+          outputSchema: LandsAnalysisSchema,
           maxTokens,
         })
         return { object }
@@ -48,7 +48,7 @@ export const manaFixingAnalysis = inngest.createFunction(
       await step.run('save-results', async () => {
         await db.update(deckAnalyses)
           .set({
-            results: result.object,
+            results: { ...result.object, _completedAt: new Date().toISOString() },
             status: 'complete',
             promptTokens: 0,
             completionTokens: 0,

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { deckAnalyses, decks } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
+import { stripInternalFields } from '@/lib/ai/utils'
 
 export async function GET(
   _request: Request,
@@ -10,21 +11,17 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new Response('Unauthorized', { status: 401 })
 
     const { deckId } = await params
 
+    // Verify deck ownership
     const deckRows = await db.select({ id: decks.id }).from(decks)
       .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
       .limit(1)
-    if (deckRows.length === 0) {
-      return new Response('Deck not found', { status: 404 })
-    }
+    if (deckRows.length === 0) return new Response('Deck not found', { status: 404 })
 
-    // Fetch the most recent record regardless of status (for polling support)
     const allRows = await db
       .select({
         id: deckAnalyses.id,
@@ -43,36 +40,45 @@ export async function GET(
       .orderBy(desc(deckAnalyses.createdAt))
 
     if (allRows.length === 0) {
-      return NextResponse.json({ latest: null, status: null, history: [] })
+      return NextResponse.json({ results: null, status: null, progress: null, isPartial: false, errorMessage: null, history: [] })
     }
 
     const mostRecent = allRows[0]
     const currentStatus = mostRecent.status as 'pending' | 'processing' | 'complete' | 'failed'
+    const rawResults = mostRecent.results as Record<string, unknown> | null
 
-    // Build the latest payload based on status
-    let latest: unknown
+    let results: unknown
+    let progress: Record<string, unknown> | null = null
+    let isPartial = false
+
     if (currentStatus === 'complete') {
-      latest = mostRecent.results
-    } else if (currentStatus === 'failed') {
-      latest = null
+      results = rawResults ? stripInternalFields(rawResults) : rawResults
+    } else if (currentStatus === 'processing' || currentStatus === 'pending') {
+      progress = (rawResults?._progress as Record<string, unknown>) ?? null
+      if (rawResults?._partial === true) {
+        results = stripInternalFields(rawResults)
+        isPartial = true
+      } else {
+        results = null
+      }
     } else {
-      // pending or processing
-      latest = null
+      results = null
     }
 
-    // History only includes complete records
     const completeRows = allRows.filter((row) => row.status === 'complete')
     const history = completeRows.map((row) => ({
       id: row.id,
       createdAt: row.createdAt,
     }))
 
-    const response: Record<string, unknown> = { latest, status: currentStatus, history }
-    if (currentStatus === 'failed') {
-      response.errorMessage = mostRecent.errorMessage ?? null
-    }
-
-    return NextResponse.json(response)
+    return NextResponse.json({
+      results,
+      status: currentStatus,
+      history,
+      errorMessage: currentStatus === 'failed' ? (mostRecent.errorMessage ?? null) : null,
+      progress,
+      isPartial,
+    })
   } catch (error) {
     console.error('[Mana Fixing GET] error:', error)
     return new Response(

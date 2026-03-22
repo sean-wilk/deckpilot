@@ -30,7 +30,7 @@ const POLL_TIMEOUT = 10 * 60 * 1000 // 10 minutes
 
 export function usePollAnalysis<T>(
   deckId: string,
-  analysisType: 'full' | 'swap_suggestion'
+  analysisType: 'full' | 'swap_suggestion' | 'mana_fixing'
 ): UsePollResult<T> {
   const [data, setData] = useState<UsePollResult<T>['data']>(null)
   const [isPolling, setIsPolling] = useState(false)
@@ -38,13 +38,20 @@ export function usePollAnalysis<T>(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const endpoint = analysisType === 'full'
-    ? `/api/ai/analysis/${deckId}`
-    : `/api/ai/recommendations/${deckId}`
+  const endpointMap = {
+    full: `/api/ai/analysis/${deckId}`,
+    swap_suggestion: `/api/ai/recommendations/${deckId}`,
+    mana_fixing: `/api/ai/mana-fixing/${deckId}`,
+  }
 
-  const postEndpoint = analysisType === 'full'
-    ? '/api/ai/analyze'
-    : '/api/ai/recommendations'
+  const postEndpointMap = {
+    full: '/api/ai/analyze',
+    swap_suggestion: '/api/ai/recommendations',
+    mana_fixing: '/api/ai/mana-fixing',
+  }
+
+  const endpoint = endpointMap[analysisType]
+  const postEndpoint = postEndpointMap[analysisType]
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -95,7 +102,11 @@ export function usePollAnalysis<T>(
         progress: {
           currentStep: 1,
           totalSteps: 5,
-          stepLabel: analysisType === 'full' ? 'Starting analysis...' : 'Starting recommendations...',
+          stepLabel: analysisType === 'full'
+            ? 'Starting analysis...'
+            : analysisType === 'mana_fixing'
+            ? 'Starting mana analysis...'
+            : 'Starting recommendations...',
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
