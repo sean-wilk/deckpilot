@@ -3,7 +3,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 import { createServerClient } from '@supabase/ssr'
 
 const protectedRoutes = ['/decks', '/settings', '/admin', '/api']
-const publicApiRoutes = ['/api/auth']
+const publicApiRoutes = ['/api/auth', '/api/inngest']
 const authRoutes = ['/login', '/register', '/forgot-password']
 
 export async function middleware(request: NextRequest) {
