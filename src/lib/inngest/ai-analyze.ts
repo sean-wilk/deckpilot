@@ -71,8 +71,15 @@ export const analyzeDeck = inngest.createFunction(
           land_count: 'Analyzing mana base...',
         }
 
+        const totalExpectedKeys = 15 // approximate number of top-level keys in DeckAnalysis
+        let reportedKeyCount = 0
+
         const onProgress = async (partial: Record<string, unknown>, newKeys: string[]) => {
+          reportedKeyCount += newKeys.length
           const label = newKeys.reduce((best, k) => fieldLabels[k] ?? best, 'AI analyzing deck...')
+
+          // Show section-based progress within the streaming step
+          const sectionProgress = Math.min(reportedKeyCount, totalExpectedKeys)
 
           await db.update(deckAnalyses)
             .set({
@@ -82,7 +89,7 @@ export const analyzeDeck = inngest.createFunction(
                 _progress: {
                   currentStep: 4,
                   totalSteps: 5,
-                  stepLabel: label,
+                  stepLabel: `${label} (${sectionProgress}/${totalExpectedKeys} sections)`,
                   startedAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                 },
@@ -95,7 +102,7 @@ export const analyzeDeck = inngest.createFunction(
           'analysis',
           prompt,
           jsonSchema,
-          6144,
+          8192,
           onProgress,
         )
         return { object }
