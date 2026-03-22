@@ -63,13 +63,14 @@ export async function GET(request: NextRequest) {
           sql`SELECT id, name, mana_cost, cmc, type_line, oracle_text, colors, color_identity,
               image_uris, card_faces, prices, rarity, set_code, edhrec_rank
           FROM cards
-          WHERE search_vector @@ to_tsquery('simple', ${query.split(/\s+/).map(w => w + ':*').join(' & ')})
-          ORDER BY ts_rank(search_vector, to_tsquery('simple', ${query.split(/\s+/).map(w => w + ':*').join(' & ')})) DESC
+          WHERE search_vector @@ websearch_to_tsquery('simple', ${query})
+          ORDER BY ts_rank(search_vector, websearch_to_tsquery('simple', ${query})) DESC
           LIMIT ${limit}`
         )
         rawRows = [...ftsResult] as unknown[]
       } catch {
         // search_vector column may not exist yet, fall back to ilike
+        const escapedQuery = query.replace(/%/g, '\\%').replace(/_/g, '\\_')
         rawRows = await db.select({
           id: cards.id,
           name: cards.name,
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
           edhrecRank: cards.edhrecRank,
         })
         .from(cards)
-        .where(ilike(cards.name, `${query}%`))
+        .where(ilike(cards.name, `${escapedQuery}%`))
         .limit(limit)
       }
     }

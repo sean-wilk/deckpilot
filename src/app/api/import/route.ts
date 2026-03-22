@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
     const suggestions = []
 
     for (const parsed of parsedCards) {
+      const escapedName = parsed.name.replace(/%/g, '\\%').replace(/_/g, '\\_')
+
       // Try exact match first
       let result = await db.select().from(cards)
         .where(eq(cards.name, parsed.name)).limit(1)
@@ -29,13 +31,13 @@ export async function POST(request: NextRequest) {
       // Try case-insensitive match
       if (result.length === 0) {
         result = await db.select().from(cards)
-          .where(ilike(cards.name, parsed.name)).limit(1)
+          .where(ilike(cards.name, escapedName)).limit(1)
       }
 
       // Try partial match for DFCs (e.g., "Delver of Secrets" matching "Delver of Secrets // Insectile Aberration")
       if (result.length === 0) {
         result = await db.select().from(cards)
-          .where(ilike(cards.name, `${parsed.name} //%`)).limit(1)
+          .where(ilike(cards.name, `${escapedName} //%`)).limit(1)
       }
 
       if (result.length > 0) {

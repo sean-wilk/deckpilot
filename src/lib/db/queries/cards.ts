@@ -13,5 +13,6 @@ export async function findCardByName(name: string) {
 }
 
 export async function searchCards(query: string, limit = 20) {
-  return db.select().from(cards).where(ilike(cards.name, `${query}%`)).limit(limit)
+  const escaped = query.replace(/%/g, '\\%').replace(/_/g, '\\_')
+  return db.select().from(cards).where(ilike(cards.name, `${escaped}%`)).limit(limit)
 }
