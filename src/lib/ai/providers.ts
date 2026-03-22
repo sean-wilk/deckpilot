@@ -158,9 +158,53 @@ export async function streamStructuredOutputWithProgress<T>(
   })
 
   let jsonBuffer = ''
-  let previousFields: Record<string, unknown> = {}
   const reportedKeys = new Set<string>()
   let lastFlushTime = Date.now()
+
+  /**
+   * Flush completed fields to onProgress callback.
+   * A field is "complete" when a subsequent key exists in the parsed object
+   * (meaning the AI has moved past it). On final flush, all keys are complete.
+   */
+  async function flush(isFinal: boolean) {
+    const closed = closePartialJson(jsonBuffer)
+    try {
+      const parsed = JSON.parse(closed) as Record<string, unknown>
+      const keys = Object.keys(parsed)
+
+      const completeFields: Record<string, unknown> = {}
+      const newKeys: string[] = []
+
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]
+        if (reportedKeys.has(key)) {
+          // Already reported — include in partial for full DB write
+          completeFields[key] = parsed[key]
+          continue
+        }
+
+        // A key is complete if:
+        // - There's a subsequent key (AI has moved past it), OR
+        // - This is the final flush (stream ended, all keys are final)
+        const hasNextKey = i < keys.length - 1
+        if (hasNextKey || isFinal) {
+          completeFields[key] = parsed[key]
+          newKeys.push(key)
+          reportedKeys.add(key)
+        }
+      }
+
+      if (newKeys.length > 0) {
+        try {
+          await onProgress(completeFields, newKeys)
+        } catch (err) {
+          console.warn('[streaming] onProgress callback error:', err)
+        }
+      }
+    } catch {
+      // Can't parse even with closing — skip this flush cycle
+    }
+  }
 
   for await (const event of stream) {
     if (
@@ -169,50 +213,15 @@ export async function streamStructuredOutputWithProgress<T>(
     ) {
       jsonBuffer += event.delta.partial_json
 
-      // Check if flush interval has elapsed
       if (Date.now() - lastFlushTime >= flushIntervalMs) {
         lastFlushTime = Date.now()
-
-        const closed = closePartialJson(jsonBuffer)
-        try {
-          const parsed = JSON.parse(closed) as Record<string, unknown>
-
-          // Find stable fields: unchanged since last flush AND not yet reported
-          const stableFields: Record<string, unknown> = {}
-          const newKeys: string[] = []
-
-          for (const [key, value] of Object.entries(parsed)) {
-            if (reportedKeys.has(key)) {
-              // Already reported — include in partial but don't count as new
-              stableFields[key] = value
-              continue
-            }
-            if (
-              key in previousFields &&
-              JSON.stringify(previousFields[key]) === JSON.stringify(value)
-            ) {
-              // Stable: same value as last flush — safe to report
-              stableFields[key] = value
-              newKeys.push(key)
-              reportedKeys.add(key)
-            }
-          }
-
-          previousFields = parsed
-
-          if (newKeys.length > 0) {
-            try {
-              await onProgress(stableFields, newKeys)
-            } catch (err) {
-              console.warn('[streaming] onProgress callback error:', err)
-            }
-          }
-        } catch {
-          // Can't parse even with closing — skip this flush cycle
-        }
+        await flush(false)
       }
     }
   }
+
+  // Final flush: report all remaining unreported fields
+  await flush(true)
 
   // Final parse from the completed message
   const message = await stream.finalMessage()
