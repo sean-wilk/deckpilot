@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ManaSymbol } from '@/components/ui/mana-symbol'
 import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
+import type { LandsAnalysis } from '@/lib/ai/schemas'
 
 // ─── MTG color constants ───────────────────────────────────────────────────────
 
@@ -34,20 +35,6 @@ const FIXING_QUALITY_CONFIG: Record<string, { label: string; color: string; bg: 
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface LandsAnalysis {
-  total_lands: number
-  target_lands: number
-  basic_count: number
-  nonbasic_count: number
-  color_production?: Partial<Record<string, number>>
-  color_requirements?: Partial<Record<string, number>>
-  fixing_sources: number
-  utility_lands: number
-  mana_curve_notes: string
-  color_balance_notes: string
-  recommendations: string[]
-}
 
 interface LandsSectionProps {
   landsAnalysis: LandsAnalysis | null
