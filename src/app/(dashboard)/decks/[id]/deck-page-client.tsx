@@ -228,7 +228,7 @@ export function DeckPageClient({
 
           <DeckCardGrid
             deckId={deckId}
-            cards={mainboardCards}
+            cards={[...commanderCards, ...mainboardCards]}
             isOwner={isOwner}
             cardRoles={cardRoles}
             groupBy={groupBy}
