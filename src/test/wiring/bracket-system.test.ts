@@ -29,7 +29,8 @@ describe('Bracket system (1-5)', () => {
   })
 
   it('decks list page imports from shared constants', () => {
-    const source = readSource('src/app/(dashboard)/decks/page.tsx')
+    // Bracket rendering was extracted to DecksGrid client component
+    const source = readSource('src/components/decks-grid.tsx')
     expect(source).toMatch(/from.*constants\/brackets/)
     expect(source).not.toMatch(/BRACKET_LABELS\s*=\s*\{/)
   })
