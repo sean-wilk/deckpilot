@@ -167,7 +167,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
         toughness: cmd.toughness,
         rarity: cmd.rarity,
         setCode: cmd.setCode,
-        prices: (cmd.prices ?? null) as DeckCardEntry['prices'],
+        prices: (cmd.prices as Record<string, string | null>) ?? null,
       }]
     }
   }
