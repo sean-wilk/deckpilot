@@ -128,6 +128,16 @@ export async function buildDeckContext(deckId: string) {
   return {
     deckName: deck[0].name,
     commander: commander[0]?.name ?? 'Unknown',
+    commanderDetails: commander[0] ? {
+      name: commander[0].name,
+      manaCost: commander[0].manaCost,
+      typeLine: commander[0].typeLine,
+      oracleText: commander[0].oracleText,
+      colorIdentity: commander[0].colorIdentity,
+      power: commander[0].power,
+      toughness: commander[0].toughness,
+    } : null,
+    colorIdentity: commander[0]?.colorIdentity ?? null,
     partner: deck[0].partnerId ? 'Has partner' : null,
     targetBracket: deck[0].targetBracket,
     budgetLimitCents: deck[0].budgetLimitCents,

@@ -3,6 +3,16 @@ import { SENSIBLE_DEFAULTS, CATEGORY_LABELS } from '@/lib/constants/category-def
 
 export function getAnalysisPrompt(context: {
   commander: string
+  commanderDetails?: {
+    name: string
+    manaCost: string | null
+    typeLine: string
+    oracleText: string | null
+    colorIdentity: string[] | null
+    power: string | null
+    toughness: string | null
+  } | null
+  colorIdentity?: string[] | null
   targetBracket: number
   budgetLimitCents: number | null
   cardCount: number
@@ -45,6 +55,13 @@ Game Changers list: ${GAME_CHANGERS.join(', ')}
 
 ## Current Deck
 Commander: ${context.commander}
+${context.commanderDetails ? `Mana Cost: ${context.commanderDetails.manaCost ?? 'N/A'}
+Type: ${context.commanderDetails.typeLine}
+Text: ${context.commanderDetails.oracleText ?? 'N/A'}
+${context.commanderDetails.power != null ? `P/T: ${context.commanderDetails.power}/${context.commanderDetails.toughness}` : ''}
+Color Identity: ${context.commanderDetails.colorIdentity?.join(', ') ?? 'Unknown'}` : `Color Identity: ${context.colorIdentity?.join(', ') ?? 'Unknown'}`}
+
+IMPORTANT: The commander's color identity is EXACTLY as listed above. Do not assume additional colors. A deck's color identity is defined by and limited to its commander's color identity.
 Target Bracket: ${context.targetBracket}
 ${context.budgetLimitCents ? `Budget Limit: $${(context.budgetLimitCents / 100).toFixed(2)}` : ''}
 Card Count: ${context.cardCount}/100

@@ -30,7 +30,9 @@ export function AnalysisProgressBar({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>{stepLabel}</span>
-        <span className="tabular-nums">{currentStep}/{totalSteps}</span>
+        <span className="inline-flex items-center rounded-full bg-foreground text-background px-2 py-0.5 text-2xs font-semibold tabular-nums">
+          {currentStep}/{totalSteps}
+        </span>
       </div>
       <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
         <div

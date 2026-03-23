@@ -75,7 +75,16 @@ export const analyzeDeck = inngest.createFunction(
 
         const onProgress = async (partial: Record<string, unknown>, newKeys: string[]) => {
           reportedKeyCount += newKeys.length
-          const label = newKeys.reduce((best, k) => fieldLabels[k] ?? best, 'AI analyzing deck...')
+          // Show what's coming next (the key NOT yet reported), not what just arrived
+          const allSchemaKeys = [
+            'overall_assessment', 'bracket', 'bracket_confidence', 'bracket_reasoning',
+            'strengths', 'weaknesses', 'salt_total', 'salt_notes',
+            'categories', 'land_count', 'recommended_land_count', 'mana_base_notes',
+            'fixing_quality', 'synergy_score', 'key_synergies', 'dead_cards', 'suggested_targets',
+          ]
+          const reportedSoFar = new Set([...Object.keys(partial)])
+          const nextUnreported = allSchemaKeys.find(k => !reportedSoFar.has(k))
+          const label = nextUnreported ? (fieldLabels[nextUnreported] ?? 'Completing analysis...') : 'Completing analysis...'
 
           // Show section-based progress within the streaming step
           const sectionProgress = Math.min(reportedKeyCount, totalExpectedKeys)
