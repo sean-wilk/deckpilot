@@ -126,9 +126,18 @@ export default async function DeckPage({ params }: DeckPageProps) {
     quantity: row.quantity,
   }))
 
-  // Non-commander cards for the grid
-  const gridCards = deckCardEntries.filter((c) => !c.isCommander)
-  const commanderCards = deckCardEntries.filter((c) => c.isCommander)
+  // Identify commander cards: first try isCommander flag, then match by commanderId
+  let commanderCards = deckCardEntries.filter((c) => c.isCommander)
+  if (commanderCards.length === 0 && deck.commanderId) {
+    // Commander tracked via decks.commanderId but not flagged in deck_cards
+    // Find the card in the deck entries by cardId match
+    const commanderEntry = deckCardEntries.find((c) => c.cardId === deck.commanderId)
+    if (commanderEntry) {
+      commanderCards = [{ ...commanderEntry, isCommander: true }]
+    }
+  }
+  const commanderCardIds = new Set(commanderCards.map(c => c.deckCardId))
+  const gridCards = deckCardEntries.filter((c) => !commanderCardIds.has(c.deckCardId))
   const mainboardCards = gridCards.filter((c) => !c.isSideboard)
   const sideboardCards = gridCards.filter((c) => c.isSideboard)
 
