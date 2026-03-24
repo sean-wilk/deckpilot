@@ -1,6 +1,6 @@
 import { inngest } from './client'
 import { db } from '@/lib/db'
-import { deckStructureAnalyses, deckCards, cards } from '@/lib/db/schema'
+import { deckStructureAnalyses, deckCards, cards, decks } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { streamStructuredOutput } from '@/lib/ai/providers'
 import { getStructureStrategyPrompt, getStructureAssignmentPrompt } from '@/lib/ai/structure-prompts'
@@ -43,7 +43,7 @@ export const structureDeck = inngest.createFunction(
       })
 
       // Step 2: Build context from deck data
-      const context = await step.run('build-context', async () => {
+      const { context, deckCardIdMap } = await step.run('build-context', async () => {
         await setStructureProgress(structureAnalysisId, {}, {
           currentStep: 2,
           totalSteps: 6,
@@ -51,16 +51,16 @@ export const structureDeck = inngest.createFunction(
         })
 
         // Fetch deck with commander info
-        const { decks } = await import('@/lib/db/schema')
         const [deck] = await db.select().from(decks).where(eq(decks.id, deckId)).limit(1)
         if (!deck) throw new Error('Deck not found')
 
         const [commander] = await db.select().from(cards).where(eq(cards.id, deck.commanderId)).limit(1)
         if (!commander) throw new Error('Commander not found')
 
-        // Fetch all deck cards with card details
+        // Fetch all deck cards with card details, including deckCardId for later persistence
         const deckCardRows = await db
           .select({
+            deckCardId: deckCards.id,
             name: cards.name,
             typeLine: cards.typeLine,
             oracleText: cards.oracleText,
@@ -72,6 +72,12 @@ export const structureDeck = inngest.createFunction(
           .innerJoin(cards, eq(deckCards.cardId, cards.id))
           .where(eq(deckCards.deckId, deckId))
 
+        // Build name → deckCardId map once, reused in persist step
+        const nameToId: Record<string, string> = {}
+        for (const row of deckCardRows) {
+          nameToId[row.name] = row.deckCardId
+        }
+
         // Get existing manual overrides
         const existingCategories = await getCardCategoriesForDeck(deckId)
         const manualOverrides = existingCategories
@@ -81,7 +87,9 @@ export const structureDeck = inngest.createFunction(
         const promptContext: StructurePromptContext = {
           commanderName: commander.name,
           commanderColorIdentity: commander.colorIdentity,
-          cards: deckCardRows,
+          // Strip deckCardId — it's internal plumbing, not part of the prompt context type
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          cards: deckCardRows.map(({ deckCardId: _unused, ...card }) => card),
           philosophy: deck.philosophy,
           archetype: deck.archetype,
           targetBracket: deck.targetBracket,
@@ -90,7 +98,7 @@ export const structureDeck = inngest.createFunction(
           manualOverrides,
         }
 
-        return promptContext
+        return { context: promptContext, deckCardIdMap: nameToId }
       })
 
       // Step 3: Phase 1 — Strategy analysis (categories + targets)
@@ -114,9 +122,9 @@ export const structureDeck = inngest.createFunction(
           4096,
         )
 
-        // Persist Phase 1 results
+        // Persist Phase 1 results with updated step label
         await setStructureProgress(structureAnalysisId, { strategy }, {
-          currentStep: 3,
+          currentStep: 4,
           totalSteps: 6,
           stepLabel: 'Structure strategy complete',
         })
@@ -156,31 +164,10 @@ export const structureDeck = inngest.createFunction(
           stepLabel: 'Saving card assignments...',
         })
 
-        // Build card name → deckCardId lookup
-        const deckCardMap = await db
-          .select({
-            deckCardId: deckCards.id,
-            cardName: cards.name,
-          })
-          .from(deckCards)
-          .innerJoin(cards, eq(deckCards.cardId, cards.id))
-          .where(eq(deckCards.deckId, deckId))
-
-        const nameToId = new Map<string, string>()
-        for (const row of deckCardMap) {
-          nameToId.set(row.cardName, row.deckCardId)
-        }
-
         // Delete old AI-generated categories (preserves manual overrides)
         await deleteAiCategories(deckId)
 
-        // Combine assignments + landAssignments
-        const allAssignments = [
-          ...phase2.assignments,
-          ...phase2.landAssignments,
-        ]
-
-        // Resolve card names to deckCardIds and build insert rows
+        // Combine assignments + landAssignments, resolve to deckCardIds
         const insertRows: {
           deckCardId: string
           category: string
@@ -188,8 +175,8 @@ export const structureDeck = inngest.createFunction(
           source: string
         }[] = []
 
-        for (const assignment of allAssignments) {
-          const deckCardId = nameToId.get(assignment.cardName)
+        for (const assignment of [...phase2.assignments, ...phase2.landAssignments]) {
+          const deckCardId = deckCardIdMap[assignment.cardName]
           if (!deckCardId) {
             console.warn(`[structure-deck] Card not found in deck: "${assignment.cardName}"`)
             continue

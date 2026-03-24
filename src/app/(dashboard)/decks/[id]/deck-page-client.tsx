@@ -124,6 +124,17 @@ export function DeckPageClient({
   useEffect(() => {
     async function deriveCardRoles() {
       try {
+        // Prefer persisted structure categories over analysis-derived roles
+        const structureRes = await fetch(`/api/ai/structure/${deckId}`)
+        if (structureRes.ok) {
+          const structureData = await structureRes.json()
+          if (structureData?.cardRoles && Object.keys(structureData.cardRoles).length > 0) {
+            setCardRoles(structureData.cardRoles as Record<string, string[]>)
+            return
+          }
+        }
+
+        // Fall back to analysis-derived categories
         const res = await fetch(`/api/ai/analysis/${deckId}`)
         if (!res.ok) return
         const data = await res.json()

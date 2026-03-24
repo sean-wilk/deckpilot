@@ -202,6 +202,60 @@ export function AddProviderForm() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="modelStructureStrategy">Structure Strategy Model</Label>
+              <select
+                id="modelStructureStrategy"
+                name="modelStructureStrategy"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Not set</option>
+                {models.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="modelStructureAssignment">Structure Assignment Model</Label>
+              <select
+                id="modelStructureAssignment"
+                name="modelStructureAssignment"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Not set</option>
+                {models.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxTokensStructureStrategy">Max Tokens (Structure Strategy)</Label>
+              <Input
+                id="maxTokensStructureStrategy"
+                name="maxTokensStructureStrategy"
+                type="number"
+                min="1"
+                defaultValue={4096}
+                className="font-mono"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxTokensStructureAssignment">Max Tokens (Structure Assignment)</Label>
+              <Input
+                id="maxTokensStructureAssignment"
+                name="maxTokensStructureAssignment"
+                type="number"
+                min="1"
+                defaultValue={8192}
+                className="font-mono"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="usageLimitDailyCents">Daily Usage Limit (cents, optional)</Label>
             <Input

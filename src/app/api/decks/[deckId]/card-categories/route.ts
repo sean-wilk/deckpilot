@@ -24,7 +24,12 @@ export async function PUT(
       action: 'set' | 'add' | 'remove'
     }
 
-    if (!deckCardId || !Array.isArray(categories) || !['set', 'add', 'remove'].includes(action)) {
+    if (
+      !deckCardId ||
+      !Array.isArray(categories) ||
+      !['set', 'add', 'remove'].includes(action) ||
+      (action !== 'set' && categories.length === 0)
+    ) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
     }
 

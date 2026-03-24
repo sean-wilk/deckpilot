@@ -72,14 +72,9 @@ ${context.cardList}
 ${context.edhrecData ? `### EDHREC Synergy Data (top cards)\n${context.edhrecData}` : ''}
 
 ## Response Categories
-Your analysis MUST include these CORE categories (always required):
-- Ramp, Card Draw, Targeted Removal, Board Wipes, Win Conditions, Protection
-
-Additionally, suggest 1-4 DECK-SPECIFIC categories based on this deck's strategy and archetype. Examples: "Burn Spells", "Sacrifice Outlets", "Blink Effects", "Equipment", "Tribal Synergy".
-
-Format categories as: { core: [...], deck_specific: [...] }
-
-Each category object should include: name, count, target, rating, cards (array of card names in that category), notes.
+Include a 'structureSummary' field (2-3 sentences) briefly assessing the deck's functional category health.
+Example: "Ramp is critically low at 6 pieces for a 5-color deck. Card draw relies on cantrips rather than engines. Removal suite is adequate but lacks enchantment answers."
+Do NOT list individual cards per category or provide detailed category breakdowns — the Structure tab handles this.
 
 ## Card Name Formatting (MANDATORY)
 When mentioning any Magic card by name in your response text, ALWAYS wrap it in double brackets: [[Card Name]].

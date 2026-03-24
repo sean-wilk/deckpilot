@@ -41,8 +41,9 @@ export async function POST(
     const slug = name.toLowerCase().replace(/\s+/g, '-')
     const current: string[] = deck.customCategories ?? []
 
-    // Avoid duplicates (check by both name and slug)
-    if (current.includes(name)) {
+    // Avoid duplicates by both exact name and computed slug
+    const slugExists = current.some(n => n.toLowerCase().replace(/\s+/g, '-') === slug)
+    if (current.includes(name) || slugExists) {
       return NextResponse.json({ customCategories: current })
     }
 
