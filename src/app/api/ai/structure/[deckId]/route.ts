@@ -18,8 +18,8 @@ export async function GET(
 
     const { deckId } = await params
 
-    // Fetch the most recent structure analysis record
-    const rows = await db
+    // Fetch all structure analysis records ordered by most recent first
+    const allRows = await db
       .select({
         id: deckStructureAnalyses.id,
         status: deckStructureAnalyses.status,
@@ -30,17 +30,27 @@ export async function GET(
       .from(deckStructureAnalyses)
       .where(eq(deckStructureAnalyses.deckId, deckId))
       .orderBy(desc(deckStructureAnalyses.createdAt))
-      .limit(1)
 
     // Fetch card categories and build roles map
     const categories = await getCardCategoriesForDeck(deckId)
     const cardRoles = buildCardRolesMap(categories)
 
-    if (rows.length === 0) {
-      return NextResponse.json({ analysis: null, cardRoles })
+    if (allRows.length === 0) {
+      return NextResponse.json({ analysis: null, cardRoles: {}, history: [] })
     }
 
-    const row = rows[0]
+    const row = allRows[0]
+
+    // Build history from all completed analyses.
+    // Only include full results when the current analysis is complete
+    // to avoid sending huge payloads during polling.
+    const completeRows = allRows.filter((r) => r.status === 'complete')
+    const history = completeRows.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      results: allRows[0]?.status === 'complete' ? r.results : null,
+    }))
+
     return NextResponse.json({
       analysis: {
         id: row.id,
@@ -50,6 +60,7 @@ export async function GET(
         createdAt: row.createdAt,
       },
       cardRoles,
+      history,
     })
   } catch (error) {
     console.error('[Structure GET] error:', error)

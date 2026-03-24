@@ -32,6 +32,7 @@ type StructurePollData = {
   progress: ProgressInfo | null
   cardRoles: Record<string, string[]>
   createdAt: string | null
+  history: { id: string; createdAt: string; results: unknown | null }[]
 } | null
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -78,8 +79,14 @@ function LoadingDots() {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 // ─── CategoryCard ─────────────────────────────────────────────────────────────
@@ -388,6 +395,9 @@ export function StructureTabContent({
   const [isPolling, setIsPolling] = useState(false)
   const [pollError, setPollError] = useState<Error | null>(null)
   const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [selectedHistoryAnalysis, setSelectedHistoryAnalysis] = useState<StructureStrategy | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [, startTransition] = useTransition()
@@ -432,6 +442,7 @@ export function StructureTabContent({
         progress,
         cardRoles: json.cardRoles ?? {},
         createdAt: analysis.createdAt ?? null,
+        history: json.history ?? [],
       })
 
       if (analysis.status === 'complete' || analysis.status === 'failed') {
@@ -474,6 +485,8 @@ export function StructureTabContent({
     setPollError(null)
     setIsPolling(true)
     setBannerDismissed(false)
+    setSelectedHistoryId(null)
+    setSelectedHistoryAnalysis(null)
 
     try {
       const res = await fetch(`/api/ai/structure`, {
@@ -498,6 +511,7 @@ export function StructureTabContent({
         },
         cardRoles: {},
         createdAt: null,
+        history: data?.history ?? [],
       })
       // Immediate first poll
       setTimeout(poll, 500)
@@ -519,6 +533,22 @@ export function StructureTabContent({
     toast.info('Structure analysis cancelled')
   }
 
+  function handleSelectHistory(id: string) {
+    const entry = data?.history?.find((h) => h.id === id)
+    if (!entry) return
+    setSelectedHistoryId(id)
+    setHistoryOpen(false)
+    // If selecting the most recent, show live data
+    if (id === data?.history?.[0]?.id) {
+      setSelectedHistoryAnalysis(null)
+      setSelectedHistoryId(null)
+      return
+    }
+    // Load the selected history's strategy results
+    const strategy = (entry.results as Record<string, unknown> | null)?.strategy as StructureStrategy | null ?? null
+    setSelectedHistoryAnalysis(strategy)
+  }
+
   // ── Accept targets from banner ────────────────────────────────────────────
 
   function handleAcceptTargets(targets: Record<string, number>) {
@@ -533,7 +563,9 @@ export function StructureTabContent({
 
   const isLoading = isPolling || data?.status === 'pending' || data?.status === 'processing'
   const results = data?.results ?? null
-  const hasResult = !!results && results.categories.length > 0
+  const displayedResults = selectedHistoryAnalysis ?? results
+  const hasResult = !!displayedResults && displayedResults.categories.length > 0
+  const hasHistory = (data?.history ?? []).length > 1
 
   let errorMessage: string | null = null
   if (data?.status === 'failed') {
@@ -542,7 +574,7 @@ export function StructureTabContent({
     errorMessage = pollError.message
   }
 
-  const showBanner = hasResult && !bannerDismissed && categoryTargets === null
+  const showBanner = hasResult && !bannerDismissed && categoryTargets === null && !selectedHistoryId
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -591,6 +623,61 @@ export function StructureTabContent({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* History dropdown */}
+          {hasHistory && !isLoading && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((v) => !v)}
+                className="flex items-center gap-1.5 rounded border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <svg
+                  className="size-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                History
+                <svg
+                  className={cn('size-3 transition-transform', historyOpen ? 'rotate-180' : '')}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {historyOpen && (
+                <div className="absolute right-0 top-full mt-1 z-50 min-w-[200px] rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
+                  {data?.history.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => handleSelectHistory(entry.id)}
+                      className={cn(
+                        'flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-muted transition-colors',
+                        (selectedHistoryId ?? data?.history[0]?.id) === entry.id
+                          ? 'bg-muted/60 font-medium'
+                          : ''
+                      )}
+                    >
+                      <span>{formatDate(entry.createdAt)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {isLoading ? (
             <button
               type="button"
@@ -683,17 +770,17 @@ export function StructureTabContent({
       )}
 
       {/* ── Results ── */}
-      {hasResult && results && (
+      {hasResult && displayedResults && (
         <div className="space-y-6">
           {/* Gap Analysis */}
-          {results.gapAnalysis && (
+          {displayedResults.gapAnalysis && (
             <div className="rounded-lg border border-warning-border bg-warning-muted p-4 space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-warning shrink-0" />
                 <span className="text-section-label">Gap Analysis</span>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                <AnalysisTextWithCards text={results.gapAnalysis} cardNames={deckCardNames} />
+                <AnalysisTextWithCards text={displayedResults.gapAnalysis} cardNames={deckCardNames} />
               </p>
             </div>
           )}
@@ -701,7 +788,7 @@ export function StructureTabContent({
           {/* Target recommendation banner */}
           {showBanner && (
             <TargetRecommendationBanner
-              results={results}
+              results={displayedResults}
               currentTargets={categoryTargets}
               onAcceptAll={handleAcceptTargets}
               onModify={() => setBannerDismissed(true)}
@@ -710,18 +797,18 @@ export function StructureTabContent({
           )}
 
           {/* Summary */}
-          {results.summary && (
+          {displayedResults.summary && (
             <div className="space-y-1.5">
               <span className="text-section-label">Summary</span>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                <AnalysisTextWithCards text={results.summary} cardNames={deckCardNames} />
+                <AnalysisTextWithCards text={displayedResults.summary} cardNames={deckCardNames} />
               </p>
             </div>
           )}
 
           {/* Category grid */}
-          {results.categories.length > 0 && (
-            <CategoryGrid categories={results.categories} cardNames={deckCardNames} />
+          {displayedResults.categories.length > 0 && (
+            <CategoryGrid categories={displayedResults.categories} cardNames={deckCardNames} />
           )}
         </div>
       )}
