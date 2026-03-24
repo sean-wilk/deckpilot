@@ -7,7 +7,7 @@ import { adminAiConfig } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { decrypt } from '@/lib/encryption'
 
-export type TaskType = 'analysis' | 'recommendations' | 'chat' | 'generation'
+export type TaskType = 'analysis' | 'recommendations' | 'chat' | 'generation' | 'structure_strategy' | 'structure_assignment'
 
 export async function getAiModel(taskType: TaskType) {
   const configs = await db.select().from(adminAiConfig)
@@ -26,6 +26,8 @@ export async function getAiModel(taskType: TaskType) {
     recommendations: config.modelRecommendations,
     chat: config.modelChat,
     generation: config.modelGeneration,
+    structure_strategy: config.modelStructureStrategy ?? config.modelAnalysis,
+    structure_assignment: config.modelStructureAssignment ?? config.modelGeneration,
   }[taskType]
 
   const maxTokens = {
@@ -33,6 +35,8 @@ export async function getAiModel(taskType: TaskType) {
     recommendations: config.maxTokensRecommendations,
     chat: config.maxTokensChat,
     generation: config.maxTokensGeneration,
+    structure_strategy: config.maxTokensStructureStrategy ?? 4096,
+    structure_assignment: config.maxTokensStructureAssignment ?? 8192,
   }[taskType]
 
   // Pass API key directly to avoid process.env mutation race condition
@@ -144,6 +148,8 @@ export async function streamStructuredOutputWithProgress<T>(
     recommendations: config.modelRecommendations,
     chat: config.modelChat,
     generation: config.modelGeneration,
+    structure_strategy: config.modelStructureStrategy ?? config.modelAnalysis,
+    structure_assignment: config.modelStructureAssignment ?? config.modelGeneration,
   }[taskType]
 
   const maxTokens = Math.min({
@@ -151,6 +157,8 @@ export async function streamStructuredOutputWithProgress<T>(
     recommendations: config.maxTokensRecommendations,
     chat: config.maxTokensChat,
     generation: config.maxTokensGeneration,
+    structure_strategy: config.maxTokensStructureStrategy ?? 4096,
+    structure_assignment: config.maxTokensStructureAssignment ?? 8192,
   }[taskType], maxTokensCap)
 
   const stream = client.messages.stream({
@@ -172,10 +180,6 @@ export async function streamStructuredOutputWithProgress<T>(
   let jsonBuffer = ''
   const reportedKeys = new Set<string>()
   let lastFlushTime = Date.now()
-  let deltaCount = 0
-  let flushCount = 0
-
-  console.log('[STREAM-DEBUG] Starting streaming iteration...')
 
   /**
    * Flush completed fields to onProgress callback.
@@ -183,13 +187,10 @@ export async function streamStructuredOutputWithProgress<T>(
    * (meaning the AI has moved past it). On final flush, all keys are complete.
    */
   async function flush(isFinal: boolean) {
-    flushCount++
     const closed = closePartialJson(jsonBuffer)
     try {
       const parsed = JSON.parse(closed) as Record<string, unknown>
       const keys = Object.keys(parsed)
-
-      console.log(`[STREAM-DEBUG] Flush #${flushCount} (final=${isFinal}): buffer=${jsonBuffer.length} chars, parsed ${keys.length} keys: ${keys.join(', ')}`)
 
       const completeFields: Record<string, unknown> = {}
       const newKeys: string[] = []
@@ -210,18 +211,14 @@ export async function streamStructuredOutputWithProgress<T>(
       }
 
       if (newKeys.length > 0) {
-        console.log(`[STREAM-DEBUG] Reporting ${newKeys.length} new keys: ${newKeys.join(', ')}`)
         try {
           await onProgress(completeFields, newKeys)
-          console.log(`[STREAM-DEBUG] onProgress DB write SUCCESS`)
         } catch (err) {
-          console.warn('[STREAM-DEBUG] onProgress callback ERROR:', err)
+          console.warn('onProgress callback error:', err)
         }
-      } else {
-        console.log(`[STREAM-DEBUG] No new keys to report`)
       }
     } catch {
-      console.log(`[STREAM-DEBUG] Flush #${flushCount} PARSE FAILED (final=${isFinal}), buffer=${jsonBuffer.length} chars, last 50: ...${jsonBuffer.slice(-50)}`)
+      // Partial JSON not yet parseable — will retry on next flush
     }
   }
 
@@ -230,22 +227,14 @@ export async function streamStructuredOutputWithProgress<T>(
       event.type === 'content_block_delta' &&
       event.delta.type === 'input_json_delta'
     ) {
-      deltaCount++
       jsonBuffer += event.delta.partial_json
-
-      if (deltaCount === 1) {
-        console.log(`[STREAM-DEBUG] First input_json_delta received! Content: ${event.delta.partial_json.substring(0, 100)}`)
-      }
 
       if (Date.now() - lastFlushTime >= flushIntervalMs) {
         lastFlushTime = Date.now()
-        console.log(`[STREAM-DEBUG] Time-based flush triggered (delta #${deltaCount}, buffer ${jsonBuffer.length} chars)`)
         await flush(false)
       }
     }
   }
-
-  console.log(`[STREAM-DEBUG] Stream iteration complete. Total deltas: ${deltaCount}, buffer: ${jsonBuffer.length} chars, flushes: ${flushCount}`)
 
   // Final flush: report all remaining unreported fields
   await flush(true)

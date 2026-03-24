@@ -5,6 +5,7 @@ export { syncEdhrecCommander, syncEdhrecSaltScores } from '@/lib/edhrec/sync'
 export { analyzeDeck } from './ai-analyze'
 export { recommendCards } from './ai-recommendations'
 export { manaFixingAnalysis } from './ai-mana-fixing'
+export { structureDeck } from './ai-structure'
 
 export const helloWorld = inngest.createFunction(
   { id: 'hello-world' },
