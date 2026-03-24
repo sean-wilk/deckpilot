@@ -29,9 +29,9 @@ type StructurePollData = {
   status: string
   results: StructureStrategy | null
   errorMessage: string | null
-  progress: ProgressInfo
-  isPartial: boolean
-  history: { id: string; createdAt: string; results?: StructureStrategy | null }[]
+  progress: ProgressInfo | null
+  cardRoles: Record<string, string[]>
+  createdAt: string | null
 } | null
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -413,8 +413,28 @@ export function StructureTabContent({
       const res = await fetch(endpoint)
       if (!res.ok) throw new Error(`Poll failed: ${res.status}`)
       const json = await res.json()
-      setData(json)
-      if (json?.status === 'complete' || json?.status === 'failed') {
+
+      // Unwrap the API response: { analysis: { status, results, ... }, cardRoles }
+      const analysis = json?.analysis
+      if (!analysis) {
+        setData(null)
+        return
+      }
+
+      // Results are stored as { strategy: StructureStrategy, assignments, _completedAt }
+      const strategy = analysis.results?.strategy ?? null
+      const progress = analysis.results?._progress ?? null
+
+      setData({
+        status: analysis.status,
+        results: strategy,
+        errorMessage: analysis.errorMessage ?? null,
+        progress,
+        cardRoles: json.cardRoles ?? {},
+        createdAt: analysis.createdAt ?? null,
+      })
+
+      if (analysis.status === 'complete' || analysis.status === 'failed') {
         stopPolling()
       }
     } catch (err) {
@@ -476,8 +496,8 @@ export function StructureTabContent({
           startedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
-        isPartial: false,
-        history: [],
+        cardRoles: {},
+        createdAt: null,
       })
       // Immediate first poll
       setTimeout(poll, 500)
@@ -548,9 +568,9 @@ export function StructureTabContent({
           </div>
           <div>
             <h2 className="text-lg font-semibold">Structure Analysis</h2>
-            {data?.history?.[0]?.createdAt && !isLoading && (
+            {data?.createdAt && !isLoading && (
               <p className="text-xs-plus text-muted-foreground">
-                Last analyzed: {formatDate(data.history[0].createdAt)}
+                Last analyzed: {formatDate(data.createdAt)}
               </p>
             )}
             {isLoading && data?.progress && (
