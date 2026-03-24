@@ -24,6 +24,7 @@ export async function GET(
         id: deckStructureAnalyses.id,
         status: deckStructureAnalyses.status,
         results: deckStructureAnalyses.results,
+        errorMessage: deckStructureAnalyses.errorMessage,
         createdAt: deckStructureAnalyses.createdAt,
       })
       .from(deckStructureAnalyses)
@@ -45,6 +46,7 @@ export async function GET(
         id: row.id,
         status: row.status,
         results: row.results,
+        errorMessage: row.errorMessage,
         createdAt: row.createdAt,
       },
       cardRoles,
