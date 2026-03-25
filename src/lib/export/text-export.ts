@@ -6,46 +6,38 @@ interface ExportCard {
   board?: 'main' | 'side' | 'maybe'
 }
 
-export function exportMTGO(cards: ExportCard[]): string {
+function buildSection(
+  cards: ExportCard[],
+  formatLine: (c: ExportCard) => string,
+): string {
+  return cards.map(formatLine).join('\n')
+}
+
+function buildExport(
+  cards: ExportCard[],
+  formatLine: (c: ExportCard) => string,
+): string {
   const mainboard = cards.filter(c => c.board !== 'side' && c.board !== 'maybe')
   const sideboard = cards.filter(c => c.board === 'side')
   const maybeboard = cards.filter(c => c.board === 'maybe')
 
-  let output = mainboard
-    .map(c => `${c.quantity} ${c.name}`)
-    .join('\n')
+  let output = buildSection(mainboard, formatLine)
 
   if (sideboard.length > 0) {
-    output += '\n\nSideboard\n'
-    output += sideboard.map(c => `${c.quantity} ${c.name}`).join('\n')
+    output += '\n\nSideboard\n' + buildSection(sideboard, formatLine)
   }
 
   if (maybeboard.length > 0) {
-    output += '\n\nMaybeboard\n'
-    output += maybeboard.map(c => `${c.quantity} ${c.name}`).join('\n')
+    output += '\n\nMaybeboard\n' + buildSection(maybeboard, formatLine)
   }
 
   return output
 }
 
+export function exportMTGO(cards: ExportCard[]): string {
+  return buildExport(cards, c => `${c.quantity} ${c.name}`)
+}
+
 export function exportArena(cards: ExportCard[]): string {
-  const mainboard = cards.filter(c => c.board !== 'side' && c.board !== 'maybe')
-  const sideboard = cards.filter(c => c.board === 'side')
-  const maybeboard = cards.filter(c => c.board === 'maybe')
-
-  let output = mainboard
-    .map(c => `${c.quantity} ${c.name}${c.setCode ? ` (${c.setCode})` : ''}`)
-    .join('\n')
-
-  if (sideboard.length > 0) {
-    output += '\n\nSideboard\n'
-    output += sideboard.map(c => `${c.quantity} ${c.name}${c.setCode ? ` (${c.setCode})` : ''}`).join('\n')
-  }
-
-  if (maybeboard.length > 0) {
-    output += '\n\nMaybeboard\n'
-    output += maybeboard.map(c => `${c.quantity} ${c.name}${c.setCode ? ` (${c.setCode})` : ''}`).join('\n')
-  }
-
-  return output
+  return buildExport(cards, c => `${c.quantity} ${c.name}${c.setCode ? ` (${c.setCode})` : ''}`)
 }

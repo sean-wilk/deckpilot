@@ -242,7 +242,7 @@ export function DeckPageClient({
 
           <DeckCardGrid
             deckId={deckId}
-            cards={[...commanderCards, ...mainboardCards]}
+            cards={[...commanderCards, ...mainboardCards, ...sideboardCards, ...maybeboardCards]}
             isOwner={isOwner}
             cardRoles={cardRoles}
             groupBy={groupBy}
@@ -250,58 +250,6 @@ export function DeckPageClient({
             legalityIssues={legalityIssues}
             pushUndo={pushUndo}
           />
-
-          {/* Sideboard section */}
-          <section className="pt-2">
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-foreground">
-                Sideboard ({sideboardCards.length})
-              </h3>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-            {sideboardCards.length > 0 ? (
-              <DeckCardGrid
-                deckId={deckId}
-                cards={sideboardCards}
-                isOwner={isOwner}
-                cardRoles={cardRoles}
-                groupBy={groupBy}
-                cardSize={cardSize}
-                legalityIssues={legalityIssues}
-                pushUndo={pushUndo}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No sideboard cards
-              </p>
-            )}
-          </section>
-
-          {/* Maybeboard section */}
-          <section className="pt-2">
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-foreground">
-                Maybeboard ({maybeboardCards.length})
-              </h3>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-            {maybeboardCards.length > 0 ? (
-              <DeckCardGrid
-                deckId={deckId}
-                cards={maybeboardCards}
-                isOwner={isOwner}
-                cardRoles={cardRoles}
-                groupBy={groupBy}
-                cardSize={cardSize}
-                legalityIssues={legalityIssues}
-                pushUndo={pushUndo}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No maybeboard cards
-              </p>
-            )}
-          </section>
         </DeckContentTabs>
       </div>
 
