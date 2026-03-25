@@ -19,7 +19,7 @@ interface DeckCardEntry {
   cardId: string
   cardType: string
   isCommander: boolean
-  isSideboard: boolean
+  board: 'main' | 'side' | 'maybe'
   quantity?: number
   name: string
   manaCost: string | null
@@ -51,6 +51,7 @@ interface DeckPageClientProps {
   }
   mainboardCards: DeckCardEntry[]
   sideboardCards: DeckCardEntry[]
+  maybeboardCards: DeckCardEntry[]
   commanderCards: DeckCardEntry[]
   /** Authoritative commander card fetched directly from decks.commanderId — used as fallback when commanderCards is empty */
   commanderCard: {
@@ -103,6 +104,7 @@ export function DeckPageClient({
   deck,
   mainboardCards,
   sideboardCards,
+  maybeboardCards,
   commanderCards,
   commanderCard,
   partnerCard,
@@ -217,6 +219,7 @@ export function DeckPageClient({
             ...mainboardCards.map((c) => c.name),
             ...commanderCards.map((c) => c.name),
             ...sideboardCards.map((c) => c.name),
+            ...maybeboardCards.map((c) => c.name),
           ]}
           philosophy={deck.philosophy}
           archetype={deck.archetype}
@@ -270,6 +273,32 @@ export function DeckPageClient({
             ) : (
               <p className="text-sm text-muted-foreground py-4 text-center">
                 No sideboard cards
+              </p>
+            )}
+          </section>
+
+          {/* Maybeboard section */}
+          <section className="pt-2">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-sm font-semibold text-foreground">
+                Maybeboard ({maybeboardCards.length})
+              </h3>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            {maybeboardCards.length > 0 ? (
+              <DeckCardGrid
+                deckId={deckId}
+                cards={maybeboardCards}
+                isOwner={isOwner}
+                cardRoles={cardRoles}
+                groupBy={groupBy}
+                cardSize={cardSize}
+                legalityIssues={legalityIssues}
+                pushUndo={pushUndo}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No maybeboard cards
               </p>
             )}
           </section>

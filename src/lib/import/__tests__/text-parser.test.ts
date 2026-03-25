@@ -22,7 +22,16 @@ describe('parseTextList', () => {
 
   it('handles sideboard section', () => {
     const result = parseTextList('1 Sol Ring\n\nSideboard\n1 Swords to Plowshares')
+    expect(result.cards[1].board).toBe('side')
     expect(result.cards[1].isSideboard).toBe(true)
+    expect(result.cards[0].board).toBe('main')
+  })
+
+  it('handles maybeboard section', () => {
+    const result = parseTextList('1 Sol Ring\n\nMaybeboard\n1 Mana Crypt')
+    expect(result.cards[1].board).toBe('maybe')
+    expect(result.cards[1].isSideboard).toBe(false)
+    expect(result.cards[0].board).toBe('main')
   })
 
   it('skips empty lines and comments', () => {

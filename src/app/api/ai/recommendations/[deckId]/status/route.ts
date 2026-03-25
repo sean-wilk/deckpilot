@@ -68,6 +68,8 @@ export async function PATCH(
             cardId: cardIn.id,
             cardType: deriveCardType(cardIn.typeLine),
             sortOrder: (maxOrder[0]?.max ?? 0) + 1,
+            board: 'main',
+            isSideboard: false,
           }).onConflictDoNothing()
         }
       }

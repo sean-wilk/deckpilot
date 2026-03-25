@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { decks, deckCards, cards } from '@/lib/db/schema'
+import { decks, deckCards, cards, type BoardType } from '@/lib/db/schema'
 import { eq, asc } from 'drizzle-orm'
 import { StatsBar } from '@/components/deck/stats-bar'
 import { DeckPageHeader } from '@/components/deck/deck-page-header'
@@ -82,7 +82,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
       cardId:       deckCards.cardId,
       cardType:     deckCards.cardType,
       isCommander:  deckCards.isCommander,
-      isSideboard:  deckCards.isSideboard,
+      board:        deckCards.board,
       quantity:     deckCards.quantity,
       sortOrder:    deckCards.sortOrder,
       // cards fields
@@ -112,7 +112,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
     cardId:      row.cardId,
     cardType:    row.cardType,
     isCommander: row.isCommander,
-    isSideboard: row.isSideboard,
+    board:       row.board as BoardType,
     quantity:    row.quantity,
     name:        row.name,
     manaCost:    row.manaCost,
@@ -129,8 +129,8 @@ export default async function DeckPage({ params }: DeckPageProps) {
     userNote:    row.userNote ?? null,
   }))
 
-  // Stats only count mainboard cards (exclude sideboard)
-  const mainboardRows = rows.filter((r) => !r.isSideboard)
+  // Stats only count mainboard cards (exclude sideboard and maybe)
+  const mainboardRows = rows.filter((r) => r.board === 'main')
   const statsCards = mainboardRows.map((row) => ({
     cmc:      parseFloat(row.cmc),
     colors:   row.colors,
@@ -154,7 +154,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
         name: cmd.name,
         cardType: 'creature',
         isCommander: true,
-        isSideboard: false,
+        board: 'main' as const,
         quantity: 1,
         imageUris: cmd.imageUris as DeckCardEntry['imageUris'],
         cardFaces: cmd.cardFaces as DeckCardEntry['cardFaces'],
@@ -173,15 +173,16 @@ export default async function DeckPage({ params }: DeckPageProps) {
   }
   const commanderCardIds = new Set(commanderCards.map(c => c.deckCardId))
   const gridCards = deckCardEntries.filter((c) => !commanderCardIds.has(c.deckCardId))
-  const mainboardCards = gridCards.filter((c) => !c.isSideboard)
-  const sideboardCards = gridCards.filter((c) => c.isSideboard)
+  const mainboardCards = gridCards.filter((c) => c.board === 'main')
+  const sideboardCards = gridCards.filter((c) => c.board === 'side')
+  const maybeboardCards = gridCards.filter((c) => c.board === 'maybe')
 
   // Shape cards for ExportDropdown
   const exportCards = rows.map((row) => ({
     quantity: row.quantity,
     name:     row.name,
     isCommander: row.isCommander,
-    isSideboard: row.isSideboard,
+    board:    row.board as BoardType,
   }))
 
   // Sum quantities for accurate card count
@@ -226,6 +227,7 @@ export default async function DeckPage({ params }: DeckPageProps) {
             }}
             mainboardCards={mainboardCards}
             sideboardCards={sideboardCards}
+            maybeboardCards={maybeboardCards}
             commanderCards={commanderCards}
             commanderCard={commanderCardData.length > 0 ? {
               name: commanderCardData[0].name,

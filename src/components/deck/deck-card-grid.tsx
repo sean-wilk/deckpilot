@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { CardImageUris, CardFace } from '@/types/card'
-import { removeCardFromDeck, toggleSideboard, updateCardQuantity } from '@/app/(dashboard)/decks/actions'
+import { removeCardFromDeck, moveToBoard, updateCardQuantity } from '@/app/(dashboard)/decks/actions'
 import type { UndoAction } from '@/hooks/use-deck-undo'
 
 // ─── Unlimited-copy cards (mirrors server-side list) ─────────────────────────
@@ -49,7 +49,7 @@ export interface DeckCardEntry {
   name: string
   cardType: string
   isCommander: boolean
-  isSideboard: boolean
+  board: 'main' | 'side' | 'maybe'
   quantity?: number
   imageUris: CardImageUris | null
   cardFaces: CardFace[] | null
@@ -240,9 +240,9 @@ function CardThumb({
     })
   }
 
-  function handleToggleSideboard() {
+  function handleMoveToBoard(board: 'main' | 'side' | 'maybe') {
     startToggle(async () => {
-      await toggleSideboard(deckId, card.deckCardId)
+      await moveToBoard(deckId, card.deckCardId, board)
     })
   }
 
@@ -363,12 +363,12 @@ function CardThumb({
               ×
             </button>
 
-            {/* Toggle sideboard button */}
+            {/* Board cycle button: moves to sideboard */}
             <button
               type="button"
-              onClick={handleToggleSideboard}
+              onClick={() => handleMoveToBoard(card.board === 'main' ? 'side' : 'main')}
               disabled={toggling}
-              title={card.isSideboard ? 'Move to mainboard' : 'Move to sideboard'}
+              title={card.board === 'main' ? 'Move to sideboard' : 'Move to mainboard'}
               className={cn(
                 'size-5 rounded-full',
                 'bg-secondary text-secondary-foreground',
@@ -378,7 +378,7 @@ function CardThumb({
                 'hover:scale-110',
                 'disabled:opacity-50',
               )}
-              aria-label={card.isSideboard ? `Move ${card.name} to mainboard` : `Move ${card.name} to sideboard`}
+              aria-label={card.board === 'main' ? `Move ${card.name} to sideboard` : `Move ${card.name} to mainboard`}
             >
               <ArrowUpDown className="size-3" />
             </button>
@@ -440,10 +440,18 @@ function CardThumb({
 
                 <DropdownMenuSeparator />
 
-                {/* Sideboard toggle */}
-                <DropdownMenuItem onClick={handleToggleSideboard} disabled={toggling || card.isCommander}>
+                {/* Board selection */}
+                <DropdownMenuItem onClick={() => handleMoveToBoard('main')} disabled={toggling || card.isCommander || card.board === 'main'}>
                   <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-                  {card.isSideboard ? 'Move to Main' : 'Move to Sideboard'}
+                  Move to Main
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMoveToBoard('side')} disabled={toggling || card.isCommander || card.board === 'side'}>
+                  <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                  Move to Sideboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMoveToBoard('maybe')} disabled={toggling || card.isCommander || card.board === 'maybe'}>
+                  <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                  Move to Maybeboard
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
@@ -470,10 +478,17 @@ function CardThumb({
         )}
 
         {/* Sideboard badge */}
-        {card.isSideboard && (
+        {card.board === 'side' && (
           <div className="absolute -bottom-1.5 -left-1.5 z-20 px-1 py-0.5 rounded-sm bg-interactive text-interactive-foreground text-[8px] font-bold uppercase tracking-wide shadow">
             SB
           </div>
+        )}
+
+        {/* Maybeboard badge */}
+        {card.board === 'maybe' && (
+          <span className="absolute bottom-1 left-1 z-10 rounded bg-violet-500/90 px-1 py-0.5 text-[9px] font-bold text-white shadow">
+            MB
+          </span>
         )}
 
         {/* Quantity badge — shown when quantity > 1 and not hovered */}
@@ -819,6 +834,79 @@ function groupByCmc(cards: DeckCardEntry[]): { key: string; label: string; cards
   }))
 }
 
+// ─── Collapsible board section (sideboard / maybeboard) ──────────────────────
+
+interface CollapsibleBoardSectionProps {
+  label: string
+  badgeClass: string
+  cards: DeckCardEntry[]
+  deckId: string
+  isOwner: boolean
+  onCardClick: (card: DeckCardEntry) => void
+  cardRoles?: Record<string, string[]>
+  cardSize?: number
+  legalityIssues?: LegalityIssue[]
+  pushUndo?: (action: UndoAction) => void
+  availableCategories?: string[]
+  onCategoryChange?: (deckCardId: string, categories: string[]) => void
+}
+
+function CollapsibleBoardSection({
+  label,
+  badgeClass,
+  cards,
+  deckId,
+  isOwner,
+  onCardClick,
+  cardRoles,
+  cardSize,
+  legalityIssues,
+  pushUndo,
+  availableCategories,
+  onCategoryChange,
+}: CollapsibleBoardSectionProps) {
+  const [collapsed, setCollapsed] = useState(false)
+  const count = cards.reduce((sum, c) => sum + (c.quantity ?? 1), 0)
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex items-center gap-2 mb-3 w-full text-left group"
+      >
+        <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold', badgeClass)}>
+          {label}
+        </span>
+        <span className="text-xs text-muted-foreground tabular-nums">({count})</span>
+        <span className="ml-1 text-muted-foreground/50 text-xs transition-transform duration-150" style={{ display: 'inline-block', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+          ▾
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div className="flex flex-wrap gap-3">
+          {cards.map((card) => (
+            <CardThumb
+              key={card.deckCardId}
+              card={card}
+              deckId={deckId}
+              isOwner={isOwner}
+              onCardClick={onCardClick}
+              roles={cardRoles?.[card.name]}
+              cardSize={cardSize}
+              legalityIssue={legalityIssues?.find((issue) => issue.cardId === card.cardId)}
+              pushUndo={pushUndo}
+              availableCategories={availableCategories}
+              onCategoryChange={onCategoryChange}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── DeckCardGrid ─────────────────────────────────────────────────────────────
 
 export function DeckCardGrid({
@@ -929,22 +1017,24 @@ export function DeckCardGrid({
     )
   }
 
-  // Separate commander from the 99
+  // Separate commander, mainboard, sideboard, maybeboard
   const commanderCards = cards.filter(c => c.isCommander)
-  const deckCards = cards.filter(c => !c.isCommander)
+  const mainCards = cards.filter(c => !c.isCommander && c.board === 'main')
+  const sideCards = cards.filter(c => c.board === 'side')
+  const maybeCards = cards.filter(c => c.board === 'maybe')
 
-  // Compute groups based on groupBy mode
+  // Compute groups based on groupBy mode (mainboard only)
   let groups: { key: string; label: string; cards: DeckCardEntry[] }[]
   switch (groupBy) {
     case 'role':
-      groups = groupByRole(deckCards, cardRoles)
+      groups = groupByRole(mainCards, cardRoles)
       break
     case 'cmc':
-      groups = groupByCmc(deckCards)
+      groups = groupByCmc(mainCards)
       break
     case 'type':
     default:
-      groups = groupByType(deckCards)
+      groups = groupByType(mainCards)
       break
   }
 
@@ -995,7 +1085,7 @@ export function DeckCardGrid({
         </div>
       )}
 
-      {/* Card Groups */}
+      {/* Card Groups (mainboard) */}
       {isRoleMode
         ? groups.map((group) => (
             <DroppableRoleGroup
@@ -1031,6 +1121,42 @@ export function DeckCardGrid({
               onCategoryChange={handleCategoryChange}
             />
           ))}
+
+      {/* Sideboard Section */}
+      {sideCards.length > 0 && (
+        <CollapsibleBoardSection
+          label="Sideboard"
+          badgeClass="bg-interactive text-interactive-foreground"
+          cards={sideCards}
+          deckId={deckId}
+          isOwner={isOwner}
+          onCardClick={handleCardClick}
+          cardRoles={cardRoles}
+          cardSize={cardSize}
+          legalityIssues={legalityIssues}
+          pushUndo={pushUndo}
+          availableCategories={allAvailableCategories}
+          onCategoryChange={handleCategoryChange}
+        />
+      )}
+
+      {/* Maybeboard Section */}
+      {maybeCards.length > 0 && (
+        <CollapsibleBoardSection
+          label="Maybeboard"
+          badgeClass="bg-violet-500/20 text-violet-400 border border-violet-500/40"
+          cards={maybeCards}
+          deckId={deckId}
+          isOwner={isOwner}
+          onCardClick={handleCardClick}
+          cardRoles={cardRoles}
+          cardSize={cardSize}
+          legalityIssues={legalityIssues}
+          pushUndo={pushUndo}
+          availableCategories={allAvailableCategories}
+          onCategoryChange={handleCategoryChange}
+        />
+      )}
     </div>
   )
 

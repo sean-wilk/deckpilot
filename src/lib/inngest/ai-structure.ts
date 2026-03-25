@@ -66,7 +66,7 @@ export const structureDeck = inngest.createFunction(
             oracleText: cards.oracleText,
             manaCost: cards.manaCost,
             isCommander: deckCards.isCommander,
-            isSideboard: deckCards.isSideboard,
+            board: deckCards.board,
           })
           .from(deckCards)
           .innerJoin(cards, eq(deckCards.cardId, cards.id))
@@ -87,9 +87,12 @@ export const structureDeck = inngest.createFunction(
         const promptContext: StructurePromptContext = {
           commanderName: commander.name,
           commanderColorIdentity: commander.colorIdentity,
-          // Strip deckCardId — it's internal plumbing, not part of the prompt context type
+          // Map db rows to prompt context shape (board → isSideboard for prompt filtering)
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          cards: deckCardRows.map(({ deckCardId: _unused, ...card }) => card),
+          cards: deckCardRows.map(({ deckCardId, board, ...card }) => ({
+            ...card,
+            isSideboard: board === 'side',
+          })),
           philosophy: deck.philosophy,
           archetype: deck.archetype,
           targetBracket: deck.targetBracket,

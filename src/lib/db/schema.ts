@@ -219,6 +219,7 @@ export const deckCards = pgTable(
     isCommander: boolean("is_commander").default(false).notNull(),
     isCompanion: boolean("is_companion").default(false).notNull(),
     isSideboard: boolean("is_sideboard").default(false).notNull(),
+    board: text("board").notNull().default("main"), // 'main' | 'side' | 'maybe'
     userNote: text("user_note"),
     preferredImageUris: jsonb("preferred_image_uris"),
     addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
@@ -229,6 +230,8 @@ export const deckCards = pgTable(
     unique("deck_cards_deck_id_card_id_unique").on(table.deckId, table.cardId),
   ]
 );
+
+export type BoardType = 'main' | 'side' | 'maybe'
 
 // ─── Deck Card Categories ────────────────────────────────────────────────────
 

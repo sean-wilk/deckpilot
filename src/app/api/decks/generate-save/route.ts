@@ -104,6 +104,7 @@ export async function POST(request: Request) {
       isCommander: boolean
       isCompanion: boolean
       isSideboard: boolean
+      board: 'main' | 'side' | 'maybe'
       sortOrder: number
     }
 
@@ -154,6 +155,7 @@ export async function POST(request: Request) {
         isCommander: false,
         isCompanion: false,
         isSideboard: false,
+        board: 'main' as const,
         sortOrder: i,
       })
     }
@@ -202,6 +204,7 @@ export async function POST(request: Request) {
             isCommander: v.isCommander,
             isCompanion: v.isCompanion,
             isSideboard: v.isSideboard,
+            board: v.board,
             sortOrder: v.sortOrder,
           }))
         )
