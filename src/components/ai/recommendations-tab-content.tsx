@@ -3,17 +3,20 @@
 import { useState, useCallback } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import { TIER_CONFIG, TAG_LABELS } from '@/components/ai/recommendation-card'
 import type { RecommendationTier, RecommendationTag } from '@/components/ai/recommendation-card'
 import { usePollAnalysis } from '@/hooks/use-poll-analysis'
 import { AnalysisTextWithCards } from '@/components/ai/analysis-text-with-cards'
 import { CardHoverPreview } from '@/components/ui/card-hover-preview'
 import { AnalysisProgressBar } from '@/components/ai/analysis-progress-bar'
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type RecStatus = 'accepted' | 'skipped' | 'dismissed' | null
+type RecStatus = 'accepted' | 'skipped' | null
 type StatusFilter = 'open' | 'skipped' | 'accepted'
+type AcceptDestination = 'side' | 'maybe' | 'remove'
 
 interface PersistedRecommendation {
   id: string
@@ -27,7 +30,7 @@ interface PersistedRecommendation {
   tags: RecommendationTag[]
   /** DB stored: true = accepted, false = skipped, null = pending */
   accepted: boolean | null
-  /** DB stored: true = dismissed */
+  /** DB stored: true = dismissed (legacy, no longer set from UI) */
   dismissed: boolean
   sortOrder: number
 }
@@ -46,7 +49,7 @@ type LocalStatusMap = Record<string, RecStatus>
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function dbAcceptedToStatus(rec: Pick<PersistedRecommendation, 'accepted' | 'dismissed'>): RecStatus {
-  if (rec.dismissed === true) return 'dismissed'
+  if (rec.dismissed === true) return null // treat legacy dismissed as open
   if (rec.accepted === true) return 'accepted'
   if (rec.accepted === false) return 'skipped'
   return null
@@ -114,6 +117,85 @@ function SummaryBanner({
   )
 }
 
+// ─── Accept destination dialog ─────────────────────────────────────────────────
+
+function AcceptDialog({
+  recommendation,
+  open,
+  onOpenChange,
+  onConfirm,
+}: {
+  recommendation: { cardOutName: string | null; cardInName: string | null; tier: string }
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: (destination: AcceptDestination) => void
+}) {
+  const [selected, setSelected] = useState<AcceptDestination>('side')
+
+  const hasCardOut = !!recommendation.cardOutName
+  const hasCardIn = !!recommendation.cardInName
+
+  const options: { value: AcceptDestination; label: string; description: string }[] = [
+    { value: 'side', label: 'Move to Sideboard', description: 'Keep it available for swapping in later' },
+    { value: 'maybe', label: 'Move to Maybeboard', description: 'Mark it as a card to reconsider' },
+    { value: 'remove', label: 'Remove from deck', description: 'Delete it entirely' },
+  ]
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogTitle>Accept Recommendation</DialogTitle>
+
+        {hasCardIn && hasCardOut && (
+          <DialogDescription>
+            <span className="font-medium text-success">{recommendation.cardInName}</span> will be added to your deck.
+            Where should <span className="font-medium text-error">{recommendation.cardOutName}</span> go?
+          </DialogDescription>
+        )}
+        {hasCardOut && !hasCardIn && (
+          <DialogDescription>
+            Where should <span className="font-medium text-error">{recommendation.cardOutName}</span> go?
+          </DialogDescription>
+        )}
+
+        <div className="space-y-1.5">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setSelected(opt.value)}
+              className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
+                selected === opt.value
+                  ? 'border-foreground bg-muted text-foreground'
+                  : 'border-border bg-background hover:bg-muted/50 text-muted-foreground'
+              }`}
+            >
+              <p className={`text-xs font-medium ${selected === opt.value ? 'text-foreground' : ''}`}>
+                {opt.label}
+              </p>
+              <p className="text-2xs text-muted-foreground mt-0.5">{opt.description}</p>
+            </button>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="text-xs px-3 py-1.5 rounded-lg border bg-background hover:bg-muted transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(selected)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors font-medium"
+          >
+            Confirm
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Persisted recommendation card ────────────────────────────────────────────
 
 function PersistedRecCard({
@@ -122,32 +204,64 @@ function PersistedRecCard({
   localStatus,
   onStatusChange,
   statusFilter,
+  selectMode,
+  isSelected,
+  onToggleSelect,
 }: {
   rec: PersistedRecommendation
   deckId: string
   localStatus: RecStatus
   onStatusChange: (id: string, status: RecStatus) => void
   statusFilter: StatusFilter
+  selectMode?: boolean
+  isSelected?: boolean
+  onToggleSelect?: (id: string) => void
 }) {
   const [isPending, setIsPending] = useState(false)
+  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false)
   const tierCfg = TIER_CONFIG[rec.tier]
 
   // Effective status: local override takes precedence, else from DB
   const effectiveStatus = localStatus !== undefined ? localStatus : dbAcceptedToStatus(rec)
 
-  // Dismissed cards are hidden at parent level
-  if (effectiveStatus === 'dismissed') return null
-
-  async function handleStatus(status: 'accepted' | 'skipped' | 'dismissed') {
+  async function handleSkip() {
     setIsPending(true)
     try {
       const res = await fetch(`/api/ai/recommendations/${deckId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recommendationId: rec.id, status }),
+        body: JSON.stringify({ recommendationId: rec.id, status: 'skipped' }),
       })
       if (res.ok) {
-        onStatusChange(rec.id, status)
+        onStatusChange(rec.id, 'skipped')
+      }
+    } catch {
+      // Non-fatal — leave status unchanged
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  function handleAcceptClick() {
+    // Pure adds (no card being removed) — accept immediately without dialog
+    if (!rec.cardOutName) {
+      handleAcceptConfirm('side') // destination irrelevant for pure adds
+      return
+    }
+    setAcceptDialogOpen(true)
+  }
+
+  async function handleAcceptConfirm(destination: AcceptDestination) {
+    setAcceptDialogOpen(false)
+    setIsPending(true)
+    try {
+      const res = await fetch(`/api/ai/recommendations/${deckId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendationId: rec.id, status: 'accepted', destination }),
+      })
+      if (res.ok) {
+        onStatusChange(rec.id, 'accepted')
       }
     } catch {
       // Non-fatal — leave status unchanged
@@ -159,163 +273,173 @@ function PersistedRecCard({
   const isCut = rec.tier === 'must_cut' || rec.tier === 'consider_cutting'
 
   return (
-    <div
-      className={`rounded-xl border p-4 space-y-3 transition-opacity ${tierCfg.bg} ${tierCfg.border} ${
-        effectiveStatus === 'skipped' ? 'opacity-50' : ''
-      }`}
-    >
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${tierCfg.color} ${tierCfg.bg} ${tierCfg.border}`}>
-            {tierCfg.label}
-          </span>
-          {effectiveStatus === 'accepted' && (
-            <span className="text-xs font-medium text-success bg-success-muted border border-success-border px-2 py-0.5 rounded-full">
-              Accepted
-            </span>
+    <>
+      <div
+        className={`rounded-xl border p-4 space-y-3 transition-opacity ${tierCfg.bg} ${tierCfg.border} ${
+          effectiveStatus === 'skipped' ? 'opacity-50' : ''
+        }`}
+      >
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-3">
+          {selectMode && (
+            <input
+              type="checkbox"
+              checked={isSelected ?? false}
+              onChange={() => onToggleSelect?.(rec.id)}
+              className="size-4 rounded border-border accent-primary shrink-0 mt-0.5"
+            />
           )}
-          {effectiveStatus === 'skipped' && (
-            <span className="text-xs font-medium text-muted-foreground bg-muted border px-2 py-0.5 rounded-full">
-              Skipped
+          <div className="flex items-center gap-2 flex-wrap flex-1">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${tierCfg.color} ${tierCfg.bg} ${tierCfg.border}`}>
+              {tierCfg.label}
             </span>
+            {effectiveStatus === 'accepted' && (
+              <span className="text-xs font-medium text-success bg-success-muted border border-success-border px-2 py-0.5 rounded-full">
+                Accepted
+              </span>
+            )}
+            {effectiveStatus === 'skipped' && (
+              <span className="text-xs font-medium text-muted-foreground bg-muted border px-2 py-0.5 rounded-full">
+                Skipped
+              </span>
+            )}
+          </div>
+
+          {/* Action buttons — vary by status filter view */}
+          {statusFilter === 'open' && effectiveStatus === null && (
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={handleSkip}
+                disabled={isPending}
+                className="text-xs px-2.5 py-1 rounded-lg border bg-background hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleAcceptClick}
+                disabled={isPending}
+                className="text-xs px-2.5 py-1 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 font-medium"
+              >
+                {isPending ? 'Applying...' : 'Accept'}
+              </button>
+            </div>
+          )}
+          {statusFilter === 'skipped' && effectiveStatus === 'skipped' && (
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={handleAcceptClick}
+                disabled={isPending}
+                className="text-xs px-2.5 py-1 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 font-medium"
+              >
+                {isPending ? 'Applying...' : 'Accept'}
+              </button>
+            </div>
+          )}
+          {statusFilter === 'accepted' && effectiveStatus === 'accepted' && (
+            <div className="flex gap-1.5 shrink-0">
+              <button
+                onClick={handleSkip}
+                disabled={isPending}
+                className="text-xs px-2.5 py-1 rounded-lg border bg-background hover:bg-muted transition-colors disabled:opacity-50 text-warning"
+              >
+                {isPending ? 'Reversing...' : 'Undo'}
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Action buttons — vary by status filter view */}
-        {statusFilter === 'open' && effectiveStatus === null && (
-          <div className="flex gap-1.5 shrink-0">
-            <button
-              onClick={() => handleStatus('dismissed')}
-              disabled={isPending}
-              className="text-xs px-2 py-1 rounded-lg border bg-background hover:bg-muted transition-colors disabled:opacity-50 text-muted-foreground"
-              title="Dismiss"
-            >
-              ✕
-            </button>
-            <button
-              onClick={() => handleStatus('skipped')}
-              disabled={isPending}
-              className="text-xs px-2.5 py-1 rounded-lg border bg-background hover:bg-muted transition-colors disabled:opacity-50"
-            >
-              Skip
-            </button>
-            <button
-              onClick={() => handleStatus('accepted')}
-              disabled={isPending}
-              className="text-xs px-2.5 py-1 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 font-medium"
-            >
-              {isPending ? 'Applying...' : 'Accept'}
-            </button>
+        {/* Card images + swap arrow */}
+        <div className="flex items-center gap-3">
+          {isCut ? (
+            <>
+              {rec.cardOutName && (
+                <CardHoverPreview cardName={rec.cardOutName}>
+                  <div className="cursor-pointer">
+                    <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
+                  </div>
+                </CardHoverPreview>
+              )}
+              {rec.cardOutName && rec.cardInName && (
+                <span className="text-muted-foreground text-sm font-light">&rarr;</span>
+              )}
+              {rec.cardInName && (
+                <CardHoverPreview cardName={rec.cardInName}>
+                  <div className="cursor-pointer">
+                    <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
+                  </div>
+                </CardHoverPreview>
+              )}
+            </>
+          ) : (
+            <>
+              {rec.cardInName && (
+                <CardHoverPreview cardName={rec.cardInName}>
+                  <div className="cursor-pointer">
+                    <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
+                  </div>
+                </CardHoverPreview>
+              )}
+              {rec.cardOutName && rec.cardInName && (
+                <span className="text-muted-foreground text-sm font-light">&rarr;</span>
+              )}
+              {rec.cardOutName && (
+                <CardHoverPreview cardName={rec.cardOutName}>
+                  <div className="cursor-pointer">
+                    <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
+                  </div>
+                </CardHoverPreview>
+              )}
+            </>
+          )}
+
+          {/* Names beside images */}
+          <div className="flex-1 min-w-0 space-y-1">
+            {rec.cardOutName && (
+              <p className="text-xs">
+                <span className="font-medium text-error bg-error-muted border border-error-border px-1.5 py-0.5 rounded">
+                  {rec.cardOutName}
+                </span>
+              </p>
+            )}
+            {rec.cardInName && (
+              <p className="text-xs">
+                <span className="font-medium text-success bg-success-muted border border-success-border px-1.5 py-0.5 rounded">
+                  {rec.cardInName}
+                </span>
+              </p>
+            )}
           </div>
-        )}
-        {statusFilter === 'skipped' && effectiveStatus === 'skipped' && (
-          <div className="flex gap-1.5 shrink-0">
-            <button
-              onClick={() => handleStatus('accepted')}
-              disabled={isPending}
-              className="text-xs px-2.5 py-1 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50 font-medium"
-            >
-              {isPending ? 'Applying...' : 'Accept'}
-            </button>
-          </div>
-        )}
-        {statusFilter === 'accepted' && effectiveStatus === 'accepted' && (
-          <div className="flex gap-1.5 shrink-0">
-            <button
-              onClick={() => handleStatus('skipped')}
-              disabled={isPending}
-              className="text-xs px-2.5 py-1 rounded-lg border bg-background hover:bg-muted transition-colors disabled:opacity-50 text-warning"
-            >
-              {isPending ? 'Reversing...' : 'Undo'}
-            </button>
+        </div>
+
+        {/* Impact summary */}
+        <p className="text-xs font-medium text-foreground"><AnalysisTextWithCards text={rec.impactSummary} cardNames={[]} /></p>
+
+        {/* Reasoning */}
+        <p className="text-xs text-muted-foreground leading-relaxed"><AnalysisTextWithCards text={rec.reasoning} cardNames={[]} /></p>
+
+        {/* Tags */}
+        {Array.isArray(rec.tags) && rec.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {rec.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium bg-muted text-muted-foreground border"
+              >
+                {TAG_LABELS[tag] ?? tag}
+              </span>
+            ))}
           </div>
         )}
       </div>
 
-      {/* Card images + swap arrow */}
-      <div className="flex items-center gap-3">
-        {isCut ? (
-          <>
-            {rec.cardOutName && (
-              <CardHoverPreview cardName={rec.cardOutName}>
-                <div className="cursor-pointer">
-                  <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
-                </div>
-              </CardHoverPreview>
-            )}
-            {rec.cardOutName && rec.cardInName && (
-              <span className="text-muted-foreground text-sm font-light">→</span>
-            )}
-            {rec.cardInName && (
-              <CardHoverPreview cardName={rec.cardInName}>
-                <div className="cursor-pointer">
-                  <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
-                </div>
-              </CardHoverPreview>
-            )}
-          </>
-        ) : (
-          <>
-            {rec.cardInName && (
-              <CardHoverPreview cardName={rec.cardInName}>
-                <div className="cursor-pointer">
-                  <CardImage imageUri={rec.cardInImageUri} cardName={rec.cardInName} variant="add" />
-                </div>
-              </CardHoverPreview>
-            )}
-            {rec.cardOutName && rec.cardInName && (
-              <span className="text-muted-foreground text-sm font-light">→</span>
-            )}
-            {rec.cardOutName && (
-              <CardHoverPreview cardName={rec.cardOutName}>
-                <div className="cursor-pointer">
-                  <CardImage imageUri={rec.cardOutImageUri} cardName={rec.cardOutName} variant="cut" />
-                </div>
-              </CardHoverPreview>
-            )}
-          </>
-        )}
-
-        {/* Names beside images */}
-        <div className="flex-1 min-w-0 space-y-1">
-          {rec.cardOutName && (
-            <p className="text-xs">
-              <span className="font-medium text-error bg-error-muted border border-error-border px-1.5 py-0.5 rounded">
-                {rec.cardOutName}
-              </span>
-            </p>
-          )}
-          {rec.cardInName && (
-            <p className="text-xs">
-              <span className="font-medium text-success bg-success-muted border border-success-border px-1.5 py-0.5 rounded">
-                {rec.cardInName}
-              </span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Impact summary */}
-      <p className="text-xs font-medium text-foreground"><AnalysisTextWithCards text={rec.impactSummary} cardNames={[]} /></p>
-
-      {/* Reasoning */}
-      <p className="text-xs text-muted-foreground leading-relaxed"><AnalysisTextWithCards text={rec.reasoning} cardNames={[]} /></p>
-
-      {/* Tags */}
-      {Array.isArray(rec.tags) && rec.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {rec.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-medium bg-muted text-muted-foreground border"
-            >
-              {TAG_LABELS[tag] ?? tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
+      {/* Accept destination dialog */}
+      <AcceptDialog
+        recommendation={rec}
+        open={acceptDialogOpen}
+        onOpenChange={setAcceptDialogOpen}
+        onConfirm={handleAcceptConfirm}
+      />
+    </>
   )
 }
 
@@ -355,6 +479,11 @@ export function RecommendationsTabContent({
   // Status filter
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('open')
 
+  // Multi-select
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [bulkAcceptOpen, setBulkAcceptOpen] = useState(false)
+
   const results = data?.results
 
   // ── Status change handler ────────────────────────────────────────────────────
@@ -362,6 +491,62 @@ export function RecommendationsTabContent({
   const handleStatusChange = useCallback((id: string, status: RecStatus) => {
     setLocalStatuses((prev) => ({ ...prev, [id]: status }))
   }, [])
+
+  // ── Toggle select ────────────────────────────────────────────────────────────
+
+  function handleToggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // ── Bulk handlers ────────────────────────────────────────────────────────────
+
+  async function handleBulkSkip() {
+    const ids = Array.from(selectedIds)
+    try {
+      await fetch(`/api/ai/recommendations/${deckId}/bulk-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendationIds: ids, status: 'skipped' }),
+      })
+      setLocalStatuses(prev => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = 'skipped'
+        return next
+      })
+      setSelectedIds(new Set())
+      setSelectMode(false)
+      toast.success(`Skipped ${ids.length} recommendation${ids.length !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Failed to skip recommendations')
+    }
+  }
+
+  async function handleBulkAcceptConfirm(destination: AcceptDestination) {
+    const ids = Array.from(selectedIds)
+    setBulkAcceptOpen(false)
+    try {
+      await fetch(`/api/ai/recommendations/${deckId}/bulk-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recommendationIds: ids, status: 'accepted', destination }),
+      })
+      setLocalStatuses(prev => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = 'accepted'
+        return next
+      })
+      setSelectedIds(new Set())
+      setSelectMode(false)
+      toast.success(`Accepted ${ids.length} recommendation${ids.length !== 1 ? 's' : ''}`)
+    } catch {
+      toast.error('Failed to accept recommendations')
+    }
+  }
 
   // ── Trigger new recommendations ──────────────────────────────────────────────
 
@@ -392,7 +577,7 @@ export function RecommendationsTabContent({
     return localStatuses[r.id] !== undefined ? localStatuses[r.id] : dbAcceptedToStatus(r)
   }
 
-  // Categorize into cuts / adds (excluding dismissed)
+  // Categorize into cuts / adds
   const cuts = recommendations.filter(
     (r) => r.tier === 'must_cut' || r.tier === 'consider_cutting'
   )
@@ -400,11 +585,10 @@ export function RecommendationsTabContent({
     (r) => r.tier === 'must_add' || r.tier === 'consider_adding'
   )
 
-  // Filter by status (dismissed are always hidden)
+  // Filter by status
   function filterByStatus(recs: PersistedRecommendation[]): PersistedRecommendation[] {
     return recs.filter((r) => {
       const s = getEffectiveStatus(r)
-      if (s === 'dismissed') return false
       if (statusFilter === 'open') return s === null
       if (statusFilter === 'skipped') return s === 'skipped'
       if (statusFilter === 'accepted') return s === 'accepted'
@@ -423,9 +607,9 @@ export function RecommendationsTabContent({
     accepted: activeRecs.filter((r) => { const s = getEffectiveStatus(r); return s === 'accepted' }).length,
   }
 
-  // Total non-dismissed counts for the Cuts/Adds tab badges
-  const totalVisibleCuts = cuts.filter((r) => getEffectiveStatus(r) !== 'dismissed').length
-  const totalVisibleAdds = adds.filter((r) => getEffectiveStatus(r) !== 'dismissed').length
+  // Total counts for the Cuts/Adds tab badges
+  const totalVisibleCuts = cuts.length
+  const totalVisibleAdds = adds.length
 
   return (
     <div className="space-y-4">
@@ -488,7 +672,7 @@ export function RecommendationsTabContent({
       )}
       {isLoading && !data?.progress && (
         <div className="rounded-lg border bg-muted/50 p-4 text-xs text-muted-foreground text-center animate-pulse">
-          Generating recommendations…
+          Generating recommendations...
         </div>
       )}
 
@@ -547,8 +731,8 @@ export function RecommendationsTabContent({
             </button>
           </div>
 
-          {/* Status filter pills */}
-          <div className="flex items-center gap-1">
+          {/* Status filter pills + Select toggle */}
+          <div className="flex items-center gap-1 flex-wrap">
             {(['open', 'skipped', 'accepted'] as const).map((status) => (
               <button
                 key={status}
@@ -565,11 +749,33 @@ export function RecommendationsTabContent({
                 )}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
+              className={cn(
+                'rounded-full px-3 py-1 text-xs font-medium transition-colors ml-1',
+                selectMode ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {selectMode ? 'Cancel Select' : 'Select'}
+            </button>
           </div>
 
           {/* Cuts tab */}
           {activeTab === 'cuts' && (
             <div className="space-y-2">
+              {selectMode && visibleCuts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allIds = new Set(visibleCuts.map(r => r.id))
+                    setSelectedIds(prev => prev.size === allIds.size && [...allIds].every(id => prev.has(id)) ? new Set() : allIds)
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  {visibleCuts.every(r => selectedIds.has(r.id)) ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
               {visibleCuts.length === 0 && (
                 <div className="text-xs text-muted-foreground text-center py-4 space-y-1">
                   {statusFilter === 'open' && (
@@ -578,7 +784,7 @@ export function RecommendationsTabContent({
                       {(statusCounts.accepted > 0 || statusCounts.skipped > 0) && (
                         <p className="text-2xs opacity-70">
                           {statusCounts.accepted > 0 && `${statusCounts.accepted} accepted`}
-                          {statusCounts.accepted > 0 && statusCounts.skipped > 0 && ' · '}
+                          {statusCounts.accepted > 0 && statusCounts.skipped > 0 && ' \u00b7 '}
                           {statusCounts.skipped > 0 && `${statusCounts.skipped} skipped`}
                         </p>
                       )}
@@ -596,6 +802,9 @@ export function RecommendationsTabContent({
                   localStatus={localStatuses[rec.id] ?? null}
                   onStatusChange={handleStatusChange}
                   statusFilter={statusFilter}
+                  selectMode={selectMode}
+                  isSelected={selectedIds.has(rec.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </div>
@@ -604,6 +813,18 @@ export function RecommendationsTabContent({
           {/* Adds tab */}
           {activeTab === 'adds' && (
             <div className="space-y-2">
+              {selectMode && visibleAdds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allIds = new Set(visibleAdds.map(r => r.id))
+                    setSelectedIds(prev => prev.size === allIds.size && [...allIds].every(id => prev.has(id)) ? new Set() : allIds)
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
+                  {visibleAdds.every(r => selectedIds.has(r.id)) ? 'Deselect All' : 'Select All'}
+                </button>
+              )}
               {visibleAdds.length === 0 && (
                 <div className="text-xs text-muted-foreground text-center py-4 space-y-1">
                   {statusFilter === 'open' && (
@@ -612,7 +833,7 @@ export function RecommendationsTabContent({
                       {(statusCounts.accepted > 0 || statusCounts.skipped > 0) && (
                         <p className="text-2xs opacity-70">
                           {statusCounts.accepted > 0 && `${statusCounts.accepted} accepted`}
-                          {statusCounts.accepted > 0 && statusCounts.skipped > 0 && ' · '}
+                          {statusCounts.accepted > 0 && statusCounts.skipped > 0 && ' \u00b7 '}
                           {statusCounts.skipped > 0 && `${statusCounts.skipped} skipped`}
                         </p>
                       )}
@@ -630,12 +851,79 @@ export function RecommendationsTabContent({
                   localStatus={localStatuses[rec.id] ?? null}
                   onStatusChange={handleStatusChange}
                   statusFilter={statusFilter}
+                  selectMode={selectMode}
+                  isSelected={selectedIds.has(rec.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </div>
           )}
+
+          {/* Bulk action bar */}
+          {selectMode && selectedIds.size > 0 && (
+            <div className="sticky bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm px-4 py-3 flex items-center justify-between mt-4 -mx-4 rounded-b-lg">
+              <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkSkip}
+                  className="rounded border border-border bg-muted px-3 py-1.5 text-xs font-medium hover:bg-muted/80 transition-colors"
+                >
+                  Skip Selected
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkAcceptOpen(true)}
+                  className="rounded bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90 transition-colors"
+                >
+                  Accept Selected
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Bulk accept dialog */}
+      <Dialog open={bulkAcceptOpen} onOpenChange={setBulkAcceptOpen}>
+        <DialogContent>
+          <DialogTitle>Accept {selectedIds.size} Recommendation{selectedIds.size !== 1 ? 's' : ''}</DialogTitle>
+          <DialogDescription>
+            Where should the outgoing cards go?
+          </DialogDescription>
+          <div className="flex flex-col gap-2 mt-4">
+            <button
+              onClick={() => handleBulkAcceptConfirm('side')}
+              className="w-full text-left px-3 py-2.5 rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors"
+            >
+              <p className="text-xs font-medium">Move to Sideboard</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">Keep cards available for swapping in later (recommended)</p>
+            </button>
+            <button
+              onClick={() => handleBulkAcceptConfirm('maybe')}
+              className="w-full text-left px-3 py-2.5 rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors"
+            >
+              <p className="text-xs font-medium">Move to Maybeboard</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">Mark cards to reconsider later</p>
+            </button>
+            <button
+              onClick={() => handleBulkAcceptConfirm('remove')}
+              className="w-full text-left px-3 py-2.5 rounded-lg border border-border bg-background hover:bg-muted/50 transition-colors"
+            >
+              <p className="text-xs font-medium text-destructive">Remove from deck</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">Delete cards entirely</p>
+            </button>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setBulkAcceptOpen(false)}
+              className="text-xs px-3 py-1.5 rounded-lg border bg-background hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
