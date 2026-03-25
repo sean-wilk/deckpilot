@@ -340,9 +340,9 @@ function CardThumb({
           </div>
         </button>
 
-        {/* Hover overlay: action buttons (remove + sideboard toggle) */}
+        {/* Hover overlay: action buttons (remove + sideboard toggle) — top-left */}
         {isOwner && hovered && !card.isCommander && (
-          <div className="absolute -top-1.5 -right-1.5 z-20 flex flex-col gap-1">
+          <div className="absolute -top-1.5 -left-1.5 z-20 flex flex-col gap-1">
             {/* Remove button */}
             <button
               type="button"

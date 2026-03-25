@@ -109,17 +109,21 @@ export function DropdownMenuContent({
     if (!trigger || !contentRef.current) return
     const rect = trigger.getBoundingClientRect()
     const menuRect = contentRef.current.getBoundingClientRect()
-    const scrollY = window.scrollY
-    const scrollX = window.scrollX
 
-    const top = rect.bottom + scrollY + sideOffset
+    // Using fixed positioning — coords are relative to viewport, not document
+    let top = rect.bottom + sideOffset
     let left =
       align === 'end'
-        ? rect.right + scrollX - menuRect.width
-        : rect.left + scrollX
+        ? rect.right - menuRect.width
+        : rect.left
 
-    // Clamp to viewport
+    // Clamp to viewport (8px padding from edges)
     left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8))
+    // If menu would overflow bottom, show above trigger instead
+    if (top + menuRect.height > window.innerHeight - 8) {
+      top = rect.top - menuRect.height - sideOffset
+    }
+    top = Math.max(8, top)
 
     setCoords({ top, left })
   }, [align, sideOffset, triggerRef])
