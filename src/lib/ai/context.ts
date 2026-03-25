@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { deckCards, cards, edhrecCommanders, decks, matchHistory, matchCardPerformance } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, and, ne, desc } from 'drizzle-orm'
 
 export async function buildDeckContext(deckId: string) {
   const deck = await db
@@ -27,7 +27,7 @@ export async function buildDeckContext(deckId: string) {
     })
     .from(deckCards)
     .innerJoin(cards, eq(deckCards.cardId, cards.id))
-    .where(eq(deckCards.deckId, deckId))
+    .where(and(eq(deckCards.deckId, deckId), ne(deckCards.board, 'maybe')))
 
   // Get commander data
   const commander = await db

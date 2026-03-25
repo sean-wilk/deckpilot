@@ -1,7 +1,7 @@
 import { inngest } from './client'
 import { db } from '@/lib/db'
 import { deckStructureAnalyses, deckCards, cards, decks } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and, ne } from 'drizzle-orm'
 import { streamStructuredOutput } from '@/lib/ai/providers'
 import { getStructureStrategyPrompt, getStructureAssignmentPrompt } from '@/lib/ai/structure-prompts'
 import type { StructurePromptContext } from '@/lib/ai/structure-prompts'
@@ -70,7 +70,7 @@ export const structureDeck = inngest.createFunction(
           })
           .from(deckCards)
           .innerJoin(cards, eq(deckCards.cardId, cards.id))
-          .where(eq(deckCards.deckId, deckId))
+          .where(and(eq(deckCards.deckId, deckId), ne(deckCards.board, 'maybe')))
 
         // Build name → deckCardId map once, reused in persist step
         const nameToId: Record<string, string> = {}
