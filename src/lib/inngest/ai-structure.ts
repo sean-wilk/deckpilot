@@ -22,6 +22,8 @@ export const structureDeck = inngest.createFunction(
       deckId: string
       structureAnalysisId: string
     }
+    // Normalize card names so casing/whitespace/DFC drift doesn't silently drop assignments.
+    const norm = (s: string) => s.toLowerCase().trim()
 
     try {
       // Step 1: Mark as processing
@@ -72,10 +74,13 @@ export const structureDeck = inngest.createFunction(
           .innerJoin(cards, eq(deckCards.cardId, cards.id))
           .where(and(eq(deckCards.deckId, deckId), ne(deckCards.board, 'maybe')))
 
-        // Build name → deckCardId map once, reused in persist step
+        // Build normalized name → deckCardId map once, reused in persist step.
+        // Index both the full name and the DFC front face so either resolves.
         const nameToId: Record<string, string> = {}
         for (const row of deckCardRows) {
-          nameToId[row.name] = row.deckCardId
+          nameToId[norm(row.name)] = row.deckCardId
+          const front = norm(row.name.split('//')[0])
+          if (front && !(front in nameToId)) nameToId[front] = row.deckCardId
         }
 
         // Get existing manual overrides
@@ -160,7 +165,7 @@ export const structureDeck = inngest.createFunction(
       })
 
       // Step 5: Persist card category assignments
-      await step.run('persist-assignments', async () => {
+      const persistResult = await step.run('persist-assignments', async () => {
         await setStructureProgress(structureAnalysisId, { strategy: phase1 }, {
           currentStep: 5,
           totalSteps: 6,
@@ -178,9 +183,13 @@ export const structureDeck = inngest.createFunction(
           source: string
         }[] = []
 
+        let droppedAssignments = 0
         for (const assignment of [...phase2.assignments, ...phase2.landAssignments]) {
-          const deckCardId = deckCardIdMap[assignment.cardName]
+          const deckCardId =
+            deckCardIdMap[norm(assignment.cardName)] ??
+            deckCardIdMap[norm(assignment.cardName.split('//')[0])]
           if (!deckCardId) {
+            droppedAssignments++
             console.warn(`[structure-deck] Card not found in deck: "${assignment.cardName}"`)
             continue
           }
@@ -195,6 +204,7 @@ export const structureDeck = inngest.createFunction(
         }
 
         await insertCardCategories(insertRows)
+        return { droppedAssignments }
       })
 
       // Step 6: Mark complete
@@ -220,6 +230,7 @@ export const structureDeck = inngest.createFunction(
             results: {
               strategy: updatedStrategy,
               assignments: phase2,
+              _droppedAssignments: persistResult.droppedAssignments,
               _completedAt: new Date().toISOString(),
             },
           })
