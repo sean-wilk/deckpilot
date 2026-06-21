@@ -29,7 +29,7 @@ export async function validateDeckLegality(deckId: string): Promise<LegalityIssu
       deckCardId: deckCards.id,
       cardId: deckCards.cardId,
       quantity: deckCards.quantity,
-      isSideboard: deckCards.isSideboard,
+      board: deckCards.board,
       cardName: cards.name,
       colorIdentity: cards.colorIdentity,
       legalities: cards.legalities,
@@ -55,7 +55,7 @@ export async function validateDeckLegality(deckId: string): Promise<LegalityIssu
   let totalQuantity = 0
 
   for (const dc of allDeckCards) {
-    if (!dc.isSideboard) {
+    if (dc.board === 'main') {
       totalQuantity += dc.quantity
     }
 

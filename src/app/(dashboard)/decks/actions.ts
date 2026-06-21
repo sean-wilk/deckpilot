@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { decks, deckCards, deckVersions, cards } from '@/lib/db/schema'
+import { decks, deckCards, deckVersions, cards, type BoardType } from '@/lib/db/schema'
 import { eq, and, max, sql } from 'drizzle-orm'
 import { deriveCardType } from '@/lib/utils/card-type'
 import { revalidatePath } from 'next/cache'
@@ -78,7 +78,7 @@ export async function deleteDeck(deckId: string) {
   redirect('/decks')
 }
 
-export async function addCardToDeck(deckId: string, cardId: string, force = false, isSideboard?: boolean) {
+export async function addCardToDeck(deckId: string, cardId: string, force = false, board: BoardType = 'main') {
   const user = await requireUser()
 
   // Verify deck ownership
@@ -134,7 +134,8 @@ export async function addCardToDeck(deckId: string, cardId: string, force = fals
       cardId,
       cardType: deriveCardType(card[0].typeLine),
       sortOrder: nextOrder,
-      isSideboard: isSideboard ?? false,
+      board,
+      isSideboard: board === 'side',
     })
   }
 
@@ -166,7 +167,7 @@ export async function updatePreferredPrinting(deckCardId: string, imageUris: Rec
   // No revalidation needed — client updates optimistically
 }
 
-export async function toggleSideboard(deckId: string, deckCardId: string) {
+export async function moveToBoard(deckId: string, deckCardId: string, board: BoardType) {
   const user = await requireUser()
 
   // Verify deck ownership
@@ -175,16 +176,16 @@ export async function toggleSideboard(deckId: string, deckCardId: string) {
     .limit(1)
   if (!deck[0]) throw new Error('Deck not found')
 
-  // Read current isSideboard value
-  const current = await db.select({ isSideboard: deckCards.isSideboard })
+  // Verify card exists in deck
+  const current = await db.select({ id: deckCards.id })
     .from(deckCards)
     .where(eq(deckCards.id, deckCardId))
     .limit(1)
   if (!current[0]) throw new Error('Card not found in deck')
 
-  // Toggle
+  // Update both board and isSideboard (compat)
   await db.update(deckCards)
-    .set({ isSideboard: !current[0].isSideboard })
+    .set({ board, isSideboard: board === 'side' })
     .where(eq(deckCards.id, deckCardId))
 
   await db.update(decks).set({ updatedAt: new Date() }).where(eq(decks.id, deckId))

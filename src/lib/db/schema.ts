@@ -116,6 +116,10 @@ export const adminAiConfig = pgTable("admin_ai_config", {
   apiKeyEncrypted: text("api_key_encrypted").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   usageLimitDailyCents: integer("usage_limit_daily_cents"),
+  modelStructureStrategy: text("model_structure_strategy"),
+  modelStructureAssignment: text("model_structure_assignment"),
+  maxTokensStructureStrategy: integer("max_tokens_structure_strategy").default(4096),
+  maxTokensStructureAssignment: integer("max_tokens_structure_assignment").default(8192),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -186,6 +190,7 @@ export const decks = pgTable(
     archetype: text("archetype"),
     categoryTargets: jsonb("category_targets"),
     landCountTarget: integer("land_count_target"),
+    customCategories: jsonb("custom_categories").$type<string[]>(),
     spiciness: integer("spiciness").default(30).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -214,6 +219,7 @@ export const deckCards = pgTable(
     isCommander: boolean("is_commander").default(false).notNull(),
     isCompanion: boolean("is_companion").default(false).notNull(),
     isSideboard: boolean("is_sideboard").default(false).notNull(),
+    board: text("board").notNull().default("main"), // 'main' | 'side' | 'maybe'
     userNote: text("user_note"),
     preferredImageUris: jsonb("preferred_image_uris"),
     addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
@@ -224,6 +230,21 @@ export const deckCards = pgTable(
     unique("deck_cards_deck_id_card_id_unique").on(table.deckId, table.cardId),
   ]
 );
+
+export type BoardType = 'main' | 'side' | 'maybe'
+
+// ─── Deck Card Categories ────────────────────────────────────────────────────
+
+export const deckCardCategories = pgTable('deck_card_categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  deckCardId: uuid('deck_card_id').notNull().references(() => deckCards.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(),
+  isManualOverride: boolean('is_manual_override').default(false).notNull(),
+  source: text('source').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique('deck_card_categories_deck_card_id_category_unique').on(table.deckCardId, table.category),
+])
 
 // ─── Deck Versions ───────────────────────────────────────────────────────────
 
@@ -247,6 +268,25 @@ export const deckVersions = pgTable(
     ),
   ]
 );
+
+// ─── Deck Structure Analyses ─────────────────────────────────────────────────
+
+export const deckStructureAnalyses = pgTable('deck_structure_analyses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  deckId: uuid('deck_id').notNull().references(() => decks.id, { onDelete: 'cascade' }),
+  deckVersionId: uuid('deck_version_id').references(() => deckVersions.id),
+  results: jsonb('results'),
+  strategyModel: text('strategy_model'),
+  assignmentModel: text('assignment_model'),
+  status: text('status').notNull().default('pending'),
+  errorMessage: text('error_message'),
+  promptTokens: integer('prompt_tokens'),
+  completionTokens: integer('completion_tokens'),
+  costCents: integer('cost_cents'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('idx_deck_structure_analyses_deck_id').on(table.deckId),
+])
 
 // ─── Deck Analyses ───────────────────────────────────────────────────────────
 
@@ -419,10 +459,11 @@ export const decksRelations = relations(decks, ({ one, many }) => ({
   deckCards: many(deckCards),
   versions: many(deckVersions),
   analyses: many(deckAnalyses),
+  structureAnalyses: many(deckStructureAnalyses),
   matches: many(matchHistory),
 }));
 
-export const deckCardsRelations = relations(deckCards, ({ one }) => ({
+export const deckCardsRelations = relations(deckCards, ({ one, many }) => ({
   deck: one(decks, {
     fields: [deckCards.deckId],
     references: [decks.id],
@@ -431,6 +472,7 @@ export const deckCardsRelations = relations(deckCards, ({ one }) => ({
     fields: [deckCards.cardId],
     references: [cards.id],
   }),
+  categories: many(deckCardCategories),
 }));
 
 export const deckVersionsRelations = relations(deckVersions, ({ one, many }) => ({
@@ -490,5 +532,23 @@ export const matchCardPerformanceRelations = relations(matchCardPerformance, ({ 
   card: one(cards, {
     fields: [matchCardPerformance.cardId],
     references: [cards.id],
+  }),
+}));
+
+export const deckCardCategoriesRelations = relations(deckCardCategories, ({ one }) => ({
+  deckCard: one(deckCards, {
+    fields: [deckCardCategories.deckCardId],
+    references: [deckCards.id],
+  }),
+}));
+
+export const deckStructureAnalysesRelations = relations(deckStructureAnalyses, ({ one }) => ({
+  deck: one(decks, {
+    fields: [deckStructureAnalyses.deckId],
+    references: [decks.id],
+  }),
+  deckVersion: one(deckVersions, {
+    fields: [deckStructureAnalyses.deckVersionId],
+    references: [deckVersions.id],
   }),
 }));

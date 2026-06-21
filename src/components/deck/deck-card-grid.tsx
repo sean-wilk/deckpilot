@@ -1,12 +1,32 @@
 'use client'
 
-import { useState, useRef, useTransition } from 'react'
-import { ArrowUpDown } from 'lucide-react'
+import { useState, useRef, useTransition, useCallback, useOptimistic } from 'react'
+import { ArrowUpDown, MoreVertical, Check } from 'lucide-react'
+import {
+  DndContext,
+  DragOverlay,
+  useDroppable,
+  useDraggable,
+  type DragEndEvent,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
 import { CardImage } from '@/components/cards/card-image'
 import { CardDetailModal } from '@/components/cards/card-detail-modal'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuSub,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { CardImageUris, CardFace } from '@/types/card'
-import { removeCardFromDeck, toggleSideboard, updateCardQuantity } from '@/app/(dashboard)/decks/actions'
+import { removeCardFromDeck, moveToBoard, updateCardQuantity } from '@/app/(dashboard)/decks/actions'
 import type { UndoAction } from '@/hooks/use-deck-undo'
 
 // ─── Unlimited-copy cards (mirrors server-side list) ─────────────────────────
@@ -29,7 +49,7 @@ export interface DeckCardEntry {
   name: string
   cardType: string
   isCommander: boolean
-  isSideboard: boolean
+  board: 'main' | 'side' | 'maybe'
   quantity?: number
   imageUris: CardImageUris | null
   cardFaces: CardFace[] | null
@@ -59,10 +79,12 @@ export interface DeckCardGridProps {
   cards: DeckCardEntry[]
   isOwner: boolean
   cardRoles?: Record<string, string[]>
+  availableCategories?: string[]
   groupBy?: 'type' | 'role' | 'cmc'
   cardSize?: number
   legalityIssues?: LegalityIssue[]
   pushUndo?: (action: UndoAction) => void
+  onCategoryChange?: (deckCardId: string, categories: string[]) => void
 }
 
 // ─── Type ordering & display ──────────────────────────────────────────────────
@@ -124,6 +146,24 @@ function abbreviateRole(role: string): string {
   return abbrevMap[role] ?? role
 }
 
+// ─── Category API helper ─────────────────────────────────────────────────────
+
+async function updateCardCategories(
+  deckId: string,
+  deckCardId: string,
+  categories: string[],
+  action: 'set' | 'add' | 'remove',
+): Promise<string[]> {
+  const res = await fetch(`/api/decks/${deckId}/card-categories`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deckCardId, categories, action }),
+  })
+  if (!res.ok) throw new Error('Failed to update categories')
+  const data = await res.json()
+  return (data.categories ?? []).map((c: { category: string }) => c.category)
+}
+
 // ─── Card thumbnail ────────────────────────────────────────────────────────────
 
 interface CardThumbProps {
@@ -135,13 +175,32 @@ interface CardThumbProps {
   cardSize?: number
   legalityIssue?: LegalityIssue
   pushUndo?: (action: UndoAction) => void
+  availableCategories?: string[]
+  onCategoryChange?: (deckCardId: string, categories: string[]) => void
+  // DnD
+  isDragging?: boolean
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
 }
 
-function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legalityIssue, pushUndo }: CardThumbProps) {
+function CardThumb({
+  card,
+  deckId,
+  isOwner,
+  onCardClick,
+  roles,
+  cardSize,
+  legalityIssue,
+  pushUndo,
+  availableCategories,
+  onCategoryChange,
+  isDragging,
+  dragHandleProps,
+}: CardThumbProps) {
   const [hovered, setHovered] = useState(false)
   const [removing, startRemove] = useTransition()
   const [toggling, startToggle] = useTransition()
   const [updatingQty, startUpdateQty] = useTransition()
+  const [updatingCategory, startCategoryUpdate] = useTransition()
 
   // ── Debounced quantity ────────────────────────────────────────────────────
   const serverQty = card.quantity ?? 1
@@ -159,7 +218,6 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
   function debouncedUpdate(qty: number) {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
     debounceTimerRef.current = setTimeout(() => {
-      // Push undo for the entire batch (from pre-debounce to final qty)
       if (pushUndo && preDebounceQtyRef.current !== null) {
         pushUndo({ type: 'quantity', deckCardId: card.deckCardId, previousQuantity: preDebounceQtyRef.current })
         preDebounceQtyRef.current = null
@@ -172,26 +230,23 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
 
   const width = cardSize ?? 146
 
-  // Map numeric width to the nearest CardImage size variant
   const imageSize: 'small' | 'normal' | 'large' =
     width >= 300 ? 'large' : width >= 200 ? 'normal' : 'small'
 
   function handleRemove() {
-    // Push undo before removing
     pushUndo?.({ type: 'remove', deckId, cardId: card.cardId, cardName: card.name, quantity: card.quantity ?? 1 })
     startRemove(async () => {
       await removeCardFromDeck(deckId, card.deckCardId)
     })
   }
 
-  function handleToggleSideboard() {
+  function handleMoveToBoard(board: 'main' | 'side' | 'maybe') {
     startToggle(async () => {
-      await toggleSideboard(deckId, card.deckCardId)
+      await moveToBoard(deckId, card.deckCardId, board)
     })
   }
 
   function handleIncrease() {
-    // Track the quantity before the first click in a debounce batch
     if (preDebounceQtyRef.current === null) {
       preDebounceQtyRef.current = localQty
     }
@@ -202,14 +257,12 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
 
   function handleDecrease() {
     if (localQty <= 1) {
-      // Remove card immediately (no debounce)
       pushUndo?.({ type: 'remove', deckId, cardId: card.cardId, cardName: card.name, quantity: card.quantity ?? 1 })
       startRemove(async () => {
         await removeCardFromDeck(deckId, card.deckCardId)
       })
       return
     }
-    // Track the quantity before the first click in a debounce batch
     if (preDebounceQtyRef.current === null) {
       preDebounceQtyRef.current = localQty
     }
@@ -218,15 +271,44 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
     debouncedUpdate(next)
   }
 
+  // ── Role toggle ───────────────────────────────────────────────────────────
+  function handleToggleRole(role: string) {
+    const currentRoles = roles ?? []
+    const hasRole = currentRoles.includes(role)
+
+    startCategoryUpdate(async () => {
+      try {
+        const updated = await updateCardCategories(
+          deckId,
+          card.deckCardId,
+          [role],
+          hasRole ? 'remove' : 'add',
+        )
+        onCategoryChange?.(card.deckCardId, updated)
+      } catch {
+        // silently ignore — optimistic update will revert on next data load
+      }
+    })
+  }
+
+  // Determine visible categories for submenu
+  const allCategories = availableCategories && availableCategories.length > 0
+    ? availableCategories
+    : ROLE_ORDER
+
   const visibleRoles = roles?.slice(0, 2) ?? []
   const extraRoleCount = (roles?.length ?? 0) - visibleRoles.length
 
   return (
     <div
-      className="relative group flex flex-col items-center gap-1"
+      className={cn(
+        'relative group flex flex-col items-center gap-1',
+        isDragging && 'opacity-40',
+      )}
       style={{ width }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      {...dragHandleProps}
     >
       {/* Card image */}
       <div className="relative">
@@ -236,31 +318,31 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
           className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[4.75%]"
           aria-label={`View details for ${card.name}`}
         >
-        <div
-          style={{ width, height: Math.round(width * 1.395), overflow: 'hidden', borderRadius: '4.75% / 3.4%' }}
-          className={cn(
-            'transition-all duration-200 shadow-sm',
-            hovered && 'ring-1 ring-border shadow-md',
-            legalityIssue && 'ring-2 ring-warning ring-offset-1 ring-offset-background',
-          )}
-        >
-          <CardImage
-            name={card.name}
-            imageUris={card.imageUris}
-            cardFaces={card.cardFaces}
-            size={imageSize}
+          <div
+            style={{ width, height: Math.round(width * 1.395), overflow: 'hidden', borderRadius: '4.75% / 3.4%' }}
             className={cn(
-              'transition-transform duration-200 !w-full !h-full',
-              hovered && 'scale-[1.02]',
-              (removing || toggling) && 'opacity-50',
+              'transition-all duration-200 shadow-sm',
+              hovered && 'ring-1 ring-border shadow-md',
+              legalityIssue && 'ring-2 ring-warning ring-offset-1 ring-offset-background',
             )}
-          />
-        </div>
+          >
+            <CardImage
+              name={card.name}
+              imageUris={card.imageUris}
+              cardFaces={card.cardFaces}
+              size={imageSize}
+              className={cn(
+                'transition-transform duration-200 !w-full !h-full',
+                hovered && 'scale-[1.02]',
+                (removing || toggling) && 'opacity-50',
+              )}
+            />
+          </div>
         </button>
 
-        {/* Hover overlay: action buttons */}
+        {/* Hover overlay: action buttons (remove + sideboard toggle) — top-left */}
         {isOwner && hovered && !card.isCommander && (
-          <div className="absolute -top-1.5 -right-1.5 z-20 flex flex-col gap-1">
+          <div className="absolute -top-1.5 -left-1.5 z-20 flex flex-col gap-1">
             {/* Remove button */}
             <button
               type="button"
@@ -281,12 +363,12 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
               ×
             </button>
 
-            {/* Toggle sideboard button */}
+            {/* Board cycle button: moves to sideboard */}
             <button
               type="button"
-              onClick={handleToggleSideboard}
+              onClick={() => handleMoveToBoard(card.board === 'main' ? 'side' : 'main')}
               disabled={toggling}
-              title={card.isSideboard ? 'Move to mainboard' : 'Move to sideboard'}
+              title={card.board === 'main' ? 'Move to sideboard' : 'Move to mainboard'}
               className={cn(
                 'size-5 rounded-full',
                 'bg-secondary text-secondary-foreground',
@@ -296,10 +378,95 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
                 'hover:scale-110',
                 'disabled:opacity-50',
               )}
-              aria-label={card.isSideboard ? `Move ${card.name} to mainboard` : `Move ${card.name} to sideboard`}
+              aria-label={card.board === 'main' ? `Move ${card.name} to sideboard` : `Move ${card.name} to mainboard`}
             >
               <ArrowUpDown className="size-3" />
             </button>
+          </div>
+        )}
+
+        {/* Ellipsis menu — shown on hover for owners */}
+        {isOwner && hovered && (
+          <div
+            className="absolute top-1 right-1 z-30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  'size-6 rounded-full',
+                  'bg-black/60 backdrop-blur-sm text-white',
+                  'flex items-center justify-center',
+                  'shadow-md border border-white/10',
+                  'transition-all duration-150',
+                  'hover:bg-black/80',
+                  card.isCommander && '-top-1.5 -right-1.5',
+                )}
+                aria-label="Card options"
+              >
+                <MoreVertical className="size-3.5" />
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end" sideOffset={4}>
+                {/* Assign Role submenu */}
+                <DropdownMenuSub
+                  trigger={
+                    <span className="flex items-center gap-2 text-sm">
+                      Assign Role
+                    </span>
+                  }
+                >
+                  <DropdownMenuLabel>Roles</DropdownMenuLabel>
+                  {allCategories.map((cat) => {
+                    const isAssigned = (roles ?? []).includes(cat)
+                    const label = ROLE_LABELS[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, ' ')
+                    return (
+                      <DropdownMenuItem
+                        key={cat}
+                        onClick={() => handleToggleRole(cat)}
+                        className={cn(updatingCategory && 'opacity-50 pointer-events-none')}
+                      >
+                        <Check
+                          className={cn(
+                            'size-3.5 shrink-0',
+                            isAssigned ? 'opacity-100 text-primary' : 'opacity-0',
+                          )}
+                        />
+                        {label}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator />
+
+                {/* Board selection */}
+                <DropdownMenuItem onClick={() => handleMoveToBoard('main')} disabled={toggling || card.isCommander || card.board === 'main'}>
+                  <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                  Move to Main
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMoveToBoard('side')} disabled={toggling || card.isCommander || card.board === 'side'}>
+                  <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                  Move to Sideboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleMoveToBoard('maybe')} disabled={toggling || card.isCommander || card.board === 'maybe'}>
+                  <ArrowUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                  Move to Maybeboard
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* Remove */}
+                <DropdownMenuItem
+                  onClick={handleRemove}
+                  disabled={removing || card.isCommander}
+                  className="text-destructive hover:text-destructive focus:text-destructive"
+                >
+                  <span className="size-3.5 shrink-0 flex items-center justify-center font-bold text-xs">×</span>
+                  Remove from Deck
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
 
@@ -311,13 +478,20 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
         )}
 
         {/* Sideboard badge */}
-        {card.isSideboard && (
+        {card.board === 'side' && (
           <div className="absolute -bottom-1.5 -left-1.5 z-20 px-1 py-0.5 rounded-sm bg-interactive text-interactive-foreground text-[8px] font-bold uppercase tracking-wide shadow">
             SB
           </div>
         )}
 
-        {/* Quantity badge — shown when quantity > 1 and not hovered (hovered shows the controls instead) */}
+        {/* Maybeboard badge */}
+        {card.board === 'maybe' && (
+          <span className="absolute bottom-1 left-1 z-10 rounded bg-violet-500/90 px-1 py-0.5 text-[9px] font-bold text-white shadow">
+            MB
+          </span>
+        )}
+
+        {/* Quantity badge — shown when quantity > 1 and not hovered */}
         {localQty > 1 && !hovered && (
           <div className="absolute bottom-1 right-1 z-20 bg-foreground text-background rounded-full text-2xs font-bold px-1.5 py-0.5 leading-none shadow">
             ×{localQty}
@@ -415,7 +589,121 @@ function CardThumb({ card, deckId, isOwner, onCardClick, roles, cardSize, legali
   )
 }
 
-// ─── Card group (generic for type / role / cmc) ──────────────────────────────
+// ─── Draggable card wrapper ───────────────────────────────────────────────────
+
+interface DraggableCardProps {
+  card: DeckCardEntry
+  deckId: string
+  isOwner: boolean
+  onCardClick: (card: DeckCardEntry) => void
+  roles?: string[]
+  cardSize?: number
+  legalityIssue?: LegalityIssue
+  pushUndo?: (action: UndoAction) => void
+  availableCategories?: string[]
+  onCategoryChange?: (deckCardId: string, categories: string[]) => void
+}
+
+function DraggableCard(props: DraggableCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: props.card.deckCardId,
+    data: { card: props.card },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ touchAction: 'none' }}
+      className={cn(isDragging && 'cursor-grabbing')}
+    >
+      <CardThumb
+        {...props}
+        isDragging={isDragging}
+        dragHandleProps={{ ...attributes, ...listeners, style: { cursor: isDragging ? 'grabbing' : 'grab' } }}
+      />
+    </div>
+  )
+}
+
+// ─── Droppable role section ───────────────────────────────────────────────────
+
+interface DroppableRoleGroupProps {
+  roleKey: string
+  label: string
+  cards: DeckCardEntry[]
+  deckId: string
+  isOwner: boolean
+  onCardClick: (card: DeckCardEntry) => void
+  cardRoles?: Record<string, string[]>
+  cardSize?: number
+  legalityIssues?: LegalityIssue[]
+  pushUndo?: (action: UndoAction) => void
+  availableCategories?: string[]
+  onCategoryChange?: (deckCardId: string, categories: string[]) => void
+  isDropTarget: boolean
+}
+
+function DroppableRoleGroup({
+  roleKey,
+  label,
+  cards,
+  deckId,
+  isOwner,
+  onCardClick,
+  cardRoles,
+  cardSize,
+  legalityIssues,
+  pushUndo,
+  availableCategories,
+  onCategoryChange,
+  isDropTarget,
+}: DroppableRoleGroupProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: `role:${roleKey}` })
+
+  const count = cards.reduce((sum, c) => sum + (c.quantity ?? 1), 0)
+
+  return (
+    <section ref={setNodeRef}>
+      <div
+        className={cn(
+          'flex items-center gap-2 mb-3 pb-2 border-b transition-colors duration-150',
+          isOver ? 'border-primary/60' : 'border-divider',
+        )}
+      >
+        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+        <span className="text-xs text-muted-foreground tabular-nums">({count})</span>
+        {isDropTarget && (
+          <span className="ml-auto text-xs text-muted-foreground/60 italic">drop to assign role</span>
+        )}
+      </div>
+
+      <div
+        className={cn(
+          'flex flex-wrap gap-3 min-h-[3rem] rounded-lg p-1 -m-1 transition-colors duration-150',
+          isOver && 'bg-primary/5 ring-1 ring-primary/20',
+        )}
+      >
+        {cards.map((card) => (
+          <DraggableCard
+            key={card.deckCardId}
+            card={card}
+            deckId={deckId}
+            isOwner={isOwner}
+            onCardClick={onCardClick}
+            roles={cardRoles?.[card.name]}
+            cardSize={cardSize}
+            legalityIssue={legalityIssues?.find((issue) => issue.cardId === card.cardId)}
+            pushUndo={pushUndo}
+            availableCategories={availableCategories}
+            onCategoryChange={onCategoryChange}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+// ─── Card group (for non-role groupings — type/cmc) ──────────────────────────
 
 interface CardGroupProps {
   label: string
@@ -427,9 +715,23 @@ interface CardGroupProps {
   cardSize?: number
   legalityIssues?: LegalityIssue[]
   pushUndo?: (action: UndoAction) => void
+  availableCategories?: string[]
+  onCategoryChange?: (deckCardId: string, categories: string[]) => void
 }
 
-function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, cardSize, legalityIssues, pushUndo }: CardGroupProps) {
+function CardGroup({
+  label,
+  cards,
+  deckId,
+  isOwner,
+  onCardClick,
+  cardRoles,
+  cardSize,
+  legalityIssues,
+  pushUndo,
+  availableCategories,
+  onCategoryChange,
+}: CardGroupProps) {
   return (
     <section>
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-divider">
@@ -453,6 +755,8 @@ function CardGroup({ label, cards, deckId, isOwner, onCardClick, cardRoles, card
             cardSize={cardSize}
             legalityIssue={legalityIssues?.find((issue) => issue.cardId === card.cardId)}
             pushUndo={pushUndo}
+            availableCategories={availableCategories}
+            onCategoryChange={onCategoryChange}
           />
         ))}
       </div>
@@ -493,7 +797,6 @@ function groupByRole(
     grouped.get(primaryRole)!.push(card)
   }
 
-  // Ordered roles first, then alphabetical extras, then unassigned last
   const orderedKeys = ROLE_ORDER.filter((r) => grouped.has(r))
   const extraKeys = [...grouped.keys()]
     .filter((r) => r !== 'unassigned' && !ROLE_ORDER.includes(r))
@@ -531,12 +834,173 @@ function groupByCmc(cards: DeckCardEntry[]): { key: string; label: string; cards
   }))
 }
 
+// ─── Collapsible board section (sideboard / maybeboard) ──────────────────────
+
+interface CollapsibleBoardSectionProps {
+  label: string
+  badgeClass: string
+  cards: DeckCardEntry[]
+  deckId: string
+  isOwner: boolean
+  onCardClick: (card: DeckCardEntry) => void
+  cardRoles?: Record<string, string[]>
+  cardSize?: number
+  legalityIssues?: LegalityIssue[]
+  pushUndo?: (action: UndoAction) => void
+  availableCategories?: string[]
+  onCategoryChange?: (deckCardId: string, categories: string[]) => void
+}
+
+function CollapsibleBoardSection({
+  label,
+  badgeClass,
+  cards,
+  deckId,
+  isOwner,
+  onCardClick,
+  cardRoles,
+  cardSize,
+  legalityIssues,
+  pushUndo,
+  availableCategories,
+  onCategoryChange,
+}: CollapsibleBoardSectionProps) {
+  const [collapsed, setCollapsed] = useState(false)
+  const count = cards.reduce((sum, c) => sum + (c.quantity ?? 1), 0)
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex items-center gap-2 mb-3 w-full text-left group"
+      >
+        <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold', badgeClass)}>
+          {label}
+        </span>
+        <span className="text-xs text-muted-foreground tabular-nums">({count})</span>
+        <span className="ml-1 text-muted-foreground/50 text-xs transition-transform duration-150" style={{ display: 'inline-block', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
+          ▾
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div className="flex flex-wrap gap-3">
+          {cards.map((card) => (
+            <CardThumb
+              key={card.deckCardId}
+              card={card}
+              deckId={deckId}
+              isOwner={isOwner}
+              onCardClick={onCardClick}
+              roles={cardRoles?.[card.name]}
+              cardSize={cardSize}
+              legalityIssue={legalityIssues?.find((issue) => issue.cardId === card.cardId)}
+              pushUndo={pushUndo}
+              availableCategories={availableCategories}
+              onCategoryChange={onCategoryChange}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── DeckCardGrid ─────────────────────────────────────────────────────────────
 
-export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'type', cardSize, legalityIssues, pushUndo }: DeckCardGridProps) {
+export function DeckCardGrid({
+  deckId,
+  cards,
+  isOwner,
+  cardRoles: externalCardRoles,
+  availableCategories,
+  groupBy = 'type',
+  cardSize,
+  legalityIssues,
+  pushUndo,
+  onCategoryChange,
+}: DeckCardGridProps) {
   const [selectedCard, setSelectedCard] = useState<DeckCardEntry | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [, startTransition] = useTransition()
+
+  // ── Optimistic card roles (for DnD drops and menu toggles) ────────────────
+  const [optimisticRoles, setOptimisticRoles] = useOptimistic(
+    externalCardRoles ?? {},
+    (current, update: { cardName: string; roles: string[] }) => ({
+      ...current,
+      [update.cardName]: update.roles,
+    }),
+  )
+
+  // ── DnD state ─────────────────────────────────────────────────────────────
+  const [activeCard, setActiveCard] = useState<DeckCardEntry | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        // Require 8px movement before drag starts — prevents accidental drags on click
+        distance: 8,
+      },
+    }),
+  )
+
+  function handleDragStart(event: DragStartEvent) {
+    const card = event.active.data.current?.card as DeckCardEntry | undefined
+    if (card) setActiveCard(card)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveCard(null)
+
+    const { over, active } = event
+    if (!over) return
+
+    const targetId = over.id as string
+    if (!targetId.startsWith('role:')) return
+
+    const targetRole = targetId.replace('role:', '')
+    const card = active.data.current?.card as DeckCardEntry | undefined
+    if (!card) return
+
+    const currentRoles = optimisticRoles[card.name] ?? []
+    // If already in this role as primary, no-op
+    if (currentRoles[0] === targetRole) return
+
+    // Set this role as the primary (first) role
+    const otherRoles = currentRoles.filter((r) => r !== targetRole)
+    const newRoles = [targetRole, ...otherRoles]
+
+    // Optimistic update
+    startTransition(async () => {
+      setOptimisticRoles({ cardName: card.name, roles: newRoles })
+
+      try {
+        const updated = await updateCardCategories(deckId, card.deckCardId, [targetRole], 'set')
+        onCategoryChange?.(card.deckCardId, updated)
+      } catch {
+        // Optimistic update will revert when external data re-renders
+      }
+    })
+  }
+
+  // Merge optimistic roles with external for category-change callback
+  const cardRoles = optimisticRoles
+
+  const handleCategoryChange = useCallback(
+    (deckCardId: string, categories: string[]) => {
+      // Find the card name for this deckCardId
+      const card = cards.find((c) => c.deckCardId === deckCardId)
+      if (card) {
+        startTransition(() => {
+          setOptimisticRoles({ cardName: card.name, roles: categories })
+        })
+      }
+      onCategoryChange?.(deckCardId, categories)
+    },
+    [cards, onCategoryChange, setOptimisticRoles],
+  )
 
   function handleCardClick(card: DeckCardEntry) {
     setSelectedCard(card)
@@ -553,76 +1017,178 @@ export function DeckCardGrid({ deckId, cards, isOwner, cardRoles, groupBy = 'typ
     )
   }
 
-  // Separate commander from the 99
+  // Separate commander, mainboard, sideboard, maybeboard
   const commanderCards = cards.filter(c => c.isCommander)
-  const deckCards = cards.filter(c => !c.isCommander)
+  const mainCards = cards.filter(c => !c.isCommander && c.board === 'main')
+  const sideCards = cards.filter(c => c.board === 'side')
+  const maybeCards = cards.filter(c => c.board === 'maybe')
 
-  // Compute groups based on groupBy mode
+  // Compute groups based on groupBy mode (mainboard only)
   let groups: { key: string; label: string; cards: DeckCardEntry[] }[]
   switch (groupBy) {
     case 'role':
-      groups = groupByRole(deckCards, cardRoles ?? {})
+      groups = groupByRole(mainCards, cardRoles)
       break
     case 'cmc':
-      groups = groupByCmc(deckCards)
+      groups = groupByCmc(mainCards)
       break
     case 'type':
     default:
-      groups = groupByType(deckCards)
+      groups = groupByType(mainCards)
       break
   }
 
+  const isRoleMode = groupBy === 'role'
+
+  // Derive available categories from ROLE_ORDER + any extras in cardRoles + availableCategories prop
+  const allAvailableCategories = [
+    ...ROLE_ORDER,
+    ...(availableCategories ?? []).filter((c) => !ROLE_ORDER.includes(c)),
+    ...Object.values(cardRoles)
+      .flat()
+      .filter((r) => !ROLE_ORDER.includes(r)),
+  ].filter((v, i, arr) => arr.indexOf(v) === i) // deduplicate
+
+  const gridContent = (
+    <div className="flex flex-col gap-8">
+      {/* Commander Section */}
+      {commanderCards.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
+              <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+              </svg>
+              Commander
+            </span>
+          </div>
+          <div className="flex gap-4">
+            {commanderCards.map((card) => (
+              <div
+                key={card.deckCardId}
+                className="rounded-xl ring-2 ring-amber-500/40 ring-offset-2 ring-offset-background"
+              >
+                <CardThumb
+                  card={card}
+                  deckId={deckId}
+                  isOwner={isOwner}
+                  onCardClick={handleCardClick}
+                  cardSize={cardSize}
+                  legalityIssue={legalityIssues?.find(l => l.deckCardId === card.deckCardId)}
+                  pushUndo={pushUndo}
+                  availableCategories={allAvailableCategories}
+                  onCategoryChange={handleCategoryChange}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Card Groups (mainboard) */}
+      {isRoleMode
+        ? groups.map((group) => (
+            <DroppableRoleGroup
+              key={group.key}
+              roleKey={group.key}
+              label={group.label}
+              cards={group.cards}
+              deckId={deckId}
+              isOwner={isOwner}
+              onCardClick={handleCardClick}
+              cardRoles={cardRoles}
+              cardSize={cardSize}
+              legalityIssues={legalityIssues}
+              pushUndo={pushUndo}
+              availableCategories={allAvailableCategories}
+              onCategoryChange={handleCategoryChange}
+              isDropTarget={activeCard !== null}
+            />
+          ))
+        : groups.map((group) => (
+            <CardGroup
+              key={group.key}
+              label={group.label}
+              cards={group.cards}
+              deckId={deckId}
+              isOwner={isOwner}
+              onCardClick={handleCardClick}
+              cardRoles={cardRoles}
+              cardSize={cardSize}
+              legalityIssues={legalityIssues}
+              pushUndo={pushUndo}
+              availableCategories={allAvailableCategories}
+              onCategoryChange={handleCategoryChange}
+            />
+          ))}
+
+      {/* Sideboard Section */}
+      {sideCards.length > 0 && (
+        <CollapsibleBoardSection
+          label="Sideboard"
+          badgeClass="bg-interactive text-interactive-foreground"
+          cards={sideCards}
+          deckId={deckId}
+          isOwner={isOwner}
+          onCardClick={handleCardClick}
+          cardRoles={cardRoles}
+          cardSize={cardSize}
+          legalityIssues={legalityIssues}
+          pushUndo={pushUndo}
+          availableCategories={allAvailableCategories}
+          onCategoryChange={handleCategoryChange}
+        />
+      )}
+
+      {/* Maybeboard Section */}
+      {maybeCards.length > 0 && (
+        <CollapsibleBoardSection
+          label="Maybeboard"
+          badgeClass="bg-violet-500/20 text-violet-400 border border-violet-500/40"
+          cards={maybeCards}
+          deckId={deckId}
+          isOwner={isOwner}
+          onCardClick={handleCardClick}
+          cardRoles={cardRoles}
+          cardSize={cardSize}
+          legalityIssues={legalityIssues}
+          pushUndo={pushUndo}
+          availableCategories={allAvailableCategories}
+          onCategoryChange={handleCategoryChange}
+        />
+      )}
+    </div>
+  )
+
   return (
     <>
-      <div className="flex flex-col gap-8">
-        {/* Commander Section */}
-        {commanderCards.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-                </svg>
-                Commander
-              </span>
-            </div>
-            <div className="flex gap-4">
-              {commanderCards.map((card) => (
-                <div
-                  key={card.deckCardId}
-                  className="rounded-xl ring-2 ring-amber-500/40 ring-offset-2 ring-offset-background"
-                >
-                  <CardThumb
-                    card={card}
-                    deckId={deckId}
-                    isOwner={isOwner}
-                    onCardClick={handleCardClick}
-                    cardSize={cardSize}
-                    legalityIssue={legalityIssues?.find(l => l.deckCardId === card.deckCardId)}
-                    pushUndo={pushUndo}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      {isRoleMode ? (
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          {gridContent}
 
-        {/* Card Groups */}
-        {groups.map((group) => (
-          <CardGroup
-            key={group.key}
-            label={group.label}
-            cards={group.cards}
-            deckId={deckId}
-            isOwner={isOwner}
-            onCardClick={handleCardClick}
-            cardRoles={cardRoles}
-            cardSize={cardSize}
-            legalityIssues={legalityIssues}
-            pushUndo={pushUndo}
-          />
-        ))}
-      </div>
+          {/* Drag overlay — ghost of the dragged card */}
+          <DragOverlay dropAnimation={null}>
+            {activeCard && (
+              <div className="pointer-events-none rotate-2 opacity-90 shadow-2xl">
+                <CardThumb
+                  card={activeCard}
+                  deckId={deckId}
+                  isOwner={false}
+                  onCardClick={() => {}}
+                  roles={cardRoles[activeCard.name]}
+                  cardSize={cardSize}
+                />
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
+      ) : (
+        gridContent
+      )}
 
       {selectedCard && (
         <CardDetailModal

@@ -24,6 +24,11 @@ const RecommendationsTabContent = dynamic(
   { loading: () => <TabLoadingState label="Recommendations" />, ssr: false }
 )
 
+const StructureTabContent = dynamic(
+  () => import('@/components/ai/structure-tab-content').then((m) => ({ default: m.StructureTabContent })),
+  { loading: () => <TabLoadingState label="Structure" />, ssr: false }
+)
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DeckContentTabsProps {
@@ -42,7 +47,7 @@ export interface DeckContentTabsProps {
   children?: React.ReactNode // for DeckCardGrid and sideboard section
 }
 
-type TabId = 'deck' | 'analysis' | 'mana_fixing' | 'recommendations' | 'details'
+type TabId = 'deck' | 'analysis' | 'structure' | 'mana_fixing' | 'recommendations' | 'details'
 
 interface Tab {
   id: TabId
@@ -53,6 +58,7 @@ interface Tab {
 const TABS: Tab[] = [
   { id: 'deck', label: 'Deck', notificationKey: '' },
   { id: 'analysis', label: 'Analysis', notificationKey: 'analysis' },
+  { id: 'structure', label: 'Structure', notificationKey: 'structure' },
   { id: 'mana_fixing', label: 'Mana Fixing', notificationKey: 'mana_fixing' },
   { id: 'recommendations', label: 'Recommendations', notificationKey: 'recommendations' },
   { id: 'details', label: 'Details', notificationKey: '' },
@@ -141,6 +147,7 @@ export function DeckContentTabs({
   const [recommendationsFocus, setRecommendationsFocus] = useState<string | undefined>(undefined)
   const [notifications, setNotifications] = useState<Record<string, boolean>>({
     analysis: false,
+    structure: false,
     mana_fixing: false,
     recommendations: false,
   })
@@ -158,14 +165,16 @@ export function DeckContentTabs({
 
     async function checkSavedData() {
       try {
-        const [analysisRes, manaFixingRes, recsRes] = await Promise.allSettled([
+        const [analysisRes, structureRes, manaFixingRes, recsRes] = await Promise.allSettled([
           fetch(`/api/decks/${deckId}/analysis/saved`, { method: 'HEAD' }),
+          fetch(`/api/ai/structure/${deckId}`, { method: 'HEAD' }),
           fetch(`/api/decks/${deckId}/mana-fixing/saved`, { method: 'HEAD' }),
           fetch(`/api/decks/${deckId}/recommendations/saved`, { method: 'HEAD' }),
         ])
 
         setNotifications({
           analysis: analysisRes.status === 'fulfilled' && analysisRes.value.ok,
+          structure: structureRes.status === 'fulfilled' && structureRes.value.ok,
           mana_fixing: manaFixingRes.status === 'fulfilled' && manaFixingRes.value.ok,
           recommendations: recsRes.status === 'fulfilled' && recsRes.value.ok,
         })
@@ -224,6 +233,19 @@ export function DeckContentTabs({
                 handleTabChange('recommendations')
                 setRecommendationsFocus(focus)
               }}
+              onSwitchToStructure={() => handleTabChange('structure')}
+            />
+          </div>
+        )}
+
+        {/* Structure tab */}
+        {activeTabId === 'structure' && (
+          <div role="tabpanel" aria-label="Structure">
+            <StructureTabContent
+              deckId={deckId}
+              isOwner={isOwner}
+              categoryTargets={categoryTargets}
+              deckCardNames={deckCardNames ?? []}
             />
           </div>
         )}

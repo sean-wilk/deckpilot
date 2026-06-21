@@ -5,7 +5,7 @@ import { Download } from 'lucide-react'
 import { exportMTGO, exportArena } from '@/lib/export/text-export'
 
 interface ExportDropdownProps {
-  cards: { quantity: number; name: string; setCode?: string; isCommander?: boolean; isSideboard?: boolean }[]
+  cards: { quantity: number; name: string; setCode?: string; isCommander?: boolean; board?: 'main' | 'side' | 'maybe' }[]
 }
 
 export function ExportDropdown({ cards }: ExportDropdownProps) {

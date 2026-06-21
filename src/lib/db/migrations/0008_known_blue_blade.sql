@@ -1,0 +1,1 @@
+ALTER TABLE "deck_cards" ADD COLUMN "board" text DEFAULT 'main' NOT NULL;

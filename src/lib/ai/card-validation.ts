@@ -20,7 +20,7 @@ export interface CardValidationResult {
  * Fuzzy match a card name against the database using pg_trgm.
  * Falls back through increasingly loose matching strategies.
  */
-async function fuzzyMatchCardName(
+export async function fuzzyMatchCardName(
   cardName: string
 ): Promise<{ id: string; name: string; typeLine: string; colorIdentity: string[] } | null> {
   // Strategy 1: Trigram similarity (requires pg_trgm extension)

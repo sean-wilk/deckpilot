@@ -19,7 +19,7 @@ interface DeckCardEntry {
   cardId: string
   cardType: string
   isCommander: boolean
-  isSideboard: boolean
+  board: 'main' | 'side' | 'maybe'
   quantity?: number
   name: string
   manaCost: string | null
@@ -51,6 +51,7 @@ interface DeckPageClientProps {
   }
   mainboardCards: DeckCardEntry[]
   sideboardCards: DeckCardEntry[]
+  maybeboardCards: DeckCardEntry[]
   commanderCards: DeckCardEntry[]
   /** Authoritative commander card fetched directly from decks.commanderId — used as fallback when commanderCards is empty */
   commanderCard: {
@@ -103,6 +104,7 @@ export function DeckPageClient({
   deck,
   mainboardCards,
   sideboardCards,
+  maybeboardCards,
   commanderCards,
   commanderCard,
   partnerCard,
@@ -124,6 +126,17 @@ export function DeckPageClient({
   useEffect(() => {
     async function deriveCardRoles() {
       try {
+        // Prefer persisted structure categories over analysis-derived roles
+        const structureRes = await fetch(`/api/ai/structure/${deckId}`)
+        if (structureRes.ok) {
+          const structureData = await structureRes.json()
+          if (structureData?.cardRoles && Object.keys(structureData.cardRoles).length > 0) {
+            setCardRoles(structureData.cardRoles as Record<string, string[]>)
+            return
+          }
+        }
+
+        // Fall back to analysis-derived categories
         const res = await fetch(`/api/ai/analysis/${deckId}`)
         if (!res.ok) return
         const data = await res.json()
@@ -206,6 +219,7 @@ export function DeckPageClient({
             ...mainboardCards.map((c) => c.name),
             ...commanderCards.map((c) => c.name),
             ...sideboardCards.map((c) => c.name),
+            ...maybeboardCards.map((c) => c.name),
           ]}
           philosophy={deck.philosophy}
           archetype={deck.archetype}
@@ -228,7 +242,7 @@ export function DeckPageClient({
 
           <DeckCardGrid
             deckId={deckId}
-            cards={[...commanderCards, ...mainboardCards]}
+            cards={[...commanderCards, ...mainboardCards, ...sideboardCards, ...maybeboardCards]}
             isOwner={isOwner}
             cardRoles={cardRoles}
             groupBy={groupBy}
@@ -236,32 +250,6 @@ export function DeckPageClient({
             legalityIssues={legalityIssues}
             pushUndo={pushUndo}
           />
-
-          {/* Sideboard section */}
-          <section className="pt-2">
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-foreground">
-                Sideboard ({sideboardCards.length})
-              </h3>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-            {sideboardCards.length > 0 ? (
-              <DeckCardGrid
-                deckId={deckId}
-                cards={sideboardCards}
-                isOwner={isOwner}
-                cardRoles={cardRoles}
-                groupBy={groupBy}
-                cardSize={cardSize}
-                legalityIssues={legalityIssues}
-                pushUndo={pushUndo}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No sideboard cards
-              </p>
-            )}
-          </section>
         </DeckContentTabs>
       </div>
 

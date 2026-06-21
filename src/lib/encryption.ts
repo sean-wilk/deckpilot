@@ -8,7 +8,13 @@ function getKey(): Buffer {
   if (!key) {
     throw new Error('ENCRYPTION_KEY environment variable is not set')
   }
-  return Buffer.from(key, 'hex')
+  const buf = Buffer.from(key, 'hex')
+  if (buf.length !== 32) {
+    throw new Error(
+      `ENCRYPTION_KEY must be a 64-character hex string (32 bytes) for ${ALGORITHM}; decoded ${buf.length} bytes`
+    )
+  }
+  return buf
 }
 
 export function encrypt(plaintext: string): string {

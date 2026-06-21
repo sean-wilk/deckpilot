@@ -49,7 +49,7 @@ export const syncScryfallCards = inngest.createFunction(
           oracleId: card.oracle_id,
           name: card.name,
           manaCost: card.mana_cost ?? null,
-          cmc: String(card.cmc),
+          cmc: card.cmc != null ? String(card.cmc) : '0',
           typeLine: card.type_line,
           oracleText: card.oracle_text ?? null,
           colors: card.colors ?? [],
@@ -97,35 +97,21 @@ export const syncScryfallCards = inngest.createFunction(
         upserted += batchItems.length
       }
 
-      return new Promise<{ processed: number; upserted: number }>((resolve, reject) => {
-        jsonStream.on('data', async ({ value }: { value: ScryfallCard }) => {
-          processed++
-          batch.push(value)
+      // Consume the stream sequentially: awaiting each batch insert applies
+      // backpressure so the next records aren't read until the insert completes.
+      // This avoids the async 'data'-handler race where 'end' could fire (and the
+      // final batch be processed twice) while an insert was still in flight.
+      for await (const { value } of jsonStream as AsyncIterable<{ value: ScryfallCard }>) {
+        processed++
+        batch.push(value)
 
-          if (batch.length >= BATCH_SIZE) {
-            jsonStream.pause()
-            try {
-              await processBatch(batch)
-              batch = []
-            } catch (err) {
-              reject(err)
-              return
-            }
-            jsonStream.resume()
-          }
-        })
-
-        jsonStream.on('end', async () => {
-          try {
-            await processBatch(batch)
-            resolve({ processed, upserted })
-          } catch (err) {
-            reject(err)
-          }
-        })
-
-        jsonStream.on('error', reject)
-      })
+        if (batch.length >= BATCH_SIZE) {
+          await processBatch(batch)
+          batch = []
+        }
+      }
+      await processBatch(batch)
+      return { processed, upserted }
     })
 
     return stats

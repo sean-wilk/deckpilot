@@ -50,6 +50,20 @@
       "when": 1773833235448,
       "tag": "0006_ambiguous_kabuki",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774308595071,
+      "tag": "0007_past_cardiac",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774455144966,
+      "tag": "0008_known_blue_blade",
+      "breakpoints": true
     }
   ]
 }

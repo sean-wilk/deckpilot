@@ -31,8 +31,14 @@ function RatingBadge({ rating }: { rating: string }) {
 }
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 function LoadingDots() {
@@ -236,6 +242,7 @@ interface AnalysisTabContentProps {
   deckCardNames?: string[]
   onSwitchToRecommendations?: (focus?: string) => void
   onSwitchToManaFixing?: () => void
+  onSwitchToStructure?: () => void
 }
 
 export function AnalysisTabContent({
@@ -246,6 +253,7 @@ export function AnalysisTabContent({
   deckCardNames,
   onSwitchToRecommendations,
   onSwitchToManaFixing,
+  onSwitchToStructure,
 }: AnalysisTabContentProps) {
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null)
   const [acceptingBracket, setAcceptingBracket] = useState(false)
@@ -604,8 +612,26 @@ export function AnalysisTabContent({
             />
           )}
 
-          {/* Categories — 2-column grid */}
-          {analysis.categories && (normalized.core.length > 0 || normalized.deck_specific.length > 0) && (
+          {/* Structure Summary (new analyses) or CategoryGrid (backward compat for old analyses) */}
+          {analysis.structureSummary ? (
+            <div className="space-y-3 pb-8 border-b border-divider">
+              <h3 className="text-section-heading">Structure Overview</h3>
+              <div className="rounded-lg border border-border bg-muted/20 px-5 py-4 space-y-2">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  <AnalysisTextWithCards text={analysis.structureSummary} cardNames={allCardNames} />
+                </p>
+                {onSwitchToStructure && (
+                  <button
+                    type="button"
+                    onClick={onSwitchToStructure}
+                    className="text-xs text-interactive hover:text-interactive-hover transition-colors p-0"
+                  >
+                    View detailed structure breakdown →
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : analysis.categories && (normalized.core.length > 0 || normalized.deck_specific.length > 0) ? (
             <div className="space-y-3 pb-8 border-b border-divider">
               <h3 className="text-section-heading">Categories</h3>
               <CategoryGrid
@@ -615,7 +641,7 @@ export function AnalysisTabContent({
                 cardNames={allCardNames}
               />
             </div>
-          )}
+          ) : null}
 
           {/* Strengths & Weaknesses — side by side */}
           {(analysis.strengths || analysis.weaknesses) && (

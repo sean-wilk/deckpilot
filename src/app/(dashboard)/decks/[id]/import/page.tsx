@@ -18,6 +18,7 @@ interface MatchedCard {
   setCode?: string
   isCommander?: boolean
   isSideboard?: boolean
+  board?: 'main' | 'side' | 'maybe'
   card: CardRecord
 }
 
@@ -83,7 +84,7 @@ export default function ImportPage() {
       for (const match of result.matched) {
         for (let i = 0; i < match.quantity; i++) {
           try {
-            await addCardToDeck(deckId, match.card.id)
+            await addCardToDeck(deckId, match.card.id, false, match.board ?? 'main')
             totalAdded++
           } catch (err) {
             cardErrors.push(`${match.card.name}: ${err instanceof Error ? err.message : 'failed'}`)
@@ -171,8 +172,11 @@ export default function ImportPage() {
                         </div>
                       )}
                       <p className="text-xs font-medium truncate">{m.quantity}x {m.card.name}</p>
-                      {m.isSideboard && (
+                      {m.board === 'side' && (
                         <span className="text-xs text-muted-foreground">Sideboard</span>
+                      )}
+                      {m.board === 'maybe' && (
+                        <span className="text-xs text-muted-foreground">Maybeboard</span>
                       )}
                     </div>
                   )

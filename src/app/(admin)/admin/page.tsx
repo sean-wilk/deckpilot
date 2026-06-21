@@ -86,6 +86,22 @@ export default async function AdminPage() {
                     <dt className="text-muted-foreground">Max Tokens (Gen)</dt>
                     <dd className="font-mono mt-0.5">{config.maxTokensGeneration.toLocaleString()}</dd>
                   </div>
+                  <div>
+                    <dt className="text-muted-foreground">Structure Strategy</dt>
+                    <dd className="font-mono mt-0.5">{config.modelStructureStrategy ?? 'Not set'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Structure Assignment</dt>
+                    <dd className="font-mono mt-0.5">{config.modelStructureAssignment ?? 'Not set'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Max Tokens (Struct Strategy)</dt>
+                    <dd className="font-mono mt-0.5">{(config.maxTokensStructureStrategy ?? 4096).toLocaleString()}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Max Tokens (Struct Assignment)</dt>
+                    <dd className="font-mono mt-0.5">{(config.maxTokensStructureAssignment ?? 8192).toLocaleString()}</dd>
+                  </div>
                   {config.usageLimitDailyCents != null && (
                     <div>
                       <dt className="text-muted-foreground">Daily Limit</dt>

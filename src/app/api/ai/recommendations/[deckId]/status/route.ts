@@ -21,20 +21,20 @@ export async function PATCH(
       .limit(1)
     if (!deck[0]) return new Response('Deck not found', { status: 404 })
 
-    const { recommendationId, status } = await request.json() as {
+    const { recommendationId, status, destination } = await request.json() as {
       recommendationId: string
-      status: 'accepted' | 'skipped' | 'dismissed'
+      status: 'accepted' | 'skipped'
+      destination?: 'side' | 'maybe' | 'remove'
     }
 
-    if (!recommendationId || !['accepted', 'skipped', 'dismissed'].includes(status)) {
+    if (!recommendationId || !['accepted', 'skipped'].includes(status)) {
       return new Response('Invalid request body', { status: 400 })
     }
 
     // Map status to accepted/dismissed columns
     const statusFields =
       status === 'accepted'  ? { accepted: true,  dismissed: false } :
-      status === 'skipped'   ? { accepted: false, dismissed: false } :
-      /* dismissed */          { dismissed: true, accepted: null }
+      /* skipped */            { accepted: false, dismissed: false }
 
     // Fetch the recommendation first (to get cardOutId / cardInId if accepting)
     const [rec] = await db.select().from(swapRecommendations)
@@ -50,10 +50,21 @@ export async function PATCH(
 
     // If accepting, perform the swap
     if (status === 'accepted') {
-      // Remove card out
+      // Handle card out based on destination
       if (rec.cardOutId) {
-        await db.delete(deckCards)
-          .where(and(eq(deckCards.deckId, deckId), eq(deckCards.cardId, rec.cardOutId)))
+        const dest = destination ?? 'side'
+        if (dest === 'remove') {
+          await db.delete(deckCards)
+            .where(and(eq(deckCards.deckId, deckId), eq(deckCards.cardId, rec.cardOutId)))
+        } else if (dest === 'side') {
+          await db.update(deckCards)
+            .set({ board: 'side', isSideboard: true })
+            .where(and(eq(deckCards.deckId, deckId), eq(deckCards.cardId, rec.cardOutId)))
+        } else if (dest === 'maybe') {
+          await db.update(deckCards)
+            .set({ board: 'maybe', isSideboard: false })
+            .where(and(eq(deckCards.deckId, deckId), eq(deckCards.cardId, rec.cardOutId)))
+        }
       }
 
       // Add card in
@@ -68,6 +79,8 @@ export async function PATCH(
             cardId: cardIn.id,
             cardType: deriveCardType(cardIn.typeLine),
             sortOrder: (maxOrder[0]?.max ?? 0) + 1,
+            board: 'main',
+            isSideboard: false,
           }).onConflictDoNothing()
         }
       }

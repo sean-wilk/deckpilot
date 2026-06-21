@@ -12,11 +12,20 @@ describe('exportMTGO', () => {
 
   it('separates sideboard', () => {
     const result = exportMTGO([
-      { quantity: 1, name: 'Sol Ring' },
-      { quantity: 1, name: 'Swords to Plowshares', isSideboard: true },
+      { quantity: 1, name: 'Sol Ring', board: 'main' },
+      { quantity: 1, name: 'Swords to Plowshares', board: 'side' },
     ])
     expect(result).toContain('Sideboard')
     expect(result).toContain('1 Swords to Plowshares')
+  })
+
+  it('separates maybeboard', () => {
+    const result = exportMTGO([
+      { quantity: 1, name: 'Sol Ring', board: 'main' },
+      { quantity: 1, name: 'Mana Crypt', board: 'maybe' },
+    ])
+    expect(result).toContain('Maybeboard')
+    expect(result).toContain('1 Mana Crypt')
   })
 })
 
