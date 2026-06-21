@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { deckStructureAnalyses } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { deckStructureAnalyses, decks } from '@/lib/db/schema'
+import { eq, and, desc } from 'drizzle-orm'
 import { getCardCategoriesForDeck, buildCardRolesMap } from '@/lib/queries/card-categories'
 
 export async function GET(
@@ -17,6 +17,16 @@ export async function GET(
     if (!user) return new Response('Unauthorized', { status: 401 })
 
     const { deckId } = await params
+
+    // Verify the caller owns this deck before exposing any of its data (IDOR guard).
+    const deckRows = await db
+      .select({ id: decks.id })
+      .from(decks)
+      .where(and(eq(decks.id, deckId), eq(decks.ownerId, user.id)))
+      .limit(1)
+    if (deckRows.length === 0) {
+      return new Response('Deck not found', { status: 404 })
+    }
 
     // Fetch all structure analysis records ordered by most recent first
     const allRows = await db
