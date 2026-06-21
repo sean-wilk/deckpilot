@@ -1,11 +1,12 @@
 import { inngest } from './client'
 import { db } from '@/lib/db'
 import { deckAnalyses, swapRecommendations, cards } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { streamStructuredOutput } from '@/lib/ai/providers'
 import { buildDeckContext } from '@/lib/ai/context'
 import { getRecommendationPrompt } from '@/lib/ai/prompts-recommendations'
 import { setProgress, markFailed } from './helpers'
+import { fuzzyMatchCardName } from '@/lib/ai/card-validation'
 import { SwapRecommendationSchema } from '@/lib/ai/schemas'
 import type { SwapRecommendation } from '@/lib/ai/schemas'
 import { toJSONSchema } from 'zod'
@@ -97,15 +98,17 @@ export const recommendCards = inngest.createFunction(
           let cardInId: string | null = null
 
           if (rec.card_out) {
+            const name = rec.card_out.trim()
             const [cardOut] = await db.select({ id: cards.id })
-              .from(cards).where(eq(cards.name, rec.card_out)).limit(1)
-            cardOutId = cardOut?.id ?? null
+              .from(cards).where(sql`LOWER(${cards.name}) = LOWER(${name})`).limit(1)
+            cardOutId = cardOut?.id ?? (await fuzzyMatchCardName(name))?.id ?? null
           }
 
           if (rec.card_in) {
+            const name = rec.card_in.trim()
             const [cardIn] = await db.select({ id: cards.id })
-              .from(cards).where(eq(cards.name, rec.card_in)).limit(1)
-            cardInId = cardIn?.id ?? null
+              .from(cards).where(sql`LOWER(${cards.name}) = LOWER(${name})`).limit(1)
+            cardInId = cardIn?.id ?? (await fuzzyMatchCardName(name))?.id ?? null
           }
 
           await db.insert(swapRecommendations).values({
