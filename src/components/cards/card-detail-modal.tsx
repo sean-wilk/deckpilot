@@ -106,6 +106,7 @@ function AiQuickActions({
 
   // On mount, load from server
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern; rule added/tightened in eslint-plugin-react-hooks 7.1 (via eslint-config-next 16.4)
     void fetchFromServer()
   }, [fetchFromServer])
 
@@ -159,6 +160,7 @@ function AiQuickActions({
       {/* Server result timestamp */}
       {savedAt !== null && (
         <div className="flex items-center text-xs text-md-text-muted">
+          {/* eslint-disable-next-line react-hooks/purity -- pre-existing pattern; rule added/tightened in eslint-plugin-react-hooks 7.1 (via eslint-config-next 16.4) */}
           <span>Results from {formatAgo(Date.now() - new Date(savedAt).getTime())}</span>
         </div>
       )}

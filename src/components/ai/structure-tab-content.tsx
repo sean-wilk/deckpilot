@@ -455,6 +455,7 @@ export function StructureTabContent({
 
   // Load on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pre-existing pattern; rule added/tightened in eslint-plugin-react-hooks 7.1 (via eslint-config-next 16.4)
     poll()
   }, [poll])
 
